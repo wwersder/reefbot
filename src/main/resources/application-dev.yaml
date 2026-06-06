@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/reefbot_dev
+    username: reefbot
+    password: reefbot123
+
+telegram:
+  bot:
+    token: 8709849364:AAFRa22DkVL9HVkHRA7ZexOGDMK37tmNHZM
+    username: reefdevplaybot

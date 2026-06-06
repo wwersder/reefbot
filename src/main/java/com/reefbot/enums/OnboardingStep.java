@@ -2,19 +2,19 @@ package com.reefbot.enums;
 
 public enum OnboardingStep {
 
-    START,
+    WELCOME,
 
-    INTRO_1,
+    CLAIM_ISLAND,
 
-    INTRO_2,
+    ISLAND_OVERVIEW,
 
     ENTER_ISLAND_NAME,
 
-    STARTER_PACK,
+    RECEIVE_STARTER_PACK,
 
-    BUILD_CAMP,
+    BUILD_FIRST_CAMP,
 
-    FIRST_QUEST,
+    START_FIRST_QUEST,
 
     FINISHED
 }
