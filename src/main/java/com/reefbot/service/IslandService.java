@@ -20,6 +20,13 @@ public class IslandService {
                 .player(player)
                 .build();
 
+        Island savedIsland = islandRepository.save(island);
+        player.setIsland(savedIsland);
+        return savedIsland;
+    }
+
+    public Island renameIsland(Island island, String name) {
+        island.setName(name);
         return islandRepository.save(island);
     }
 }

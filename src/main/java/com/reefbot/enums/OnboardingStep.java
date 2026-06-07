@@ -4,17 +4,13 @@ public enum OnboardingStep {
 
     WELCOME,
 
-    CLAIM_ISLAND,
-
     ISLAND_OVERVIEW,
+
+    ASK_ISLAND_NAME,
 
     ENTER_ISLAND_NAME,
 
     RECEIVE_STARTER_PACK,
-
-    BUILD_FIRST_CAMP,
-
-    START_FIRST_QUEST,
 
     FINISHED
 }

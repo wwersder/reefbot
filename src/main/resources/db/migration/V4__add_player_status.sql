@@ -1,0 +1,2 @@
+ALTER TABLE players ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ONBOARDING';
+UPDATE players SET status = 'ACTIVE' WHERE onboarding_step = 'FINISHED';
