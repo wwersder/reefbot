@@ -2,9 +2,12 @@ package com.reefbot.service;
 
 import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Player;
+import com.reefbot.enums.PlayerStatus;
 import com.reefbot.service.registration.OnboardingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -16,7 +19,7 @@ public class MessageDispatcher {
     private final AdminService adminService;
     private final OnboardingService onboardingService;
 
-    public BotResponse dispatch(Long telegramId, String username, String text) {
+    public BotResponse dispatch(Long telegramId, String username, String text, boolean isPrivate) {
         if (ADMIN_TELEGRAM_ID.equals(telegramId)) {
             BotResponse adminResponse = adminService.handle(text);
             if (adminResponse != null) {
@@ -24,11 +27,29 @@ public class MessageDispatcher {
             }
         }
 
-        Player player = playerService.getOrCreatePlayer(telegramId, username);
+        if (isPrivate) {
+            Player player = playerService.getOrCreatePlayer(telegramId, username);
+            PlayerStatus status = player.getStatus() != null ? player.getStatus() : PlayerStatus.ONBOARDING;
+            return switch (status) {
+                case ONBOARDING -> onboardingService.process(player, text);
+                case ACTIVE -> null; // TODO: game handler
+            };
+        }
 
-        return switch (player.getStatus()) {
-            case ONBOARDING -> onboardingService.process(player, text);
-            case ACTIVE -> null; // TODO: game handler
-        };
+        // Group/supergroup: respond only to slash commands
+        if (!text.startsWith("/")) {
+            return null;
+        }
+
+        Optional<Player> playerOpt = playerService.findByTelegramId(telegramId);
+        if (playerOpt.isEmpty()) {
+            return new BotResponse("Напиши боту в ЛС, чтобы зарегистрироваться.");
+        }
+        if (playerOpt.get().getStatus() == PlayerStatus.ONBOARDING) {
+            return new BotResponse("Заверши регистрацию в ЛС, чтобы играть.");
+        }
+
+        // ACTIVE player in group — TODO: game commands
+        return null;
     }
 }

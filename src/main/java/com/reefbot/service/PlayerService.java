@@ -3,6 +3,7 @@ package com.reefbot.service;
 import java.util.Optional;
 
 import com.reefbot.enums.OnboardingStep;
+import com.reefbot.enums.PlayerStatus;
 import com.reefbot.repository.IslandRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,10 @@ public class PlayerService {
 
     private final PlayerRepository playerRepository;
     private final IslandRepository islandRepository;
+
+    public Optional<Player> findByTelegramId(Long telegramId) {
+        return playerRepository.findByTelegramId(telegramId);
+    }
 
     public Player getOrCreatePlayer(Long telegramId, String username) {
         Optional<Player> playerOptional = playerRepository.findByTelegramId(telegramId);
@@ -34,6 +39,7 @@ public class PlayerService {
                 .telegramId(telegramId)
                 .username(username)
                 .onboardingStep(OnboardingStep.WELCOME)
+                .status(PlayerStatus.ONBOARDING)
                 .build();
 
         return playerRepository.save(player);

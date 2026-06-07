@@ -10,6 +10,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -25,6 +26,11 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
 
     @Override
     public void consume(Update update) {
+        if (update.hasMyChatMember()) {
+            handleMembershipChange(update);
+            return;
+        }
+
         if (!update.hasMessage() || !update.getMessage().hasText()) {
             return;
         }
@@ -33,12 +39,36 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
         Long chatId = update.getMessage().getChatId();
         String username = update.getMessage().getFrom().getUserName();
         String text = update.getMessage().getText();
+        boolean isPrivate = "private".equals(update.getMessage().getChat().getType());
 
-        BotResponse response = dispatcher.dispatch(telegramId, username, text);
+        BotResponse response = dispatcher.dispatch(telegramId, username, text, isPrivate);
 
         if (response != null) {
             sendResponse(chatId, response);
         }
+    }
+
+    private void handleMembershipChange(Update update) {
+        ChatMember newMember = update.getMyChatMember().getNewChatMember();
+        ChatMember oldMember = update.getMyChatMember().getOldChatMember();
+
+        boolean wasAdded = isInactive(oldMember) && isActive(newMember);
+        if (!wasAdded) {
+            return;
+        }
+
+        Long chatId = update.getMyChatMember().getChat().getId();
+        // TODO: добавить приветственный текст для беседы
+    }
+
+    private boolean isActive(ChatMember member) {
+        String status = member.getStatus();
+        return "member".equals(status) || "administrator".equals(status);
+    }
+
+    private boolean isInactive(ChatMember member) {
+        String status = member.getStatus();
+        return "left".equals(status) || "kicked".equals(status);
     }
 
     private void sendResponse(Long chatId, BotResponse response) {
