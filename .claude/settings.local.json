@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\my\\\\reefbot\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(node *)",
+      "Bash(python3 *)",
+      "Read(//mnt/c/my/**)",
+      "Bash(./mvnw compile *)",
+      "PowerShell($javaHome = \\(Get-Command java\\).Source | Split-Path | Split-Path; $jar = \"$env:USERPROFILE\\\\.m2\\\\repository\\\\org\\\\telegram\\\\telegrambots-meta\\\\10.0.0\\\\telegrambots-meta-10.0.0.jar\"; & \"$javaHome\\\\bin\\\\javap.exe\" -classpath $jar \"org.telegram.telegrambots.meta.api.methods.updates.GetUpdates\" 2>&1 | Select-String \"allowed|List|public|void set\" | Select-Object -First 20)",
+      "PowerShell($javaHome = \\(Get-Command java\\).Source | Split-Path | Split-Path; $jar = \"$env:USERPROFILE\\\\.m2\\\\repository\\\\org\\\\telegram\\\\telegrambots-longpolling\\\\10.0.0\\\\telegrambots-longpolling-10.0.0.jar\"; & \"$javaHome\\\\bin\\\\javap.exe\" -classpath $jar \"org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication\" 2>&1)",
+      "PowerShell($javaHome = \\(Get-Command java\\).Source | Split-Path | Split-Path; $jar = \"$env:USERPROFILE\\\\.m2\\\\repository\\\\org\\\\telegram\\\\telegrambots-meta\\\\10.0.0\\\\telegrambots-meta-10.0.0.jar\"; & \"$javaHome\\\\bin\\\\javap.exe\" -classpath $jar \"org.telegram.telegrambots.meta.TelegramUrl\" 2>&1 | Select-String \"public|static|DEFAULT|DEFAULT_URL\")"
+    ]
+  }
+}

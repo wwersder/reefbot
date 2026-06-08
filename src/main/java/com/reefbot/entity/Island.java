@@ -1,10 +1,10 @@
 package com.reefbot.entity;
 
-import lombok.Getter;
-import lombok.Setter;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Setter;
 
 import jakarta.persistence.Id;
 import jakarta.persistence.GeneratedValue;
@@ -34,5 +34,19 @@ public class Island {
     @OneToOne
     @JoinColumn(name = "player_id")
     private Player player;
+
+    // ── Resources ─────────────────────────────────────────────────────────────
+
+    @Builder.Default
+    private Integer wood = 0;
+
+    @Builder.Default
+    private Integer stone = 0;
+
+    @Builder.Default
+    private Integer fish = 0;
+
+    @Builder.Default
+    private Integer shells = 0;
 
 }
