@@ -1,0 +1,8 @@
+{
+  "buildings": 8,
+  "resourceTypes": 4,
+  "islandZones": 6,
+  "roadmapPhases": 4,
+  "dbMigrations": 4,
+  "generatedAt": "2026-06-08T17:25:14.098416Z"
+}
