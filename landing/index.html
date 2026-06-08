@@ -1,541 +1,329 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ReefBot — Острова Архипелага</title>
-<style>
-:root {
-  --deep:        #03162b;
-  --mid:         #062d52;
-  --blue:        #0b5fa5;
-  --teal:        #0fa8a8;
-  --teal-light:  #1de8d8;
-  --gold:        #f0b429;
-  --gold-dark:   #c47f00;
-  --white:       #ffffff;
-  --muted:       #8ab4cc;
-  --muted2:      #5a85a0;
-}
-*{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--deep);color:var(--white);overflow-x:hidden}
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ReefBot — Построй свой остров в Telegram</title>
+  <style>
+    :root {
+      --bg: #04091a;
+      --surface: #081525;
+      --surface2: #0c1f36;
+      --accent: #00c8ff;
+      --accent2: #00ffb3;
+      --accent3: #7c6af7;
+      --gold: #f0c040;
+      --text: #dff0ff;
+      --muted: #5d8099;
+      --border: rgba(0,200,255,.13);
+      --glow: 0 0 32px rgba(0,200,255,.22);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden}
 
-/* ── BG ── */
-.wave-bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
-.wave-bg::before,.wave-bg::after{content:'';position:absolute;width:200%;height:200%;border-radius:40%;opacity:.05}
-.wave-bg::before{background:radial-gradient(ellipse at 30% 60%,var(--teal) 0%,transparent 60%);animation:drift1 18s ease-in-out infinite alternate;top:-50%;left:-50%}
-.wave-bg::after{background:radial-gradient(ellipse at 70% 40%,var(--blue) 0%,transparent 60%);animation:drift2 24s ease-in-out infinite alternate;top:-30%;left:-30%}
-@keyframes drift1{from{transform:rotate(0)scale(1)}to{transform:rotate(8deg)scale(1.1)}}
-@keyframes drift2{from{transform:rotate(0)scale(1.1)}to{transform:rotate(-6deg)scale(1)}}
+    /* ── ANIMATED BG ── */
+    .bg-layer{position:fixed;inset:0;z-index:0;pointer-events:none}
+    .bg-layer canvas{position:absolute;inset:0;width:100%;height:100%}
 
-.bubbles{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-.bubble{position:absolute;bottom:-80px;border-radius:50%;background:rgba(29,232,216,.05);border:1px solid rgba(29,232,216,.1);animation:rise linear infinite}
-@keyframes rise{0%{transform:translateY(0)scale(1);opacity:0}10%{opacity:1}90%{opacity:.5}100%{transform:translateY(-110vh)scale(1.3);opacity:0}}
+    /* ── NAV ── */
+    nav{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(4,9,26,.8);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:13px 48px;display:flex;align-items:center;gap:28px}
+    .nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+    .nav-logo img{width:32px;height:32px;border-radius:50%;object-fit:cover}
+    .nav-logo span{font-size:1.1rem;font-weight:800;color:var(--accent);letter-spacing:.3px}
+    .nav-links{display:flex;gap:22px;margin-left:auto}
+    .nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;transition:color .2s}
+    .nav-links a:hover{color:var(--text)}
+    .nav-btn{background:linear-gradient(135deg,var(--accent),#0080cc);color:#fff;padding:8px 20px;border-radius:8px;font-size:.85rem;font-weight:700;text-decoration:none;transition:opacity .2s,transform .15s;box-shadow:0 0 16px rgba(0,200,255,.3)}
+    .nav-btn:hover{opacity:.9;transform:translateY(-1px)}
 
-/* ── NAV ── */
-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:14px 0;background:rgba(3,22,43,.88);backdrop-filter:blur(14px);border-bottom:1px solid rgba(15,168,168,.12);transition:.3s}
-.nav-inner{display:flex;align-items:center;justify-content:space-between;max-width:1160px;margin:0 auto;padding:0 24px}
-.nav-logo{display:flex;align-items:center;gap:10px;font-size:1.2rem;font-weight:800;color:var(--white);text-decoration:none}
-.nav-logo img{width:34px;height:34px;border-radius:50%;object-fit:cover}
-.nav-logo span{color:var(--teal-light)}
-.nav-links{display:flex;gap:26px;list-style:none}
-.nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;transition:.2s}
-.nav-links a:hover{color:var(--teal-light)}
-.nav-dev-badge{display:flex;align-items:center;gap:6px;background:rgba(15,168,168,.1);border:1px solid rgba(15,168,168,.25);border-radius:100px;padding:5px 14px;font-size:.75rem;color:var(--teal-light)}
-.nav-dev-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--teal-light);animation:blink 2s ease-in-out infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+    /* ── HERO ── */
+    .hero{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:110px 24px 80px;position:relative;overflow:hidden}
+    .hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(transparent,var(--bg));pointer-events:none}
+    .hero-inner{display:flex;align-items:center;gap:80px;max-width:1140px;width:100%;position:relative;z-index:2}
+    .hero-text{flex:1}
+    .badge{display:inline-flex;align-items:center;gap:7px;background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.25);border-radius:24px;padding:5px 16px;font-size:.78rem;color:var(--accent);margin-bottom:22px;letter-spacing:.3px}
+    .badge-dot{width:7px;height:7px;background:var(--accent2);border-radius:50%;animation:pulse 2s infinite;box-shadow:0 0 8px var(--accent2)}
+    h1{font-size:clamp(2.4rem,5.5vw,3.8rem);font-weight:900;line-height:1.1;margin-bottom:18px;letter-spacing:-.5px}
+    h1 .accent{background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero-sub{color:var(--muted);font-size:1.05rem;line-height:1.75;margin-bottom:36px;max-width:460px}
+    .hero-btns{display:flex;gap:12px;flex-wrap:wrap}
+    .btn-primary{background:linear-gradient(135deg,var(--accent),#0090d0);color:#fff;padding:15px 30px;border-radius:12px;font-weight:800;text-decoration:none;font-size:.98rem;transition:transform .2s,box-shadow .2s;box-shadow:0 4px 24px rgba(0,200,255,.35)}
+    .btn-primary:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,200,255,.45)}
+    .btn-ghost{background:rgba(255,255,255,.04);color:var(--text);padding:15px 28px;border-radius:12px;font-weight:600;text-decoration:none;font-size:.98rem;border:1px solid var(--border);transition:border-color .2s,background .2s}
+    .btn-ghost:hover{border-color:var(--accent);background:rgba(0,200,255,.06)}
 
-/* ── LAYOUT ── */
-.container{max-width:1160px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
-section{padding:96px 0}
+    /* ── LOGO ORBITAL ── */
+    .hero-visual{flex:0 0 420px;position:relative;height:420px}
+    #orbitCanvas{position:absolute;inset:0;width:100%;height:100%}
+    .logo-wrap{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3;pointer-events:none;text-align:center}
+    .logo-ring{width:180px;height:180px;border-radius:50%;position:relative;animation:float 4s ease-in-out infinite}
+    .logo-ring::before{content:'';position:absolute;inset:-6px;border-radius:50%;background:conic-gradient(from 0deg,var(--accent),var(--accent2),var(--accent3),var(--accent));animation:spin 4s linear infinite;filter:blur(6px);opacity:.7}
+    .logo-ring::after{content:'';position:absolute;inset:-3px;border-radius:50%;background:conic-gradient(from 0deg,var(--accent),var(--accent2),var(--accent3),var(--accent));animation:spin 4s linear infinite}
+    .logo-img{width:180px;height:180px;border-radius:50%;object-fit:cover;position:relative;z-index:1;display:block}
+    .logo-tagline{font-size:.78rem;color:var(--muted);margin-top:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase}
 
-/* ── HERO ── */
-#hero{min-height:100vh;display:flex;align-items:center;padding:120px 24px 80px}
-.hero-content{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;max-width:1160px;margin:0 auto}
-.badge{display:inline-flex;align-items:center;gap:7px;background:rgba(15,168,168,.1);border:1px solid rgba(15,168,168,.28);border-radius:100px;padding:6px 16px;font-size:.78rem;color:var(--teal-light);letter-spacing:.8px;text-transform:uppercase;margin-bottom:22px}
-.badge-dot{width:6px;height:6px;border-radius:50%;background:var(--teal-light);animation:blink 2s ease-in-out infinite}
-.hero-title{font-size:clamp(2.4rem,5vw,3.7rem);font-weight:900;line-height:1.08;letter-spacing:-1px;margin-bottom:10px}
-.hero-title .accent{background:linear-gradient(135deg,var(--teal-light),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.hero-tagline{font-size:1.05rem;font-style:italic;color:var(--gold);margin-bottom:18px;font-weight:500}
-.hero-sub{font-size:1.05rem;color:var(--muted);line-height:1.75;margin-bottom:36px;max-width:480px}
-.hero-cta{display:flex;gap:12px;flex-wrap:wrap}
+    /* ── WAVE DIVIDER ── */
+    .wave-divider{width:100%;overflow:hidden;line-height:0;display:block}
+    .wave-divider svg{display:block;width:100%}
 
-/* BUTTONS */
-.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 26px;border-radius:12px;font-size:.93rem;font-weight:600;text-decoration:none;transition:.25s;cursor:pointer;border:none}
-.btn-primary{background:linear-gradient(135deg,var(--teal),#0d8585);color:var(--white);box-shadow:0 4px 20px rgba(15,168,168,.3)}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(15,168,168,.5)}
-.btn-secondary{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--white)}
-.btn-secondary:hover{background:rgba(255,255,255,.1);transform:translateY(-2px)}
-.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#03162b;box-shadow:0 4px 20px rgba(240,180,41,.25)}
-.btn-gold:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(240,180,41,.45)}
+    /* ── STATS ── */
+    .stats-band{padding:48px 24px;background:var(--surface);position:relative}
+    .stats-inner{max-width:1140px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px}
+    .stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:24px 20px;text-align:center;transition:border-color .3s,transform .2s}
+    .stat-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+    .stat-num{font-size:2.6rem;font-weight:900;line-height:1;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .stat-lbl{color:var(--muted);font-size:.82rem;margin-top:6px;font-weight:500}
 
-/* LOGO */
-.hero-right{display:flex;justify-content:center}
-.logo-wrap{position:relative;width:380px;height:380px;display:flex;align-items:center;justify-content:center}
-.logo-glow{position:absolute;inset:-40px;border-radius:50%;background:radial-gradient(circle,rgba(15,168,168,.18) 0%,transparent 70%);animation:pulse-glow 4s ease-in-out infinite}
-@keyframes pulse-glow{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
-.logo-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
-.logo-img{width:260px;height:260px;border-radius:50%;object-fit:cover;box-shadow:0 0 60px rgba(15,168,168,.3),0 0 120px rgba(15,168,168,.1);position:relative;z-index:3}
+    /* ── SECTIONS ── */
+    section{padding:88px 24px;position:relative}
+    .container{max-width:1140px;margin:0 auto}
+    .section-eyebrow{font-size:.72rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+    .section-title{font-size:clamp(1.7rem,3.5vw,2.6rem);font-weight:900;margin-bottom:14px;letter-spacing:-.3px}
+    .section-sub{color:var(--muted);font-size:.98rem;line-height:1.75;max-width:520px;margin-bottom:52px}
 
-/* LIVE COUNTERS */
-.live-counters{display:flex;gap:36px;margin-top:44px;padding-top:30px;border-top:1px solid rgba(255,255,255,.07);flex-wrap:wrap}
-.lc{position:relative}
-.lc-num{font-size:2rem;font-weight:800;color:var(--teal-light);line-height:1;display:flex;align-items:baseline;gap:3px}
-.lc-num .suffix{font-size:1rem;color:var(--teal)}
-.lc-label{font-size:.78rem;color:var(--muted);margin-top:4px}
-.lc-live{position:absolute;top:-6px;right:-22px;font-size:.6rem;background:rgba(15,168,168,.15);border:1px solid rgba(15,168,168,.3);border-radius:4px;padding:1px 5px;color:var(--teal-light);letter-spacing:.5px;text-transform:uppercase}
+    /* ── HOW IT WORKS ── */
+    .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px}
+    .step{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:30px;position:relative;overflow:hidden;transition:border-color .3s,transform .2s,box-shadow .3s;cursor:default}
+    .step:hover{border-color:rgba(0,200,255,.45);transform:translateY(-4px);box-shadow:var(--glow)}
+    .step-glow{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 0%,rgba(0,200,255,.08),transparent 70%);transition:opacity .3s}
+    .step:hover .step-glow{opacity:1}
+    .step-num{font-size:3.5rem;font-weight:900;color:rgba(0,200,255,.05);position:absolute;top:12px;right:18px;line-height:1}
+    .step-icon{font-size:2.2rem;margin-bottom:16px}
+    .step h3{font-size:1.05rem;font-weight:800;margin-bottom:8px}
+    .step p{color:var(--muted);font-size:.88rem;line-height:1.65}
 
-/* ── SECTION HEADER ── */
-.sec-label{font-size:.78rem;color:var(--teal-light);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
-.sec-title{font-size:clamp(1.8rem,3.5vw,2.6rem);font-weight:800;line-height:1.18;margin-bottom:14px}
-.sec-sub{font-size:1rem;color:var(--muted);line-height:1.72;max-width:560px}
-.sec-header{margin-bottom:56px}
+    /* ── RESOURCES ── */
+    .res-grid{display:flex;flex-wrap:wrap;gap:14px}
+    .res-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 22px;display:flex;align-items:center;gap:14px;flex:1;min-width:180px;transition:border-color .25s,transform .2s}
+    .res-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+    .res-emoji{font-size:2.2rem;filter:drop-shadow(0 0 8px rgba(0,200,255,.3))}
+    .res-name{font-weight:700;font-size:.95rem}
+    .res-sub{color:var(--muted);font-size:.78rem;margin-top:2px}
+    .res-rare{font-size:.68rem;font-weight:700;color:var(--gold);background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.25);border-radius:10px;padding:2px 8px;display:inline-block;margin-top:4px}
 
-/* ── DEV TRACKER ── */
-#devtrack{background:linear-gradient(135deg,rgba(6,45,82,.5) 0%,rgba(3,22,43,.8) 100%);border-top:1px solid rgba(15,168,168,.1);border-bottom:1px solid rgba(15,168,168,.1)}
-.tracker-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
-.tracker-left{}
-.tracker-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}
-.ts-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px 16px;text-align:center;transition:.3s}
-.ts-card:hover{border-color:rgba(15,168,168,.3);transform:translateY(-3px)}
-.ts-icon{font-size:1.6rem;margin-bottom:8px}
-.ts-num{font-size:1.9rem;font-weight:800;color:var(--teal-light);line-height:1}
-.ts-label{font-size:.75rem;color:var(--muted);margin-top:4px}
-.tracker-right{}
-.progress-list{display:flex;flex-direction:column;gap:18px}
-.prog-item{}
-.prog-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
-.prog-name{font-size:.88rem;font-weight:600}
-.prog-pct{font-size:.8rem;color:var(--teal-light);font-weight:700}
-.prog-bar{height:8px;background:rgba(255,255,255,.07);border-radius:100px;overflow:hidden}
-.prog-fill{height:100%;border-radius:100px;transition:width 1.5s cubic-bezier(.16,1,.3,1)}
-.prog-fill.done{background:linear-gradient(90deg,var(--teal),var(--teal-light))}
-.prog-fill.active{background:linear-gradient(90deg,var(--gold-dark),var(--gold));animation:shimmer 2s ease-in-out infinite}
-.prog-fill.planned{background:rgba(255,255,255,.15)}
-@keyframes shimmer{0%,100%{opacity:1}50%{opacity:.7}}
-.changelog{margin-top:28px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px}
-.cl-title{font-size:.78rem;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
-.cl-item{display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)}
-.cl-item:last-child{border:none;padding-bottom:0}
-.cl-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0}
-.cl-dot.new{background:var(--teal-light);box-shadow:0 0 6px rgba(29,232,216,.5)}
-.cl-dot.fix{background:var(--gold)}
-.cl-dot.plan{background:var(--muted2)}
-.cl-text{font-size:.82rem;color:var(--muted);line-height:1.5}
-.cl-text strong{color:var(--white)}
+    /* ── BUILDINGS ── */
+    .bld-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px}
+    .bld-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px;transition:border-color .3s,transform .2s,box-shadow .25s}
+    .bld-card:hover{transform:translateY(-4px);box-shadow:var(--glow)}
+    .bld-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px}
+    .bld-name{font-weight:800;font-size:.98rem;line-height:1.3}
+    .tier{font-size:.68rem;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap;letter-spacing:.5px;flex-shrink:0}
+    .t1{background:rgba(0,255,179,.12);color:var(--accent2);border:1px solid rgba(0,255,179,.3)}
+    .t2{background:rgba(0,200,255,.12);color:var(--accent);border:1px solid rgba(0,200,255,.3)}
+    .t3{background:rgba(124,106,247,.15);color:#a99ff8;border:1px solid rgba(124,106,247,.35)}
+    .bld-zone{font-size:.76rem;color:var(--muted);margin-bottom:10px}
+    .bld-effect{font-size:.86rem;font-weight:700;color:var(--accent2);margin-bottom:12px}
+    .bld-cost{display:flex;flex-wrap:wrap;gap:6px}
+    .chip{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:3px 9px;font-size:.76rem;color:var(--muted)}
+    .bld-card.t1-card:hover{border-color:rgba(0,255,179,.4)}
+    .bld-card.t2-card:hover{border-color:rgba(0,200,255,.4)}
+    .bld-card.t3-card:hover{border-color:rgba(124,106,247,.5)}
 
-/* ── HOW ── */
-#how{background:rgba(6,45,82,.25)}
-.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
-.step{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:30px 22px;text-align:center;transition:.3s;position:relative;overflow:hidden}
-.step::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(15,168,168,.06) 0%,transparent 60%);opacity:0;transition:.3s}
-.step:hover{transform:translateY(-6px);border-color:rgba(15,168,168,.3)}
-.step:hover::before{opacity:1}
-.step-num{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--blue));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem;margin:0 auto 18px;box-shadow:0 4px 16px rgba(15,168,168,.25)}
-.step-icon{font-size:2rem;margin-bottom:10px}
-.step h3{font-size:.95rem;font-weight:700;margin-bottom:7px}
-.step p{font-size:.83rem;color:var(--muted);line-height:1.6}
+    /* ── ZONES ── */
+    .zones-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+    .zone-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 18px;text-align:center;transition:border-color .25s,transform .2s}
+    .zone-card:hover{border-color:var(--accent);transform:translateY(-3px)}
+    .zone-emoji{font-size:2rem;margin-bottom:10px;display:block}
+    .zone-name{font-weight:700;font-size:.9rem;margin-bottom:4px}
+    .zone-req{font-size:.75rem;color:var(--muted)}
+    .zone-locked{font-size:.68rem;font-weight:700;color:var(--gold);background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.2);border-radius:8px;padding:2px 8px;display:inline-block;margin-top:6px}
 
-/* ── FEATURES ── */
-.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
-.feat{background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(15,168,168,.04));border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:30px;transition:.3s}
-.feat:hover{border-color:rgba(15,168,168,.3);transform:translateY(-4px);box-shadow:0 12px 40px rgba(15,168,168,.08)}
-.feat-icon{font-size:2.1rem;margin-bottom:16px;display:block;filter:drop-shadow(0 0 8px rgba(15,168,168,.35))}
-.feat h3{font-size:1rem;font-weight:700;margin-bottom:9px}
-.feat p{font-size:.84rem;color:var(--muted);line-height:1.67}
-.feat-soon{display:inline-block;margin-left:6px;font-size:.68rem;background:rgba(240,180,41,.12);border:1px solid rgba(240,180,41,.25);border-radius:4px;padding:1px 6px;color:var(--gold);vertical-align:middle}
+    /* ── ROADMAP ── */
+    .roadmap-scene{position:relative;height:360px;display:flex;align-items:center;justify-content:center;perspective:1200px;user-select:none}
+    .rcard{position:absolute;width:310px;background:var(--surface2);border:1px solid var(--border);border-radius:22px;padding:32px;cursor:grab;touch-action:none;transition:transform .42s cubic-bezier(.34,1.4,.64,1),opacity .3s,box-shadow .3s}
+    .rcard.active-card{box-shadow:0 12px 48px rgba(0,200,255,.2)}
+    .rcard:active{cursor:grabbing}
+    .rcard-eyebrow{font-size:.68rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+    .rcard-title{font-size:1.25rem;font-weight:900;margin-bottom:14px}
+    .rcard-status{display:inline-flex;align-items:center;gap:6px;padding:4px 13px;border-radius:20px;font-size:.74rem;font-weight:800;margin-bottom:18px}
+    .done .rcard-status{background:rgba(0,255,179,.1);color:var(--accent2);border:1px solid rgba(0,255,179,.3)}
+    .progress .rcard-status{background:rgba(0,200,255,.1);color:var(--accent);border:1px solid rgba(0,200,255,.3)}
+    .planned .rcard-status{background:rgba(93,128,153,.08);color:var(--muted);border:1px solid rgba(93,128,153,.2)}
+    .rcard-list{list-style:none;display:flex;flex-direction:column;gap:7px}
+    .rcard-list li{font-size:.86rem;color:var(--muted);display:flex;align-items:center;gap:9px}
+    .rcard-list li::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .done .rcard-list li::before{background:var(--accent2)}
+    .progress .rcard-list li::before{background:var(--accent);animation:pulse 2s infinite}
+    .planned .rcard-list li::before{background:rgba(93,128,153,.4)}
+    .road-hint{text-align:center;color:var(--muted);font-size:.8rem;margin-top:18px}
+    .road-dots{display:flex;gap:8px;justify-content:center;margin-top:10px}
+    .rdot{width:8px;height:8px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);transition:background .3s,transform .2s}
+    .rdot.on{background:var(--accent);transform:scale(1.2)}
 
-/* ── BUILDINGS ── */
-#buildings{background:rgba(6,45,82,.18)}
-.buildings-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-.bldg{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:22px 14px;text-align:center;transition:.25s;cursor:default}
-.bldg:hover{border-color:rgba(240,180,41,.3);transform:translateY(-4px);background:rgba(255,255,255,.06)}
-.bldg-icon{font-size:1.9rem;margin-bottom:8px;display:block}
-.bldg-name{font-size:.82rem;font-weight:700;margin-bottom:4px}
-.bldg-prod{font-size:.73rem;color:var(--teal-light)}
-.bldg-meta{display:flex;gap:6px;justify-content:center;margin-top:9px;flex-wrap:wrap}
-.bldg-tag{padding:2px 9px;border-radius:100px;font-size:.68rem}
-.t1{background:rgba(15,168,168,.1);border:1px solid rgba(15,168,168,.2);color:var(--teal-light)}
-.t2{background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.2);color:var(--gold)}
-.t3{background:rgba(192,132,252,.1);border:1px solid rgba(192,132,252,.2);color:#c084fc}
+    /* ── CTA ── */
+    .cta-section{position:relative;overflow:hidden;padding:90px 24px;background:var(--surface)}
+    .cta-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:700px;height:400px;background:radial-gradient(ellipse,rgba(0,200,255,.07),transparent 70%);pointer-events:none}
+    .cta-inner{max-width:1140px;margin:0 auto;display:flex;align-items:center;gap:72px;position:relative;z-index:1}
+    .cta-left{flex:1}
+    .cta-right{flex:0 0 320px}
+    .cta-explorer-badge{display:inline-flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(240,192,64,.1),rgba(124,106,247,.1));border:1px solid rgba(240,192,64,.3);border-radius:16px;padding:10px 18px;margin-bottom:24px}
+    .cta-badge-icon{font-size:1.8rem}
+    .cta-badge-title{font-weight:800;font-size:.95rem;color:var(--gold)}
+    .cta-badge-sub{font-size:.75rem;color:var(--muted);margin-top:2px}
+    .cta-title{font-size:clamp(1.9rem,4vw,3rem);font-weight:900;margin-bottom:14px;letter-spacing:-.3px;line-height:1.15}
+    .cta-desc{color:var(--muted);font-size:.98rem;line-height:1.75;margin-bottom:28px;max-width:440px}
+    .cta-perks{display:flex;flex-direction:column;gap:16px;margin-bottom:32px}
+    .perk{display:flex;align-items:flex-start;gap:14px}
+    .perk-icon{font-size:1.4rem;flex-shrink:0;margin-top:2px}
+    .perk-t{font-weight:700;font-size:.92rem;margin-bottom:2px}
+    .perk-s{color:var(--muted);font-size:.8rem}
+    .cta-btn-big{display:inline-flex;align-items:center;gap:10px;font-size:1.05rem;padding:16px 32px}
+    .btn-arrow{font-size:1.1rem;transition:transform .2s}
+    .cta-btn-big:hover .btn-arrow{transform:translateX(4px)}
+    /* phone mockup */
+    .cta-phone{background:#0a1628;border:1px solid rgba(0,200,255,.2);border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4),0 0 0 1px rgba(0,200,255,.05)}
+    .phone-bar{display:flex;gap:6px;padding:12px 16px 8px;background:#061020}
+    .phone-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.12)}
+    .phone-header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#061828;border-bottom:1px solid rgba(0,200,255,.1)}
+    .phone-avatar{width:34px;height:34px;border-radius:50%;object-fit:cover}
+    .phone-name{font-weight:700;font-size:.88rem}
+    .phone-status{font-size:.72rem;color:var(--accent2)}
+    .phone-msgs{padding:16px;display:flex;flex-direction:column;gap:10px;min-height:220px}
+    .msg{display:flex;max-width:85%}
+    .msg-bot{align-self:flex-start}
+    .msg-user{align-self:flex-end}
+    .msg-text{padding:9px 13px;border-radius:14px;font-size:.82rem;line-height:1.5}
+    .msg-bot .msg-text{background:#0f2540;border:1px solid rgba(0,200,255,.1);border-bottom-left-radius:4px}
+    .msg-user .msg-text{background:linear-gradient(135deg,rgba(0,200,255,.25),rgba(0,144,200,.2));border:1px solid rgba(0,200,255,.25);border-bottom-right-radius:4px}
+    .msg-typing{align-self:flex-start}
+    .msg-typing span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--muted);margin:0 2px;animation:typingDot 1.2s infinite}
+    .msg-typing span:nth-child(2){animation-delay:.2s}
+    .msg-typing span:nth-child(3){animation-delay:.4s}
+    @keyframes typingDot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+    .phone-input-bar{padding:10px 14px;background:#061020;border-top:1px solid rgba(0,200,255,.08)}
+    .phone-input-fake{background:#0f1f35;border:1px solid rgba(0,200,255,.1);border-radius:20px;padding:8px 14px;font-size:.78rem;color:var(--muted)}
+    .cta-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+    @media(max-width:900px){
+      .cta-inner{flex-direction:column;gap:48px}
+      .cta-right{width:100%;max-width:340px;align-self:center}
+      .cta-title{text-align:center}
+      .cta-desc{text-align:center;margin-left:auto;margin-right:auto}
+      .cta-explorer-badge{align-self:center}
+    }
 
-/* ── WORLD ── */
-#world{background:rgba(6,45,82,.25)}
-.world-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
-.world-text{}
-.world-text p{font-size:1rem;color:var(--muted);line-height:1.8;margin-bottom:18px}
-.world-text .quote{font-size:1.15rem;font-style:italic;color:var(--white);border-left:3px solid var(--teal);padding-left:18px;margin:28px 0;line-height:1.6}
-.zones-visual{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.zone-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:18px 12px;text-align:center;transition:.3s}
-.zone-card:hover{border-color:rgba(15,168,168,.3);transform:scale(1.04)}
-.zone-card.locked{opacity:.45}
-.zone-card.locked .zone-icon::after{content:' 🔒';font-size:.7rem}
-.zone-icon{font-size:1.7rem;margin-bottom:6px;display:block}
-.zone-name{font-size:.78rem;font-weight:700}
-.zone-req{font-size:.68rem;color:var(--muted);margin-top:3px}
+    /* ── FOOTER ── */
+    footer{padding:32px 24px;text-align:center;color:var(--muted);font-size:.8rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:16px}
+    footer img{width:22px;height:22px;border-radius:50%;object-fit:cover;opacity:.6}
 
-/* ── ROADMAP CARD DECK ── */
-.rm-deck-wrap{position:relative;user-select:none}
-.rm-deck{position:relative;height:420px;perspective:1000px;cursor:grab}
-.rm-deck:active{cursor:grabbing}
-.rm-card{position:absolute;inset:0;border-radius:24px;padding:36px 40px;display:flex;flex-direction:column;transition:transform .5s cubic-bezier(.34,1.56,.64,1),opacity .4s,box-shadow .4s;will-change:transform;touch-action:pan-y}
-.rm-card[data-pos="0"]{transform:translateY(0) scale(1);z-index:4;box-shadow:0 24px 80px rgba(0,0,0,.4)}
-.rm-card[data-pos="1"]{transform:translateY(18px) scale(.97);z-index:3;opacity:.85}
-.rm-card[data-pos="2"]{transform:translateY(32px) scale(.94);z-index:2;opacity:.6}
-.rm-card[data-pos="3"]{transform:translateY(44px) scale(.91);z-index:1;opacity:.35}
-.rm-card[data-pos="-1"]{transform:translateY(-60px) scale(1.02) rotate(-1deg);z-index:5;opacity:0;pointer-events:none}
-.rm-card.done-card{background:linear-gradient(135deg,rgba(6,45,82,.95),rgba(11,70,130,.8));border:1px solid rgba(15,168,168,.25)}
-.rm-card.active-card{background:linear-gradient(135deg,rgba(30,20,5,.95),rgba(60,40,5,.8));border:1px solid rgba(240,180,41,.3)}
-.rm-card.plan-card{background:linear-gradient(135deg,rgba(6,25,50,.95),rgba(10,35,65,.8));border:1px solid rgba(255,255,255,.1)}
-.rm-card.mystery-card{background:linear-gradient(135deg,rgba(20,5,35,.95),rgba(40,10,65,.8));border:1px solid rgba(192,132,252,.2)}
-.rm-card-phase{font-size:.72rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
-.rm-card-phase.c-done{color:var(--teal-light)}
-.rm-card-phase.c-active{color:var(--gold)}
-.rm-card-phase.c-plan{color:var(--muted)}
-.rm-card-phase.c-mystery{color:#c084fc}
-.rm-card-status{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:700;margin-bottom:18px}
-.rm-card h3{font-size:1.25rem;font-weight:800;margin-bottom:10px;line-height:1.2}
-.rm-card p{font-size:.86rem;color:var(--muted);line-height:1.7;margin-bottom:18px;flex:1}
-.rm-tags{display:flex;flex-wrap:wrap;gap:7px}
-.rm-tag{padding:4px 12px;border-radius:100px;font-size:.73rem;font-weight:500}
-.rt-done{background:rgba(15,168,168,.12);border:1px solid rgba(15,168,168,.3);color:var(--teal-light)}
-.rt-active{background:rgba(240,180,41,.12);border:1px solid rgba(240,180,41,.3);color:var(--gold)}
-.rt-plan{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--muted)}
-/* mystery floating tags */
-.mf-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-.mf-tag{padding:5px 13px;border-radius:100px;font-size:.76rem;border:1px dashed rgba(192,132,252,.4);color:#c084fc;background:rgba(192,132,252,.05);animation:float-tag ease-in-out infinite alternate}
-@keyframes float-tag{from{transform:translateY(0)}to{transform:translateY(-5px)}}
-.mf-tag:nth-child(1){animation-duration:3.2s}
-.mf-tag:nth-child(2){animation-duration:2.8s;animation-delay:.3s}
-.mf-tag:nth-child(3){animation-duration:3.6s;animation-delay:.6s}
-.mf-tag:nth-child(4){animation-duration:2.6s;animation-delay:.1s}
-.mf-tag:nth-child(5){animation-duration:3.4s;animation-delay:.5s}
-.mf-tag:nth-child(6){animation-duration:3.0s;animation-delay:.8s}
-.mystery-note{font-size:.76rem;color:rgba(192,132,252,.5);font-style:italic;margin-top:8px}
-/* glitch effect on mystery title */
-.glitch{position:relative;animation:glitch-color 4s infinite}
-@keyframes glitch-color{0%,95%,100%{color:var(--white)}96%{color:#c084fc;text-shadow:2px 0 #0ff,-2px 0 #f0f}97%{color:var(--white)}98%{color:#c084fc;text-shadow:-2px 0 #0ff,2px 0 #f0f}99%{color:var(--white)}}
-/* nav/dots */
-.rm-nav{display:flex;align-items:center;justify-content:center;gap:20px;margin-top:28px}
-.rm-arr{width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:.2s;color:var(--white)}
-.rm-arr:hover{background:rgba(255,255,255,.12);border-color:rgba(15,168,168,.4);transform:scale(1.08)}
-.rm-arr:disabled{opacity:.25;cursor:default;transform:none}
-.rm-dots{display:flex;gap:8px}
-.rm-dot-btn{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);border:none;cursor:pointer;transition:.3s;padding:0}
-.rm-dot-btn.active{width:24px;border-radius:4px}
-.rm-dot-btn.done-d.active{background:var(--teal)}
-.rm-dot-btn.active-d.active{background:var(--gold)}
-.rm-dot-btn.plan-d.active{background:var(--muted2)}
-.rm-dot-btn.mystery-d.active{background:#c084fc}
-/* swipe hint */
-.rm-hint{text-align:center;font-size:.75rem;color:var(--muted2);margin-top:12px;animation:hint-fade 3s ease-in-out forwards}
-@keyframes hint-fade{0%{opacity:0}1s{opacity:1}2.5s{opacity:1}3s{opacity:0}}
+    /* ── ANIMATIONS ── */
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+    @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes fadeup{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+    .fadeup{animation:fadeup .7s ease both}
+    .fadeup-d1{animation-delay:.1s}
+    .fadeup-d2{animation-delay:.2s}
+    .fadeup-d3{animation-delay:.3s}
 
-/* ── CTA ── */
-#cta{background:linear-gradient(135deg,rgba(15,168,168,.07),rgba(6,45,82,.5),rgba(240,180,41,.04));border-top:1px solid rgba(15,168,168,.1);border-bottom:1px solid rgba(15,168,168,.1);text-align:center}
-#cta .sec-sub{margin:0 auto 36px}
-#cta .hero-cta{justify-content:center}
-.cta-note{margin-top:18px;font-size:.83rem;color:var(--muted)}
-
-/* ── FOOTER ── */
-footer{padding:38px 0;text-align:center;border-top:1px solid rgba(255,255,255,.06);color:var(--muted);font-size:.83rem}
-.f-logo{font-size:1.1rem;font-weight:800;color:var(--white);margin-bottom:7px}
-.f-logo span{color:var(--teal-light)}
-.f-links{display:flex;gap:20px;justify-content:center;margin-top:10px}
-.f-links a{color:var(--teal-light);text-decoration:none;transition:.2s}
-.f-links a:hover{color:var(--white)}
-
-/* ── RESPONSIVE ── */
-@media(max-width:960px){
-  .hero-content{grid-template-columns:1fr;text-align:center;gap:40px}
-  .hero-right{order:-1}
-  .hero-sub{margin:0 auto 36px}
-  .hero-cta{justify-content:center}
-  .live-counters{justify-content:center}
-  .steps{grid-template-columns:repeat(2,1fr)}
-  .features-grid{grid-template-columns:1fr 1fr}
-  .buildings-grid{grid-template-columns:repeat(2,1fr)}
-  .tracker-grid{grid-template-columns:1fr}
-  .world-grid{grid-template-columns:1fr}
-  .nav-links{display:none}
-  .logo-wrap{width:300px;height:300px}
-  .logo-img{width:210px;height:210px}
-  .rm-deck{height:460px}
-  .rm-card{padding:28px 24px}
-}
-@media(max-width:600px){
-  .steps{grid-template-columns:1fr}
-  .features-grid{grid-template-columns:1fr}
-  .buildings-grid{grid-template-columns:repeat(2,1fr)}
-  .tracker-stats{grid-template-columns:repeat(3,1fr)}
-  .zones-visual{grid-template-columns:repeat(3,1fr)}
-  .rm-deck{height:500px}
-  .rm-card{padding:24px 20px}
-  .rm-card h3{font-size:1.1rem}
-}
-</style>
+    @media(max-width:800px){
+      nav{padding:12px 20px}
+      .nav-links{display:none}
+      .hero-inner{flex-direction:column;gap:40px;text-align:center}
+      .hero-visual{flex:none;width:300px;height:300px;align-self:center}
+      .logo-ring,.logo-img{width:130px;height:130px}
+      .hero-sub{margin-left:auto;margin-right:auto}
+      .hero-btns{justify-content:center}
+      .roadmap-scene{height:400px}
+      .rcard{width:270px}
+      section{padding:60px 20px}
+    }
+  </style>
 </head>
 <body>
 
-<div class="wave-bg"></div>
-<div class="bubbles" id="bubbles"></div>
+<!-- BG PARTICLES -->
+<div class="bg-layer"><canvas id="bgCanvas"></canvas></div>
 
 <!-- NAV -->
 <nav>
-  <div class="nav-inner">
-    <a href="#" class="nav-logo">
-      <img src="logo.png" alt="ReefBot" onerror="this.style.display='none'">
-      Reef<span>Bot</span>
-    </a>
-    <ul class="nav-links">
-      <li><a href="#devtrack">Прогресс</a></li>
-      <li><a href="#how">Как играть</a></li>
-      <li><a href="#world">Мир</a></li>
-      <li><a href="#roadmap">Дорожная карта</a></li>
-    </ul>
-    <div class="nav-dev-badge">В разработке</div>
+  <a class="nav-logo" href="#">
+    <img src="logo.png" alt="ReefBot"/>
+    <span>ReefBot</span>
+  </a>
+  <div class="nav-links">
+    <a href="#how">Механики</a>
+    <a href="#buildings">Постройки</a>
+    <a href="#roadmap">Роадмап</a>
   </div>
+  <a class="nav-btn" href="https://t.me/reefbot_news" target="_blank">📢 Следить за разработкой</a>
 </nav>
 
 <!-- HERO -->
-<section id="hero">
-  <div class="hero-content">
-    <div>
-      <div class="badge"><span class="badge-dot"></span>Открытая разработка · Следи за прогрессом</div>
-      <h1 class="hero-title">
-        Построй свой<br>
-        <span class="accent">остров</span><br>
-        в Telegram
-      </h1>
-      <p class="hero-tagline">"Это мой остров. Я построил его сам."</p>
-      <p class="hero-sub">
-        ReefBot — текстовый idle-градостроитель прямо в мессенджере.
-        Начни с дикого клочка суши и превращай его в процветающий портовый город.
-        Здания работают пока ты офлайн, архипелаг ждёт исследования.
-      </p>
-      <div class="hero-cta">
-        <a href="https://t.me/reefbotnews" class="btn btn-primary" target="_blank">📢 Следить за разработкой</a>
-        <a href="https://t.me/reefplaybot" class="btn btn-secondary" target="_blank">🤖 Бот (в разработке)</a>
-      </div>
-      <div class="live-counters" id="live-counters">
-        <div class="lc">
-          <div class="lc-num"><span class="counter" data-target="8" data-stat="buildings">0</span></div>
-          <div class="lc-label">Зданий в игре</div>
-          <div class="lc-live">live</div>
-        </div>
-        <div class="lc">
-          <div class="lc-num"><span class="counter" data-target="4" data-stat="resourceTypes">0</span></div>
-          <div class="lc-label">Типов ресурсов</div>
-          <div class="lc-live">live</div>
-        </div>
-        <div class="lc">
-          <div class="lc-num"><span class="counter" data-target="6" data-stat="islandZones">0</span></div>
-          <div class="lc-label">Зон острова</div>
-          <div class="lc-live">live</div>
-        </div>
-        <div class="lc">
-          <div class="lc-num"><span class="counter" data-target="4" data-stat="roadmapPhases">0</span></div>
-          <div class="lc-label">Стадии развития</div>
-          <div class="lc-live">live</div>
-        </div>
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-text fadeup">
+      <div class="badge"><span class="badge-dot"></span>Активная разработка · dev branch</div>
+      <h1>Построй свой<br/><span class="accent">остров в море</span></h1>
+      <p class="hero-sub">ReefBot — idle-игра прямо в Telegram. Добывай ресурсы, возводи здания, развивай дикий островок до процветающего порта.</p>
+      <div class="hero-btns">
+        <a class="btn-primary" href="https://t.me/reefbot_news" target="_blank">📢 Следить за новостями</a>
+        <a class="btn-ghost" href="#how">Как это работает ↓</a>
       </div>
     </div>
-    <div class="hero-right">
-      <div class="logo-wrap" id="logo-wrap">
-        <div class="logo-glow"></div>
-        <canvas class="logo-canvas" id="orbit-canvas"></canvas>
-        <img src="logo.png" alt="ReefBot Island" class="logo-img" id="logo-img"
-             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22><circle cx=%22150%22 cy=%22150%22 r=%22150%22 fill=%22%230b5fa5%22/><text x=%22150%22 y=%22175%22 font-size=%2290%22 text-anchor=%22middle%22>🏝</text></svg>'">
+    <div class="hero-visual fadeup fadeup-d2">
+      <canvas id="orbitCanvas"></canvas>
+      <div class="logo-wrap">
+        <div class="logo-ring">
+          <img src="logo.png" alt="ReefBot" class="logo-img"/>
+        </div>
+        <div class="logo-tagline">ReefBot · idle game</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- DEV TRACKER -->
-<section id="devtrack">
-  <div class="container">
-    <div class="sec-header">
-      <div class="sec-label">Открытая разработка</div>
-      <h2 class="sec-title">Следи за прогрессом</h2>
-      <p class="sec-sub">Разработка ведётся публично. Здесь всегда актуальное состояние проекта — что уже готово, что строится прямо сейчас.</p>
-    </div>
-    <div class="tracker-grid">
-      <div class="tracker-left">
-        <div class="tracker-stats">
-          <div class="ts-card">
-            <div class="ts-icon">✅</div>
-            <div class="ts-num counter" data-target="6">0</div>
-            <div class="ts-label">Шагов онбординга</div>
-          </div>
-          <div class="ts-card">
-            <div class="ts-icon">🏝</div>
-            <div class="ts-num counter" data-target="1">0</div>
-            <div class="ts-label">Игровых экранов</div>
-          </div>
-          <div class="ts-card">
-            <div class="ts-icon">🚀</div>
-            <div class="ts-num counter" data-target="4">0</div>
-            <div class="ts-label">Версий DB</div>
-          </div>
-          <div class="ts-card">
-            <div class="ts-icon">🏗</div>
-            <div class="ts-num" style="color:var(--muted2)">—</div>
-            <div class="ts-label">Зданий</div>
-          </div>
-          <div class="ts-card">
-            <div class="ts-icon">📦</div>
-            <div class="ts-num" style="color:var(--muted2)">—</div>
-            <div class="ts-label">Ресурсов</div>
-          </div>
-          <div class="ts-card">
-            <div class="ts-icon">🔔</div>
-            <div class="ts-num" style="color:var(--muted2)">—</div>
-            <div class="ts-label">Push-система</div>
-          </div>
-        </div>
+<!-- WAVE -->
+<div class="wave-divider" style="background:var(--bg)">
+  <svg viewBox="0 0 1440 60" preserveAspectRatio="none" height="60" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,30 C240,60 480,0 720,30 C960,60 1200,0 1440,30 L1440,60 L0,60 Z" fill="#081525"/>
+  </svg>
+</div>
 
-        <div class="changelog">
-          <div class="cl-title">Последние обновления</div>
-          <div class="cl-item">
-            <div class="cl-dot new"></div>
-            <div class="cl-text"><strong>Онбординг</strong> — 6 шагов с историей, картинками и стартовым паком</div>
-          </div>
-          <div class="cl-item">
-            <div class="cl-dot new"></div>
-            <div class="cl-text"><strong>Регистрация острова</strong> — игрок называет свой остров, получает карточку</div>
-          </div>
-          <div class="cl-item">
-            <div class="cl-dot new"></div>
-            <div class="cl-text"><strong>Структура бота</strong> — диспетчер, сессии, Telegram Long Polling</div>
-          </div>
-          <div class="cl-item">
-            <div class="cl-dot plan"></div>
-            <div class="cl-text"><strong>В ветке feature/game-loop:</strong> здания, ресурсы, таймеры, push</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="tracker-right">
-        <div class="progress-list">
-          <div class="prog-item">
-            <div class="prog-header"><span class="prog-name">🏝 Онбординг и регистрация</span><span class="prog-pct">100%</span></div>
-            <div class="prog-bar"><div class="prog-fill done" style="width:0" data-width="100"></div></div>
-          </div>
-          <div class="prog-item">
-            <div class="prog-header"><span class="prog-name">🤖 Архитектура бота</span><span class="prog-pct">100%</span></div>
-            <div class="prog-bar"><div class="prog-fill done" style="width:0" data-width="100"></div></div>
-          </div>
-          <div class="prog-item">
-            <div class="prog-header"><span class="prog-name">🏗 Система строительства</span><span class="prog-pct">🧪 Тестируется</span></div>
-            <div class="prog-bar"><div class="prog-fill active" style="width:0" data-width="100"></div></div>
-          </div>
-          <div class="prog-item">
-            <div class="prog-header"><span class="prog-name">📦 Ресурсы и склад</span><span class="prog-pct">🧪 Тестируется</span></div>
-            <div class="prog-bar"><div class="prog-fill active" style="width:0" data-width="100"></div></div>
-          </div>
-          <div class="prog-item">
-            <div class="prog-header"><span class="prog-name">🔔 Push-уведомления</span><span class="prog-pct">🧪 Тестируется</span></div>
-            <div class="prog-bar"><div class="prog-fill active" style="width:0" data-width="100"></div></div>
-          </div>
-          <div class="prog-item">
-            <div class="prog-header"><span class="prog-name">⚓ Экспедиции</span><span class="prog-pct">0%</span></div>
-            <div class="prog-bar"><div class="prog-fill planned" style="width:0" data-width="5"></div></div>
-          </div>
-          <div class="prog-item">
-            <div class="prog-header"><span class="prog-name">🌊 Случайные события</span><span class="prog-pct">0%</span></div>
-            <div class="prog-bar"><div class="prog-fill planned" style="width:0" data-width="5"></div></div>
-          </div>
-          <div class="prog-item">
-            <div class="prog-header"><span class="prog-name">🏰 Гильдии</span><span class="prog-pct">0%</span></div>
-            <div class="prog-bar"><div class="prog-fill planned" style="width:0" data-width="0"></div></div>
-          </div>
-        </div>
-        <p style="margin-top:20px;font-size:.8rem;color:var(--muted);line-height:1.6">
-          Проект в активной разработке. Подпишись на <a href="https://t.me/reefbotnews" style="color:var(--teal-light);text-decoration:none">@reefbotnews</a> —
-          все обновления выходят там первыми.
-        </p>
-      </div>
-    </div>
+<!-- STATS -->
+<div class="stats-band">
+  <div class="stats-inner">
+    <div class="stat-card"><div class="stat-num" id="stat-buildings">—</div><div class="stat-lbl">Зданий в игре</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-resources">—</div><div class="stat-lbl">Типов ресурсов</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-zones">—</div><div class="stat-lbl">Зон острова</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-migrations">—</div><div class="stat-lbl">Миграций БД</div></div>
   </div>
-</section>
+</div>
 
-<!-- HOW -->
+<!-- WAVE 2 -->
+<div class="wave-divider" style="background:var(--surface)">
+  <svg viewBox="0 0 1440 60" preserveAspectRatio="none" height="60" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,30 C360,0 720,60 1080,30 C1260,15 1380,45 1440,30 L1440,60 L0,60 Z" fill="#04091a"/>
+  </svg>
+</div>
+
+<!-- HOW IT WORKS -->
 <section id="how">
   <div class="container">
-    <div class="sec-header">
-      <div class="sec-label">Начни за 30 секунд</div>
-      <h2 class="sec-title">Как играть</h2>
-      <p class="sec-sub">Никакой установки, никакой регистрации — только Telegram. Открыл бота и уже играешь.</p>
-    </div>
+    <div class="section-eyebrow">Механики</div>
+    <div class="section-title">Как работает игра</div>
+    <p class="section-sub">Ресурсы копятся пока ты офлайн. Приходи, принимай решения, развивай остров.</p>
     <div class="steps">
-      <div class="step">
-        <div class="step-num">1</div>
-        <div class="step-icon">🤖</div>
-        <h3>Запусти бота</h3>
-        <p>Открой @reefplaybot, нажми /start. Бот встретит тебя коротким онбордингом.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div class="step-icon">🏝</div>
-        <h3>Назови остров</h3>
-        <p>Придумай имя своему острову. Он станет твоим домом в архипелаге.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-icon">🏗</div>
-        <h3>Строй здания</h3>
-        <p>Выбирай зону, выбирай здание, трать ресурсы — таймер пошёл.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">4</div>
-        <div class="step-icon">📈</div>
-        <h3>Возвращайся</h3>
-        <p>Ресурсы копятся пока ты офлайн. Бот пришлёт уведомление когда здание готово.</p>
-      </div>
+      <div class="step"><div class="step-glow"></div><div class="step-num">01</div><div class="step-icon">🏝</div><h3>Назови свой остров</h3><p>Пройди онбординг, получи стартовые ресурсы и дай имя острову.</p></div>
+      <div class="step"><div class="step-glow"></div><div class="step-num">02</div><div class="step-icon">⏳</div><h3>Пассивная добыча</h3><p>Здания работают 24/7 — ресурсы накапливаются даже когда ты не в сети.</p></div>
+      <div class="step"><div class="step-glow"></div><div class="step-num">03</div><div class="step-icon">🏗</div><h3>Строй и развивайся</h3><p>9 зданий трёх тиров. Каждое даёт ресурсы или открывает новые механики.</p></div>
+      <div class="step"><div class="step-glow"></div><div class="step-num">04</div><div class="step-icon">⚓</div><h3>Разблокируй зоны</h3><p>Набирай очки развития и открывай редкие зоны — вплоть до портовой с кораллами.</p></div>
     </div>
   </div>
 </section>
 
-<!-- FEATURES -->
-<section id="features">
+<!-- RESOURCES -->
+<section style="background:var(--surface);padding:64px 24px">
   <div class="container">
-    <div class="sec-header">
-      <div class="sec-label">Игровые механики</div>
-      <h2 class="sec-title">Что тебя ждёт</h2>
-      <p class="sec-sub">Каждая механика создана чтобы твой остров жил — даже когда ты не в сети.</p>
-    </div>
-    <div class="features-grid">
-      <div class="feat">
-        <span class="feat-icon">⏳</span>
-        <h3>Idle-производство</h3>
-        <p>Здания производят ресурсы пока ты не играешь. Вместимость склада ограничена — стимул возвращаться регулярно.</p>
-      </div>
-      <div class="feat">
-        <span class="feat-icon">🔔</span>
-        <h3>Push-уведомления</h3>
-        <p>Получай сообщение как только здание достроено. Никаких таймеров в голове — бот сам напомнит.</p>
-      </div>
-      <div class="feat">
-        <span class="feat-icon">🗺</span>
-        <h3>Зоны острова</h3>
-        <p>6 зон: лес, берег, жилая, холмы, равнина, порт. Новые зоны открываются с ростом очков развития.</p>
-      </div>
-      <div class="feat">
-        <span class="feat-icon">⚓</span>
-        <h3>Экспедиции <span class="feat-soon">скоро</span></h3>
-        <p>Отправляй корабли в архипелаг. Случайные награды, редкие ресурсы, риск не вернуться.</p>
-      </div>
-      <div class="feat">
-        <span class="feat-icon">🌊</span>
-        <h3>Случайные события <span class="feat-soon">скоро</span></h3>
-        <p>Шторм, торговый корабль, находка на берегу — архипелаг живёт своей жизнью.</p>
-      </div>
-      <div class="feat">
-        <span class="feat-icon">🏆</span>
-        <h3>Прогрессия</h3>
-        <p>4 стадии: дикий островок → рыбацкая деревня → развивающийся порт → процветающий город. Нет конечной точки.</p>
-      </div>
+    <div class="section-eyebrow">Ресурсы</div>
+    <div class="section-title">5 типов ресурсов</div>
+    <p class="section-sub">Каждый нужен для строительства. Редкие добываются только в поздних зонах острова.</p>
+    <div class="res-grid">
+      <div class="res-card"><div class="res-emoji">🪵</div><div><div class="res-name">Древесина</div><div class="res-sub">Лесная зона · базовый</div></div></div>
+      <div class="res-card"><div class="res-emoji">🪨</div><div><div class="res-name">Камень</div><div class="res-sub">Холмовая зона · базовый</div></div></div>
+      <div class="res-card"><div class="res-emoji">🐟</div><div><div class="res-name">Рыба</div><div class="res-sub">Береговая зона · торговля</div></div></div>
+      <div class="res-card"><div class="res-emoji">🐚</div><div><div class="res-name">Ракушки</div><div class="res-sub">Побережье<br/><span class="res-rare">✦ Редкий</span></div></div></div>
+      <div class="res-card"><div class="res-emoji">🪸</div><div><div class="res-name">Коралл</div><div class="res-sub">Портовая зона<br/><span class="res-rare">✦✦ Очень редкий</span></div></div></div>
     </div>
   </div>
 </section>
@@ -543,48 +331,36 @@ footer{padding:38px 0;text-align:center;border-top:1px solid rgba(255,255,255,.0
 <!-- BUILDINGS -->
 <section id="buildings">
   <div class="container">
-    <div class="sec-header">
-      <div class="sec-label">Контент · <span class="counter" data-target="8" data-stat="buildings">0</span> зданий в игре</div>
-      <h2 class="sec-title">Здания острова</h2>
-      <p class="sec-sub">Tier 1 — основа производства. Tier 2 открывается после трёх базовых зданий. Tier 3 требует Портовую зону и редкие ресурсы.</p>
-    </div>
-    <div class="buildings-grid">
-      <div class="bldg"><span class="bldg-icon">🪓</span><div class="bldg-name">Лесорубная хижина</div><div class="bldg-prod">+8 🪵/час</div><div class="bldg-meta"><span class="bldg-tag t1">Tier 1</span><span class="bldg-tag t1">Лес</span></div></div>
-      <div class="bldg"><span class="bldg-icon">🎣</span><div class="bldg-name">Рыбацкий помост</div><div class="bldg-prod">+6 🐟/час</div><div class="bldg-meta"><span class="bldg-tag t1">Tier 1</span><span class="bldg-tag t1">Берег</span></div></div>
-      <div class="bldg"><span class="bldg-icon">📦</span><div class="bldg-name">Склад</div><div class="bldg-prod">+150 вместимости</div><div class="bldg-meta"><span class="bldg-tag t1">Tier 1</span><span class="bldg-tag t1">Жилая</span></div></div>
-      <div class="bldg"><span class="bldg-icon">⛏</span><div class="bldg-name">Каменоломня</div><div class="bldg-prod">+5 🪨/час</div><div class="bldg-meta"><span class="bldg-tag t2">Tier 2</span><span class="bldg-tag t2">Холмы</span></div></div>
-      <div class="bldg"><span class="bldg-icon">🪚</span><div class="bldg-name">Лесопилка</div><div class="bldg-prod">Переработка дерева</div><div class="bldg-meta"><span class="bldg-tag t2">Tier 2</span><span class="bldg-tag t2">Лес</span></div></div>
-      <div class="bldg"><span class="bldg-icon">🛶</span><div class="bldg-name">Рыбацкая пристань</div><div class="bldg-prod">+12 🐟/час</div><div class="bldg-meta"><span class="bldg-tag t2">Tier 2</span><span class="bldg-tag t2">Берег</span></div></div>
-      <div class="bldg"><span class="bldg-icon">🌿</span><div class="bldg-name">Огород</div><div class="bldg-prod">Продовольствие</div><div class="bldg-meta"><span class="bldg-tag t2">Tier 2</span><span class="bldg-tag t2">Жилая</span></div></div>
-      <div class="bldg"><span class="bldg-icon">🏪</span><div class="bldg-name">Рыночная лавка</div><div class="bldg-prod">Торговля</div><div class="bldg-meta"><span class="bldg-tag t2">Tier 2</span><span class="bldg-tag t2">Жилая</span></div></div>
-      <div class="bldg"><span class="bldg-icon">🪸</span><div class="bldg-name">Коралловый ныряльщик</div><div class="bldg-prod">+3 🪸/час</div><div class="bldg-meta"><span class="bldg-tag t3">Tier 3</span><span class="bldg-tag t3">Порт</span></div></div>
+    <div class="section-eyebrow">Постройки</div>
+    <div class="section-title">9 зданий · 3 тира</div>
+    <p class="section-sub">Более поздние здания требуют пресреквизиты и строятся дольше, но дают больше.</p>
+    <div class="bld-grid">
+      <div class="bld-card t1-card"><div class="bld-head"><div class="bld-name">🪓 Лесорубная хижина</div><span class="tier t1">T1</span></div><div class="bld-zone">🌲 Лесная зона</div><div class="bld-effect">+8 🪵/час</div><div class="bld-cost"><span class="chip">🪵 15</span><span class="chip">🪨 5</span><span class="chip">⏱ 30 мин</span></div></div>
+      <div class="bld-card t1-card"><div class="bld-head"><div class="bld-name">🎣 Рыбацкий помост</div><span class="tier t1">T1</span></div><div class="bld-zone">🏖 Береговая зона</div><div class="bld-effect">+6 🐟/час</div><div class="bld-cost"><span class="chip">🪵 10</span><span class="chip">🪨 5</span><span class="chip">⏱ 15 мин</span></div></div>
+      <div class="bld-card t1-card"><div class="bld-head"><div class="bld-name">📦 Склад</div><span class="tier t1">T1</span></div><div class="bld-zone">🏠 Жилая зона</div><div class="bld-effect">+150 к ёмкости</div><div class="bld-cost"><span class="chip">🪵 20</span><span class="chip">🪨 10</span><span class="chip">⏱ 45 мин</span></div></div>
+      <div class="bld-card t2-card"><div class="bld-head"><div class="bld-name">⛏ Каменоломня</div><span class="tier t2">T2</span></div><div class="bld-zone">⛰ Холмовая зона</div><div class="bld-effect">+5 🪨/час</div><div class="bld-cost"><span class="chip">🪵 25</span><span class="chip">🪨 15</span><span class="chip">⏱ 1 ч</span></div></div>
+      <div class="bld-card t2-card"><div class="bld-head"><div class="bld-name">🪚 Лесопилка</div><span class="tier t2">T2</span></div><div class="bld-zone">🌲 Лесная зона</div><div class="bld-effect">Перерабатывает древесину</div><div class="bld-cost"><span class="chip">🪵 40</span><span class="chip">🪨 20</span><span class="chip">⏱ 2 ч</span></div></div>
+      <div class="bld-card t2-card"><div class="bld-head"><div class="bld-name">🌿 Огород</div><span class="tier t2">T2</span></div><div class="bld-zone">🏠 Жилая зона</div><div class="bld-effect">+4 🍞/час</div><div class="bld-cost"><span class="chip">🪵 20</span><span class="chip">🪨 10</span><span class="chip">⏱ 90 мин</span></div></div>
+      <div class="bld-card t2-card"><div class="bld-head"><div class="bld-name">🛶 Рыбацкая пристань</div><span class="tier t2">T2</span></div><div class="bld-zone">🏖 Береговая зона</div><div class="bld-effect">+12 🐟/час</div><div class="bld-cost"><span class="chip">🪵 30</span><span class="chip">🪨 20</span><span class="chip">🐟 10</span><span class="chip">⏱ 2 ч</span></div></div>
+      <div class="bld-card t2-card"><div class="bld-head"><div class="bld-name">🏪 Рыночная лавка</div><span class="tier t2">T2</span></div><div class="bld-zone">🏠 Жилая зона</div><div class="bld-effect">Торговля с купцами</div><div class="bld-cost"><span class="chip">🪵 35</span><span class="chip">🪨 15</span><span class="chip">🐟 10</span><span class="chip">⏱ 90 мин</span></div></div>
+      <div class="bld-card t3-card"><div class="bld-head"><div class="bld-name">🪸 Коралловый ныряльщик</div><span class="tier t3">T3</span></div><div class="bld-zone">⚓ Портовая зона</div><div class="bld-effect">+3 🪸/час</div><div class="bld-cost"><span class="chip">🪵 60</span><span class="chip">🪨 40</span><span class="chip">🐟 20</span><span class="chip">⏱ 4 ч</span></div></div>
     </div>
   </div>
 </section>
 
-<!-- WORLD -->
-<section id="world">
+<!-- ZONES -->
+<section style="background:var(--surface);padding:64px 24px">
   <div class="container">
-    <div class="world-grid">
-      <div class="world-text">
-        <div class="sec-label">Мир игры</div>
-        <h2 class="sec-title">Твой остров в архипелаге</h2>
-        <div class="quote">"Это мой остров. Я построил его сам."<br>— главная эмоция игрока</div>
-        <p>Каждый игрок начинает с пустого клочка земли где-то посреди огромного архипелага. Нет готовой инфраструктуры, нет армии, нет ресурсов — только лес, берег и старый причал.</p>
-        <p>Каждое построенное здание, каждая открытая территория, каждая вернувшаяся экспедиция — часть твоей истории. Через год ты откроешь профиль и увидишь не набор цифр, а результат собственного пути.</p>
-        <p>Конечной точки нет. Архипелаг всегда будет больше, чем успел исследовать.</p>
-      </div>
-      <div>
-        <div class="sec-label" style="margin-bottom:18px">Зоны острова · <span class="counter" data-target="6" data-stat="islandZones">0</span> из 6</div>
-        <div class="zones-visual">
-          <div class="zone-card"><span class="zone-icon">🌲</span><div class="zone-name">Лесная</div><div class="zone-req">с начала</div></div>
-          <div class="zone-card"><span class="zone-icon">🏖</span><div class="zone-name">Береговая</div><div class="zone-req">с начала</div></div>
-          <div class="zone-card"><span class="zone-icon">🏠</span><div class="zone-name">Жилая</div><div class="zone-req">с начала</div></div>
-          <div class="zone-card locked"><span class="zone-icon">⛰</span><div class="zone-name">Холмовая</div><div class="zone-req">от 10 ОР</div></div>
-          <div class="zone-card locked"><span class="zone-icon">🌾</span><div class="zone-name">Равнинная</div><div class="zone-req">от 20 ОР</div></div>
-          <div class="zone-card locked"><span class="zone-icon">⚓</span><div class="zone-name">Портовая</div><div class="zone-req">от 35 ОР</div></div>
-        </div>
-      </div>
+    <div class="section-eyebrow">Острова</div>
+    <div class="section-title">6 зон острова</div>
+    <p class="section-sub">Начинаешь с трёх базовых зон. Остальные открываются по мере роста острова.</p>
+    <div class="zones-grid">
+      <div class="zone-card"><span class="zone-emoji">🌲</span><div class="zone-name">Лесная зона</div><div class="zone-req">Открыта сразу</div></div>
+      <div class="zone-card"><span class="zone-emoji">🏖</span><div class="zone-name">Береговая зона</div><div class="zone-req">Открыта сразу</div></div>
+      <div class="zone-card"><span class="zone-emoji">🏠</span><div class="zone-name">Жилая зона</div><div class="zone-req">Открыта сразу</div></div>
+      <div class="zone-card"><span class="zone-emoji">⛰</span><div class="zone-name">Холмовая зона</div><div class="zone-req">10 ОР</div><span class="zone-locked">🔓 10 очков</span></div>
+      <div class="zone-card"><span class="zone-emoji">🌾</span><div class="zone-name">Равнинная зона</div><div class="zone-req">20 ОР</div><span class="zone-locked">🔓 20 очков</span></div>
+      <div class="zone-card"><span class="zone-emoji">⚓</span><div class="zone-name">Портовая зона</div><div class="zone-req">35 ОР</div><span class="zone-locked">🔓 35 очков</span></div>
     </div>
   </div>
 </section>
@@ -592,354 +368,209 @@ footer{padding:38px 0;text-align:center;border-top:1px solid rgba(255,255,255,.0
 <!-- ROADMAP -->
 <section id="roadmap">
   <div class="container">
-    <div class="sec-header">
-      <div class="sec-label">Открытая дорожная карта</div>
-      <h2 class="sec-title">Путь развития</h2>
-      <p class="sec-sub">Листай карточки — каждая фаза расширяет мир острова от базовых механик до неизведанного горизонта.</p>
-    </div>
-
-    <div class="rm-deck-wrap">
-      <div class="rm-deck" id="rm-deck">
-
-        <!-- Card 1: Done -->
-        <div class="rm-card done-card" data-index="0" data-pos="0">
-          <div class="rm-card-phase c-done">Фаза 1</div>
-          <div class="rm-card-status"><span style="color:var(--teal-light)">✅ Завершено (dev)</span></div>
-          <h3>Рождение острова</h3>
-          <p>Игрок приходит в бота и проходит онбординг — знакомится с миром, называет свой остров и получает стартовый пак. Фундамент готов, бот работает.</p>
-          <div class="rm-tags">
-            <span class="rm-tag rt-done">Онбординг с историей</span>
-            <span class="rm-tag rt-done">Стартовый пак</span>
-            <span class="rm-tag rt-done">Регистрация острова</span>
-            <span class="rm-tag rt-done">Архитектура бота</span>
-            <span class="rm-tag rt-done">Long Polling</span>
-            <span class="rm-tag rt-done">Структура БД</span>
-          </div>
-        </div>
-
-        <!-- Card 2: Active -->
-        <div class="rm-card active-card" data-index="1" data-pos="1">
-          <div class="rm-card-phase c-active">Фаза 2</div>
-          <div class="rm-card-status"><span style="color:var(--gold)">🔨 В разработке (feature/game-loop)</span></div>
-          <h3>Игровой цикл</h3>
-          <p>Остров оживает. Строительство, пассивное производство ресурсов, таймеры зданий, push-уведомления о готовности, разблокировка зон по очкам развития.</p>
-          <div class="rm-tags">
-            <span class="rm-tag rt-active">9 зданий, 3 тира</span>
-            <span class="rm-tag rt-active">5 типов ресурсов</span>
-            <span class="rm-tag rt-active">Idle-производство</span>
-            <span class="rm-tag rt-active">Push-уведомления</span>
-            <span class="rm-tag rt-active">6 зон острова</span>
-            <span class="rm-tag rt-plan">Merge → dev скоро</span>
-          </div>
-        </div>
-
-        <!-- Card 3: Planned -->
-        <div class="rm-card plan-card" data-index="2" data-pos="2">
-          <div class="rm-card-phase c-plan">Фаза 3</div>
-          <div class="rm-card-status"><span style="color:var(--muted)">🗺 Планируется</span></div>
-          <h3>Расширение горизонта</h3>
-          <p>Остров обретает глубину. Здания улучшаются, архипелаг начинает дышать — случайные события и экспедиции меняют привычный ритм.</p>
-          <div class="rm-tags">
-            <span class="rm-tag rt-plan">Улучшение зданий</span>
-            <span class="rm-tag rt-plan">Экспедиции</span>
-            <span class="rm-tag rt-plan">Случайные события</span>
-            <span class="rm-tag rt-plan">Редкие артефакты</span>
-            <span class="rm-tag rt-plan">Морские маршруты</span>
-          </div>
-        </div>
-
-        <!-- Card 4: Mystery -->
-        <div class="rm-card mystery-card" data-index="3" data-pos="3">
-          <div class="rm-card-phase c-mystery">Фаза 4</div>
-          <div class="rm-card-status"><span style="color:#c084fc">👁 ???</span></div>
-          <h3 class="glitch">За горизонтом</h3>
-          <p style="color:rgba(192,132,252,.7)">Архипелаг больше, чем кажется. За известными маршрутами скрывается нечто, о чём ходят слухи среди старых капитанов. Кое-что уже просачивается...</p>
-          <div class="mf-tags">
-            <span class="mf-tag">⚔️ Гильдии</span>
-            <span class="mf-tag">🌋 Древние острова</span>
-            <span class="mf-tag">🗺 Карта архипелага</span>
-            <span class="mf-tag">👁 ???</span>
-            <span class="mf-tag">🏴‍☠️ Морские легенды</span>
-            <span class="mf-tag">✨ Мегапроекты</span>
-          </div>
-          <p class="mystery-note">Подробности появятся в @reefbotnews когда придёт время...</p>
-        </div>
-
-      </div>
-
-      <div class="rm-nav">
-        <button class="rm-arr" id="rm-prev" disabled>←</button>
-        <div class="rm-dots">
-          <button class="rm-dot-btn done-d active" data-i="0"></button>
-          <button class="rm-dot-btn active-d" data-i="1"></button>
-          <button class="rm-dot-btn plan-d" data-i="2"></button>
-          <button class="rm-dot-btn mystery-d" data-i="3"></button>
-        </div>
-        <button class="rm-arr" id="rm-next">→</button>
-      </div>
-      <div class="rm-hint">← Листай карточки →</div>
-    </div>
+    <div class="section-eyebrow">Роадмап</div>
+    <div class="section-title">Этапы разработки</div>
+    <p class="section-sub">Листай карточки — что готово, что в работе и что планируется.</p>
+    <div class="roadmap-scene" id="roadmapDeck"></div>
+    <div class="road-hint">← тяни карточки →</div>
+    <div class="road-dots" id="roadDots"></div>
   </div>
 </section>
 
 <!-- CTA -->
-<section id="cta">
-  <div class="container">
-    <div class="sec-label" style="text-align:center">Следи за разработкой</div>
-    <h2 class="sec-title" style="text-align:center">Игра ещё в пути</h2>
-    <p class="sec-sub" style="text-align:center;margin:0 auto 36px">Бот в активной разработке — игровой цикл пока не готов для игроков. Подпишись на канал и узнай первым когда откроется полноценная игра.</p>
-    <div class="hero-cta" style="justify-content:center">
-      <a href="https://t.me/reefbotnews" class="btn btn-gold" target="_blank">📢 Подписаться на новости</a>
-      <a href="https://t.me/reefplaybot" class="btn btn-secondary" target="_blank">🤖 Посмотреть бота</a>
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <div class="cta-inner">
+    <div class="cta-left">
+      <div class="cta-explorer-badge">
+        <span class="cta-badge-icon">🧭</span>
+        <div>
+          <div class="cta-badge-title">Первооткрыватель</div>
+          <div class="cta-badge-sub">Эксклюзивный статус · ограничено</div>
+        </div>
+      </div>
+      <h2 class="cta-title">Стань основателем<br/><span class="accent">острова до запуска</span></h2>
+      <p class="cta-desc">Игра ещё строится — но те, кто следит с самого начала, получат особый статус основателя при старте.</p>
+      <div class="cta-perks">
+        <div class="perk"><span class="perk-icon">📢</span><div><div class="perk-t">Анонсы патчей первым</div><div class="perk-s">Узнавай об обновлениях раньше всех</div></div></div>
+        <div class="perk"><span class="perk-icon">🖼</span><div><div class="perk-t">Скриншоты из разработки</div><div class="perk-s">Закулисье и девлог прямо в канале</div></div></div>
+        <div class="perk"><span class="perk-icon">🎯</span><div><div class="perk-t">Дата открытого теста</div><div class="perk-s">Первым узнаешь когда можно играть</div></div></div>
+      </div>
+      <a class="btn-primary cta-btn-big" href="https://t.me/reefbot_news" target="_blank">
+        📢 Подписаться на канал
+        <span class="btn-arrow">→</span>
+      </a>
     </div>
-    <p class="cta-note">Бесплатно · Только Telegram · Без установок · Игра откроется после релиза</p>
+    <div class="cta-right">
+      <div class="cta-phone">
+        <div class="phone-bar">
+          <div class="phone-dot"></div><div class="phone-dot"></div><div class="phone-dot"></div>
+        </div>
+        <div class="phone-header">
+          <img src="logo.png" alt="" class="phone-avatar"/>
+          <div>
+            <div class="phone-name">ReefBot</div>
+            <div class="phone-status">🟢 разрабатывается</div>
+          </div>
+        </div>
+        <div class="phone-msgs">
+          <div class="msg msg-bot">
+            <div class="msg-text">🏝 Привет, первооткрыватель!</div>
+          </div>
+          <div class="msg msg-bot">
+            <div class="msg-text">Твой остров уже ждёт тебя. Готов дать ему имя?</div>
+          </div>
+          <div class="msg msg-user">
+            <div class="msg-text">Да! Называю его <b>Коралловый риф</b> 🪸</div>
+          </div>
+          <div class="msg msg-bot">
+            <div class="msg-text">🎉 Остров «Коралловый риф» основан!<br/>Получаешь стартовые ресурсы:<br/>🪵 ×20 · 🪨 ×10</div>
+          </div>
+          <div class="msg msg-typing">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+        <div class="phone-input-bar">
+          <div class="phone-input-fake">Написать сообщение…</div>
+        </div>
+      </div>
+    </div>
   </div>
-</section>
+</div>
 
-<!-- FOOTER -->
 <footer>
-  <div class="container">
-    <div class="f-logo">Reef<span>Bot</span></div>
-    <p>Текстовый idle city-builder в Telegram · В активной разработке</p>
-    <div class="f-links">
-      <a href="https://t.me/reefplaybot" target="_blank">@reefplaybot</a>
-      <a href="https://t.me/reefbotnews" target="_blank">@reefbotnews</a>
-    </div>
-  </div>
+  <img src="logo.png" alt=""/> © 2026 ReefBot · Telegram idle game · Сделано с 🪸
 </footer>
 
 <script>
-// ── Bubbles ──────────────────────────────────────────────────────────────────
-(function(){
-  const c = document.getElementById('bubbles');
-  for(let i=0;i<20;i++){
-    const b = document.createElement('div');
-    b.className = 'bubble';
-    const s = 16 + Math.random()*64;
-    b.style.cssText=`width:${s}px;height:${s}px;left:${Math.random()*100}%;animation-duration:${14+Math.random()*22}s;animation-delay:${Math.random()*18}s`;
-    c.appendChild(b);
+// ── BG PARTICLES ──────────────────────────────────────────
+const bgC = document.getElementById('bgCanvas');
+const bgX = bgC.getContext('2d');
+let bW, bH;
+const dots = [];
+function initBg() {
+  bW = bgC.width = window.innerWidth;
+  bH = bgC.height = window.innerHeight;
+  dots.length = 0;
+  for (let i = 0; i < 60; i++) {
+    dots.push({x:Math.random()*bW, y:Math.random()*bH, r:Math.random()*1.5+.3, vx:(Math.random()-.5)*.2, vy:(Math.random()-.5)*.15, a:Math.random()});
   }
-})();
+}
+initBg(); window.addEventListener('resize', initBg);
+function drawBg() {
+  bgX.clearRect(0,0,bW,bH);
+  dots.forEach(d=>{
+    d.x+=d.vx; d.y+=d.vy; d.a+=.008;
+    if(d.x<0)d.x=bW; if(d.x>bW)d.x=0;
+    if(d.y<0)d.y=bH; if(d.y>bH)d.y=0;
+    const alpha = (Math.sin(d.a)*.5+.5)*.25;
+    bgX.beginPath(); bgX.arc(d.x,d.y,d.r,0,Math.PI*2);
+    bgX.fillStyle=`rgba(0,200,255,${alpha})`; bgX.fill();
+  });
+  requestAnimationFrame(drawBg);
+}
+drawBg();
 
-// ── Nav scroll ───────────────────────────────────────────────────────────────
-window.addEventListener('scroll',()=>{
-  document.querySelector('nav').style.padding = window.scrollY>50 ? '9px 0' : '14px 0';
-});
+// ── ORBITAL CANVAS ────────────────────────────────────────
+const canvas = document.getElementById('orbitCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, cx, cy;
+function resizeOrbit() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = W = rect.width; canvas.height = H = rect.height;
+  cx = W/2; cy = H/2;
+}
+resizeOrbit(); window.addEventListener('resize', resizeOrbit);
 
-// ── Orbital canvas animation ─────────────────────────────────────────────────
-(function(){
-  const wrap = document.getElementById('logo-wrap');
-  const canvas = document.getElementById('orbit-canvas');
-  if(!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const SIZE = wrap.offsetWidth;
-  canvas.width = SIZE; canvas.height = SIZE;
-  const CX = SIZE/2, CY = SIZE/2;
-
-  // Orbit definitions: [radius, speed_multiplier, particles[]]
-  const orbits = [
-    { r: CX * 0.54, speed: 0.35, color: 'rgba(29,232,216,', particles: [
-        { angle: 0,      size: 11, emoji: '🪵' },
-        { angle: Math.PI, size: 9,  emoji: '🪨' },
-      ]
-    },
-    { r: CX * 0.72, speed: -0.22, color: 'rgba(240,180,41,', particles: [
-        { angle: 1.0,             size: 12, emoji: '🐟' },
-        { angle: 1.0 + Math.PI,   size: 10, emoji: '🪸' },
-        { angle: 0.4,             size: 8,  emoji: '🐚' },
-      ]
-    },
-    { r: CX * 0.89, speed: 0.15, color: 'rgba(192,132,252,', particles: [
-        { angle: 0.5,           size: 13, emoji: '🏗' },
-        { angle: 0.5+Math.PI*2/3, size: 9, emoji: '⚓' },
-        { angle: 0.5+Math.PI*4/3, size: 8, emoji: '🌊' },
-      ]
-    },
-  ];
-
-  // Draw orbit rings
-  function drawRing(r, alpha){
-    ctx.beginPath();
-    ctx.arc(CX, CY, r, 0, Math.PI*2);
-    ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3,6]);
-    ctx.stroke();
+const orbits = [
+  {r:115, speed:.014, particles:['🪵','🪨'], size:17},
+  {r:160, speed:.009, particles:['🐟','🐚','🌿'], size:15},
+  {r:200, speed:.006, particles:['🪸','⚓','🏗','🌲'], size:13},
+];
+let t=0;
+function drawOrbit() {
+  ctx.clearRect(0,0,W,H);
+  orbits.forEach((o,oi)=>{
+    ctx.beginPath(); ctx.arc(cx,cy,o.r,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(0,200,255,${.05+oi*.015})`; ctx.lineWidth=1; ctx.setLineDash([4,8]); ctx.stroke();
     ctx.setLineDash([]);
-  }
-
-  // Draw dot with emoji
-  function drawDot(x, y, size, emoji, color){
-    // Glow
-    const grd = ctx.createRadialGradient(x,y,0,x,y,size*1.8);
-    grd.addColorStop(0, color+'0.35)');
-    grd.addColorStop(1, color+'0)');
-    ctx.beginPath();
-    ctx.arc(x, y, size*1.8, 0, Math.PI*2);
-    ctx.fillStyle = grd;
-    ctx.fill();
-    // Circle bg
-    ctx.beginPath();
-    ctx.arc(x, y, size, 0, Math.PI*2);
-    ctx.fillStyle = color+'0.15)';
-    ctx.fill();
-    ctx.strokeStyle = color+'0.6)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    // Emoji
-    ctx.font = `${size*1.1}px serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(emoji, x, y+1);
-  }
-
-  let t = 0;
-  function frame(){
-    ctx.clearRect(0, 0, SIZE, SIZE);
-    // Rings
-    drawRing(orbits[0].r, 0.06);
-    drawRing(orbits[1].r, 0.05);
-    drawRing(orbits[2].r, 0.04);
-    // Particles
-    orbits.forEach(orbit => {
-      orbit.particles.forEach(p => {
-        const ang = p.angle + t * orbit.speed;
-        const x = CX + Math.cos(ang) * orbit.r;
-        const y = CY + Math.sin(ang) * orbit.r;
-        drawDot(x, y, p.size, p.emoji, orbit.color);
-      });
+    o.particles.forEach((emoji,pi)=>{
+      const angle = t*o.speed+(pi/o.particles.length)*Math.PI*2;
+      const x=cx+Math.cos(angle)*o.r, y=cy+Math.sin(angle)*o.r;
+      ctx.save();
+      ctx.shadowColor='rgba(0,200,255,.5)'; ctx.shadowBlur=8;
+      ctx.font=`${o.size}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(emoji,x,y); ctx.restore();
     });
-    t += 0.012;
-    requestAnimationFrame(frame);
-  }
-  frame();
-})();
-
-// ── Counter animation ────────────────────────────────────────────────────────
-function animateCounter(el){
-  const target = parseInt(el.dataset.target);
-  const duration = 1600;
-  const start = performance.now();
-  function step(now){
-    const p = Math.min((now-start)/duration,1);
-    const ease = 1-Math.pow(1-p,3);
-    el.textContent = Math.round(ease*target);
-    if(p<1) requestAnimationFrame(step);
-    else el.textContent = target;
-  }
-  requestAnimationFrame(step);
+  });
+  t++; requestAnimationFrame(drawOrbit);
 }
+drawOrbit();
 
-// ── Progress bar animation ───────────────────────────────────────────────────
-function animateProgress(el){
-  const w = el.dataset.width;
-  setTimeout(()=>{ el.style.width = w+'%'; }, 100);
+// ── STATS FROM JSON ───────────────────────────────────────
+function animCount(el, target) {
+  let cur=0; const step=Math.ceil(target/28);
+  const tmr=setInterval(()=>{cur=Math.min(cur+step,target);el.textContent=cur;if(cur>=target)clearInterval(tmr);},45);
 }
-
-// ── IntersectionObserver ─────────────────────────────────────────────────────
-const io = new IntersectionObserver((entries)=>{
-  entries.forEach(e=>{
-    if(!e.isIntersecting) return;
-    if(e.target.classList.contains('counter')) animateCounter(e.target);
-    if(e.target.classList.contains('prog-fill')) animateProgress(e.target);
-    io.unobserve(e.target);
-  });
-},{threshold:0.3});
-
-// ── Stats JSON loader ────────────────────────────────────────────────────────
-fetch('stats.json')
-  .then(r => r.ok ? r.json() : null)
-  .catch(() => null)
-  .then(stats => {
-    if (stats) {
-      const MAP = {
-        buildings:     stats.buildings,
-        resourceTypes: stats.resourceTypes,
-        islandZones:   stats.islandZones,
-        roadmapPhases: stats.roadmapPhases,
-        dbMigrations:  stats.dbMigrations,
-      };
-      document.querySelectorAll('[data-stat]').forEach(el => {
-        const key = el.dataset.stat;
-        if (MAP[key] !== undefined) el.dataset.target = MAP[key];
-      });
-    }
-    document.querySelectorAll('.counter').forEach(el => io.observe(el));
-    document.querySelectorAll('.prog-fill').forEach(el => io.observe(el));
+const statMap={'stat-buildings':s=>s.buildings,'stat-resources':s=>s.resourceTypes,'stat-zones':s=>s.islandZones,'stat-migrations':s=>s.dbMigrations};
+fetch('stats.json?t='+Date.now())
+  .then(r=>r.json())
+  .then(stats=>{
+    const obs=new IntersectionObserver(entries=>{
+      entries.forEach(e=>{if(!e.isIntersecting)return;animCount(e.target,statMap[e.target.id](stats));obs.unobserve(e.target);});
+    },{threshold:.5});
+    Object.keys(statMap).forEach(id=>{const el=document.getElementById(id);if(el)obs.observe(el);});
+  })
+  .catch(()=>{
+    const fb={'stat-buildings':9,'stat-resources':5,'stat-zones':6,'stat-migrations':6};
+    Object.entries(fb).forEach(([id,v])=>{const el=document.getElementById(id);if(el)animCount(el,v);});
   });
 
-// ── Roadmap card deck ────────────────────────────────────────────────────────
-(function(){
-  const deck   = document.getElementById('rm-deck');
-  const cards  = Array.from(deck.querySelectorAll('.rm-card'));
-  const dots   = Array.from(document.querySelectorAll('.rm-dot-btn'));
-  const btnPrev = document.getElementById('rm-prev');
-  const btnNext = document.getElementById('rm-next');
-  const N = cards.length;
-  let current = 0;
-
-  function setPositions(){
-    cards.forEach((card, i) => {
-      let pos = i - current;
-      if(pos < -1) pos = N - current + i; // wrap behind
-      card.dataset.pos = Math.min(pos, 3);
-      // hide cards too far down
-      card.style.pointerEvents = pos === 0 ? 'auto' : 'none';
-    });
-    dots.forEach((d,i) => d.classList.toggle('active', i === current));
-    btnPrev.disabled = current === 0;
-    btnNext.disabled = current === N - 1;
-  }
-
-  function goTo(idx){
-    current = Math.max(0, Math.min(N-1, idx));
-    setPositions();
-  }
-
-  btnPrev.addEventListener('click', () => goTo(current - 1));
-  btnNext.addEventListener('click', () => goTo(current + 1));
-  dots.forEach(d => d.addEventListener('click', () => goTo(+d.dataset.i)));
-
-  // Touch / mouse swipe
-  let startX = null, startY = null, dragging = false, dx = 0;
-  const THRESHOLD = 50;
-
-  function onStart(x, y){ startX = x; startY = y; dragging = true; dx = 0; }
-  function onMove(x, y){
-    if(!dragging) return;
-    dx = x - startX;
-    const dy = Math.abs(y - startY);
-    // cancel if mostly vertical scroll
-    if(dy > Math.abs(dx) * 1.5){ dragging = false; return; }
-    // subtle tilt on top card
-    const top = cards.find(c => +c.dataset.pos === 0);
-    if(top) top.style.transform = `translateY(0) scale(1) rotate(${dx*0.02}deg)`;
-  }
-  function onEnd(){
-    if(!dragging) return;
-    dragging = false;
-    const top = cards.find(c => +c.dataset.pos === 0);
-    if(top) top.style.transform = '';
-    if(dx < -THRESHOLD) goTo(current + 1);
-    else if(dx > THRESHOLD) goTo(current - 1);
-  }
-
-  deck.addEventListener('mousedown',  e => onStart(e.clientX, e.clientY));
-  deck.addEventListener('mousemove',  e => onMove(e.clientX, e.clientY));
-  deck.addEventListener('mouseup',    onEnd);
-  deck.addEventListener('mouseleave', onEnd);
-  deck.addEventListener('touchstart', e => onStart(e.touches[0].clientX, e.touches[0].clientY), {passive:true});
-  deck.addEventListener('touchmove',  e => onMove(e.touches[0].clientX, e.touches[0].clientY),  {passive:true});
-  deck.addEventListener('touchend',   onEnd);
-
-  // Keyboard support
-  document.addEventListener('keydown', e => {
-    if(e.key === 'ArrowRight') goTo(current+1);
-    if(e.key === 'ArrowLeft')  goTo(current-1);
+// ── ROADMAP DECK ──────────────────────────────────────────
+const phases=[
+  {cls:'done',eyebrow:'Фаза 1',title:'🏝 Онбординг',status:'✅ Готово',items:['Приветственный экран','Создание и имя острова','Стартовые ресурсы','Подключение к Telegram API']},
+  {cls:'progress',eyebrow:'Фаза 2',title:'🏗 Игровой цикл',status:'🔄 В разработке',items:['Пассивная генерация ресурсов','Строительство 9 зданий','Экран острова и инвентарь','Очки развития и зоны']},
+  {cls:'planned',eyebrow:'Фаза 3',title:'⚓ Экспедиции',status:'📋 Запланировано',items:['Морские экспедиции','Торговля с купцами','Случайные события','Уведомления о постройках']},
+  {cls:'planned',eyebrow:'Фаза 4',title:'🌍 Мультиплеер',status:'🔒 Позже',items:['Альянсы и кланы','Рейтинг островов','Совместные постройки','Глобальные события']},
+];
+const deck=document.getElementById('roadmapDeck');
+const dotsEl=document.getElementById('roadDots');
+let cur=0;
+phases.forEach((p,i)=>{
+  const card=document.createElement('div');
+  card.className=`rcard ${p.cls}`; card.dataset.pos=i;
+  card.innerHTML=`<div class="rcard-eyebrow">${p.eyebrow}</div><div class="rcard-title">${p.title}</div><div class="rcard-status">${p.status}</div><ul class="rcard-list">${p.items.map(it=>`<li>${it}</li>`).join('')}</ul>`;
+  deck.appendChild(card);
+  const dot=document.createElement('div');
+  dot.className='rdot'+(i===0?' on':'');
+  dotsEl.appendChild(dot);
+});
+function updateDeck(){
+  deck.querySelectorAll('.rcard').forEach((card,i)=>{
+    const off=i-cur;
+    card.style.transform=`translateX(${off*65}px) translateY(${Math.abs(off)*10}px) scale(${1-Math.abs(off)*.07})`;
+    card.style.opacity=String(1-Math.abs(off)*.28);
+    card.style.zIndex=String(100-Math.abs(off)*10);
+    card.classList.toggle('active-card',i===cur);
   });
-
-  setPositions();
-})();
+  dotsEl.querySelectorAll('.rdot').forEach((d,i)=>d.classList.toggle('on',i===cur));
+}
+updateDeck();
+let sx=null;
+deck.addEventListener('pointerdown',e=>{sx=e.clientX;deck.setPointerCapture(e.pointerId);});
+deck.addEventListener('pointerup',e=>{
+  if(sx===null)return;
+  const dx=e.clientX-sx;
+  if(dx<-50&&cur<phases.length-1)cur++;
+  if(dx>50&&cur>0)cur--;
+  sx=null; updateDeck();
+});
+deck.addEventListener('click',e=>{
+  const card=e.target.closest('.rcard');
+  if(!card)return;
+  const p=parseInt(card.dataset.pos);
+  if(p!==cur){cur=p;updateDeck();}
+});
 </script>
 </body>
 </html>
