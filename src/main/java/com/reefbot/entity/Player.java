@@ -1,6 +1,7 @@
 package com.reefbot.entity;
 
 import com.reefbot.enums.OnboardingStep;
+import com.reefbot.enums.PlayerScreen;
 import com.reefbot.enums.PlayerStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -31,5 +32,11 @@ public class Player {
 
     @OneToOne(mappedBy = "player")
     private Island island;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    private PlayerScreen screen = PlayerScreen.MAIN;
+
+    private String pendingAction;
 
 }
