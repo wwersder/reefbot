@@ -5,6 +5,7 @@ import com.reefbot.entity.Player;
 import com.reefbot.enums.OnboardingStep;
 import com.reefbot.enums.PlayerStatus;
 import com.reefbot.service.PlayerService;
+import com.reefbot.service.ResourceService;
 import com.reefbot.service.registration.OnboardingStepHandler;
 import com.reefbot.util.KeyboardBuilder;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class ReceiveStarterPackStepHandler implements OnboardingStepHandler {
     private static final String PHOTO_PATH = "img/reg/reg3.png";
 
     private final PlayerService playerService;
+    private final ResourceService resourceService;
 
     private static final String TEXT = """
             🎁 Стартовые ресурсы
@@ -49,6 +51,10 @@ public class ReceiveStarterPackStepHandler implements OnboardingStepHandler {
         player.setOnboardingStep(OnboardingStep.FINISHED);
         player.setStatus(PlayerStatus.ACTIVE);
         playerService.save(player);
+
+        if (player.getIsland() != null) {
+            resourceService.giveStarterPack(player.getIsland());
+        }
 
         return new BotResponse(
                 TEXT,

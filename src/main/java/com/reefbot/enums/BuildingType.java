@@ -94,6 +94,19 @@ public enum BuildingType {
             "Торговля с купцами",
             null, 0,
             new String[]{}
+    ),
+
+    // ── Tier 3 ────────────────────────────────────────────────────────────────
+
+    CORAL_DIVER(
+            "🪸 Коралловый ныряльщик",
+            3, IslandZone.PORT,
+            Map.of(ResourceType.WOOD, 60, ResourceType.STONE, 40, ResourceType.FISH, 20),
+            Duration.ofHours(4),
+            8,
+            "+3 🪸/час",
+            ResourceType.CORAL, 3,
+            new String[]{"FISHING_DOCK"}
     );
 
     // ── Fields ────────────────────────────────────────────────────────────────

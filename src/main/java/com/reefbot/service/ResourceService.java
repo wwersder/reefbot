@@ -27,6 +27,7 @@ public class ResourceService {
             case STONE  -> island.getStone();
             case FISH   -> island.getFish();
             case SHELLS -> island.getShells();
+            case CORAL  -> island.getCoral();
         };
     }
 
@@ -76,11 +77,12 @@ public class ResourceService {
     /** Multiline resource summary for the island screen. */
     public String formatInventory(Island island, int storageCapacity) {
         return String.format(
-                "%s Древесина: %d / %d\n%s Камень: %d / %d\n%s Рыба: %d / %d\n%s Ракушки: %d",
+                "%s Древесина: %d / %d\n%s Камень: %d / %d\n%s Рыба: %d / %d\n%s Ракушки: %d\n%s Коралл: %d",
                 ResourceType.WOOD.getEmoji(),   island.getWood(),   storageCapacity,
                 ResourceType.STONE.getEmoji(),  island.getStone(),  storageCapacity,
                 ResourceType.FISH.getEmoji(),   island.getFish(),   storageCapacity,
-                ResourceType.SHELLS.getEmoji(), island.getShells()
+                ResourceType.SHELLS.getEmoji(), island.getShells(),
+                ResourceType.CORAL.getEmoji(),  island.getCoral()
         );
     }
 
@@ -92,6 +94,7 @@ public class ResourceService {
             case STONE  -> island.setStone(amount);
             case FISH   -> island.setFish(amount);
             case SHELLS -> island.setShells(amount);
+            case CORAL  -> island.setCoral(amount);
         }
     }
 }

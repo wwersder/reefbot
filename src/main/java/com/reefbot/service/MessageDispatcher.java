@@ -3,6 +3,7 @@ package com.reefbot.service;
 import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Player;
 import com.reefbot.enums.PlayerStatus;
+import com.reefbot.service.game.GameService;
 import com.reefbot.service.registration.OnboardingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ public class MessageDispatcher {
     private final PlayerService playerService;
     private final AdminService adminService;
     private final OnboardingService onboardingService;
+    private final GameService gameService;
 
     public BotResponse dispatch(Long telegramId, String username, String text, boolean isPrivate) {
         if (ADMIN_TELEGRAM_ID.equals(telegramId)) {
@@ -32,7 +34,7 @@ public class MessageDispatcher {
             PlayerStatus status = player.getStatus() != null ? player.getStatus() : PlayerStatus.ONBOARDING;
             return switch (status) {
                 case ONBOARDING -> onboardingService.process(player, text);
-                case ACTIVE -> null; // TODO: game handler
+                case ACTIVE     -> gameService.handle(player, text);
             };
         }
 

@@ -9,7 +9,8 @@ public enum ResourceType {
     WOOD("🪵", "Древесина"),
     STONE("🪨", "Камень"),
     FISH("🐟", "Рыба"),
-    SHELLS("🐚", "Ракушки");
+    SHELLS("🐚", "Ракушки"),
+    CORAL("🪸", "Коралл");
 
     private final String emoji;
     private final String displayName;

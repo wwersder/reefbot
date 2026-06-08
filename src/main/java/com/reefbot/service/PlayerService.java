@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import com.reefbot.enums.OnboardingStep;
 import com.reefbot.enums.PlayerStatus;
+import com.reefbot.repository.BuildingRepository;
 import com.reefbot.repository.IslandRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ public class PlayerService {
 
     private final PlayerRepository playerRepository;
     private final IslandRepository islandRepository;
+    private final BuildingRepository buildingRepository;
 
     public Optional<Player> findByTelegramId(Long telegramId) {
         return playerRepository.findByTelegramId(telegramId);
@@ -53,6 +55,8 @@ public class PlayerService {
     public boolean deletePlayer(Long playerId) {
         return playerRepository.findById(playerId).map(player -> {
             if (player.getIsland() != null) {
+                buildingRepository.deleteAll(
+                        buildingRepository.findByIsland(player.getIsland()));
                 islandRepository.delete(player.getIsland());
             }
             playerRepository.delete(player);

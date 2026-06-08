@@ -49,4 +49,7 @@ public class Island {
     @Builder.Default
     private Integer shells = 0;
 
+    @Builder.Default
+    private Integer coral = 0;
+
 }
