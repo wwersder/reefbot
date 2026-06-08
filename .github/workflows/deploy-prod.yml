@@ -1,0 +1,27 @@
+name: Deploy PROD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/reefbot/repo
+            git checkout main
+            git pull
+            mvn clean package -Dmaven.test.skip=true -q
+            cp target/*.jar /opt/reefbot/prod/app.jar
+            cp -r landing/* /opt/reefbot/landing/
+            systemctl restart reefbot-prod
+            echo "PROD deployed successfully"

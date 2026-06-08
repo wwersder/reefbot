@@ -1,0 +1,27 @@
+name: Deploy DEV
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/reefbot/repo
+            git checkout dev
+            git pull
+            mvn clean package -Dmaven.test.skip=true -q
+            cp target/*.jar /opt/reefbot/dev/app.jar
+            cp -r landing/* /opt/reefbot/landing/
+            systemctl restart reefbot-dev
+            echo "DEV deployed successfully"
