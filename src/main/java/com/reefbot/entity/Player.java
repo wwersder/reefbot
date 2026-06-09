@@ -1,9 +1,13 @@
 package com.reefbot.entity;
 
+import com.reefbot.enums.FishingSpot;
 import com.reefbot.enums.OnboardingStep;
+import com.reefbot.enums.PlayerScreen;
 import com.reefbot.enums.PlayerStatus;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -29,7 +33,25 @@ public class Player {
     @Enumerated(EnumType.STRING)
     private PlayerStatus status = PlayerStatus.ONBOARDING;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    private PlayerScreen currentScreen = PlayerScreen.MAIN;
+
+    // Fishing
+    @Builder.Default
+    private Integer fishingXp = 0;
+
+    @Builder.Default
+    private Integer fishingLevel = 1;
+
+    private LocalDateTime fishingFinishAt;
+
+    @Enumerated(EnumType.STRING)
+    private FishingSpot fishingSpot;
+
+    @Builder.Default
+    private Boolean hasCompletedFirstFish = false;
+
     @OneToOne(mappedBy = "player")
     private Island island;
-
 }

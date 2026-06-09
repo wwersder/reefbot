@@ -1,18 +1,7 @@
 package com.reefbot.entity;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
-import jakarta.persistence.Id;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.GenerationType;
+import jakarta.persistence.*;
+import lombok.*;
 
 @Getter
 @Setter
@@ -31,8 +20,28 @@ public class Island {
 
     private Integer level;
 
+    @Builder.Default
+    private Integer wood = 0;
+
+    @Builder.Default
+    private Integer stone = 0;
+
+    @Builder.Default
+    private Integer fish = 0;
+
+    @Builder.Default
+    private Integer shells = 0;
+
+    @Builder.Default
+    private Integer coral = 0;
+
+    @Builder.Default
+    private Integer storageCapacity = 100;
+
+    @Builder.Default
+    private Integer devPoints = 0;
+
     @OneToOne
     @JoinColumn(name = "player_id")
     private Player player;
-
 }
