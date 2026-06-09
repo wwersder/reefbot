@@ -37,11 +37,13 @@ public class NotificationScheduler {
      */
     @Scheduled(fixedDelay = 30_000)
     public void notifyFishingComplete() {
-        List<Player> ready = playerRepository.findFishingReady(
-                LocalDateTime.now(), PlayerScreen.FISHING_ACTIVE);
+        List<Player> ready = playerRepository.findFishingReady(LocalDateTime.now());
 
         for (Player player : ready) {
             try {
+                // Mark notified first to prevent duplicate sends on next scheduler run
+                player.setFishingNotified(true);
+                // Always transition to FISHING_RESULT so BTN_COLLECT routes correctly
                 player.setCurrentScreen(PlayerScreen.FISHING_RESULT);
                 playerRepository.save(player);
 
@@ -52,7 +54,7 @@ public class NotificationScheduler {
                 String text = FISHING_DONE_TEXT.formatted(spotName);
 
                 telegramClient.execute(SendMessage.builder()
-                        .chatId(player.getTelegramId())
+                        .chatId(String.valueOf(player.getTelegramId()))
                         .text(text)
                         .replyMarkup(KeyboardBuilder.builder()
                                 .row(FishingResultHandler.BTN_COLLECT)

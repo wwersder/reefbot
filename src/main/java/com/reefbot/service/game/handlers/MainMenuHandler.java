@@ -54,7 +54,7 @@ public class MainMenuHandler implements GameHandler {
             player.setCurrentScreen(PlayerScreen.FISHING_ACTIVE);
             playerRepository.save(player);
             return FishingActiveHandler.buildStatusScreen(player, fishingService,
-                    KeyboardBuilder.builder().row(FishingMenuHandler.BTN_BACK).build());
+                    FishingActiveHandler.activeKeyboard());
         }
         // Start fresh fishing session
         player.setCurrentScreen(PlayerScreen.FISHING_MENU);

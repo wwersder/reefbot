@@ -24,6 +24,8 @@ public class FishingActiveHandler implements GameHandler {
         return PlayerScreen.FISHING_ACTIVE;
     }
 
+    public static final String BTN_REFRESH = "🔄 Обновить";
+
     @Override
     public BotResponse handle(Player player, Island island, String text) {
         if (FishingMenuHandler.BTN_BACK.equals(text)) {
@@ -38,25 +40,28 @@ public class FishingActiveHandler implements GameHandler {
             return FishingResultHandler.buildResultScreen(player, island, fishingService);
         }
 
-        return buildStatusScreen(player, fishingService, backKeyboard());
+        // BTN_REFRESH or any other input — re-show status with fresh time
+        return buildStatusScreen(player, fishingService, activeKeyboard());
     }
 
     public static BotResponse buildStatusScreen(Player player, FishingService fishingService, ReplyKeyboard keyboard) {
         String remaining = fishingService.timeRemainingText(player);
         String spot = player.getFishingSpot() != null
-                ? player.getFishingSpot().getDisplayName()
+                ? player.getFishingSpot().getDisplayName().toLowerCase()
                 : "неизвестно";
 
         String text = String.format("""
                 ⏳ Удочка заброшена %s
 
-                Осталось: %s
-                """, spot.toLowerCase(), remaining);
+                Возвращайся через %s — улов будет ждать.
+                """, spot, remaining);
 
         return new BotResponse(text, null, keyboard);
     }
 
-    private static ReplyKeyboard backKeyboard() {
-        return KeyboardBuilder.builder().row(FishingMenuHandler.BTN_BACK).build();
+    public static ReplyKeyboard activeKeyboard() {
+        return KeyboardBuilder.builder()
+                .row(BTN_REFRESH, FishingMenuHandler.BTN_BACK)
+                .build();
     }
 }

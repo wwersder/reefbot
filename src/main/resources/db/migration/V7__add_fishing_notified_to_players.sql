@@ -1,0 +1,2 @@
+ALTER TABLE players
+    ADD COLUMN fishing_notified BOOLEAN NOT NULL DEFAULT FALSE;

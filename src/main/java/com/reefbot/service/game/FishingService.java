@@ -53,6 +53,7 @@ public class FishingService {
     public void startFishing(Player player, FishingSpot spot) {
         player.setFishingSpot(spot);
         player.setFishingFinishAt(LocalDateTime.now().plusMinutes(spot.getDurationMinutes()));
+        player.setFishingNotified(false);
         playerRepository.save(player);
     }
 

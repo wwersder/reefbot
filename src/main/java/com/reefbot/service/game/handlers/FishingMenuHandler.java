@@ -37,7 +37,7 @@ public class FishingMenuHandler implements GameHandler {
             case BTN_SHORE                             -> spotDetail(FishingSpot.SHORE, player);
             case BTN_REEF                              -> spotDetail(FishingSpot.REEF, player);
             case BTN_OPEN_SEA_LOCKED, BTN_OPEN_SEA_UNLOCKED -> handleOpenSea(player);
-            case BTN_BACK                              -> backToMain(player, island);
+            case BTN_BACK                              -> goBack(player, island);
             case BTN_CAST                              -> castLine(player);
             default                                    -> buildFishingMenu(player);
         };
@@ -75,12 +75,17 @@ public class FishingMenuHandler implements GameHandler {
                 Возвращайся через %d мин — улов будет ждать.
                 """, spot.getDisplayName().toLowerCase(), spot.getDurationMinutes());
 
-        return new BotResponse(text, null,
-                KeyboardBuilder.builder().row(BTN_BACK).build());
+        return new BotResponse(text, null, FishingActiveHandler.activeKeyboard());
     }
 
-    private BotResponse backToMain(Player player, Island island) {
-        player.setFishingSpot(null);
+    private BotResponse goBack(Player player, Island island) {
+        if (player.getFishingSpot() != null) {
+            // From spot detail → back to spot selection
+            player.setFishingSpot(null);
+            playerRepository.save(player);
+            return buildFishingMenu(player);
+        }
+        // From spot selection → back to main menu
         player.setCurrentScreen(PlayerScreen.MAIN);
         playerRepository.save(player);
         return MainMenuHandler.showMainMenu(player, island);
@@ -104,9 +109,7 @@ public class FishingMenuHandler implements GameHandler {
         String openSeaBtn = openSeaLocked ? BTN_OPEN_SEA_LOCKED : BTN_OPEN_SEA_UNLOCKED;
 
         return KeyboardBuilder.builder()
-                .row(BTN_SHORE)
-                .row(BTN_REEF)
-                .row(openSeaBtn)
+                .row(BTN_SHORE, BTN_REEF, openSeaBtn)
                 .row(BTN_BACK)
                 .build();
     }

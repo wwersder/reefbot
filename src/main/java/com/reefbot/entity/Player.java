@@ -52,6 +52,10 @@ public class Player {
     @Builder.Default
     private Boolean hasCompletedFirstFish = false;
 
+    /** True after scheduler sends the fishing-done notification. Prevents duplicate sends. */
+    @Builder.Default
+    private Boolean fishingNotified = false;
+
     @OneToOne(mappedBy = "player")
     private Island island;
 }
