@@ -22,6 +22,7 @@ public class FishingMenuHandler implements GameHandler {
     public static final String BTN_OPEN_SEA_UNLOCKED = "🌊 В море";
     public static final String BTN_BACK              = "◀️ Назад";
     public static final String BTN_CAST              = "✅ Закинуть удочку";
+    public static final String BTN_BONUSES           = "✨ Бонусы";
 
     private final FishingService fishingService;
     private final PlayerRepository playerRepository;
@@ -39,6 +40,7 @@ public class FishingMenuHandler implements GameHandler {
             case BTN_OPEN_SEA_LOCKED, BTN_OPEN_SEA_UNLOCKED -> handleOpenSea(player);
             case BTN_BACK                                 -> goBack(player, island);
             case BTN_CAST                                 -> castLine(player);
+            case BTN_BONUSES                              -> showBonuses(player);
             default                                       -> buildFishingMenu(player);
         };
     }
@@ -59,6 +61,12 @@ public class FishingMenuHandler implements GameHandler {
             );
         }
         return spotDetail(FishingSpot.OPEN_SEA, player);
+    }
+
+    private BotResponse showBonuses(Player player) {
+        player.getState().setCurrentScreen(PlayerScreen.FISHING_BONUSES);
+        playerRepository.save(player);
+        return FishingBonusesHandler.buildBonusesScreen(player);
     }
 
     private BotResponse castLine(Player player) {
@@ -108,11 +116,16 @@ public class FishingMenuHandler implements GameHandler {
     private static org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard buildFishingKeyboard(Player player) {
         boolean openSeaLocked = player.getFishing().getFishingLevel() < FishingSpot.OPEN_SEA.getMinLevel();
         String openSeaBtn = openSeaLocked ? BTN_OPEN_SEA_LOCKED : BTN_OPEN_SEA_UNLOCKED;
+        boolean hasBonuses = player.getFishing().getFishingLevel() >= 2;
 
-        return KeyboardBuilder.builder()
-                .row(BTN_SHORE, BTN_REEF, openSeaBtn)
-                .row(BTN_BACK)
-                .build();
+        KeyboardBuilder kb = KeyboardBuilder.builder()
+                .row(BTN_SHORE, BTN_REEF, openSeaBtn);
+        if (hasBonuses) {
+            kb.row(BTN_BONUSES, BTN_BACK);
+        } else {
+            kb.row(BTN_BACK);
+        }
+        return kb.build();
     }
 
     private static BotResponse buildSpotDetail(FishingSpot spot) {

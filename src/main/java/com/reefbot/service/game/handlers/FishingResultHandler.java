@@ -80,17 +80,15 @@ public class FishingResultHandler implements GameHandler {
         String name = FishingService.levelName(newLevel);
         String unlockText = FishingService.levelUnlockText(newLevel);
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("🎊 Уровень рыбака повышен!\n\n");
-        sb.append(name).append(" · Уровень ").append(newLevel).append("\n\n");
+        String bonus = unlockText != null
+                ? "<b>" + unlockText + "</b>"
+                : "Продолжай рыбачить — впереди ещё много открытий.";
 
-        if (unlockText != null) {
-            sb.append(unlockText);
-        } else {
-            sb.append("Продолжай рыбачить — впереди ещё много открытий.");
-        }
+        String text = "🎊 Уровень рыбака повышен!\n\n"
+                + name + " · Уровень " + newLevel + "\n\n"
+                + bonus;
 
-        return new BotResponse(sb.toString());
+        return BotResponse.html(text);
     }
 
     public static BotResponse buildResultScreen(Player player, Island island, FishingService fishingService) {

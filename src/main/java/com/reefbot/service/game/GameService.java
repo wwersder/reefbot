@@ -1,5 +1,6 @@
 package com.reefbot.service.game;
 
+import com.reefbot.bot.handlers.LevelsCallbackHandler;
 import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
@@ -34,6 +35,11 @@ public class GameService {
     }
 
     public BotResponse handle(Player player, String text) {
+        // Global commands available from any screen
+        if ("/levels".equals(text)) {
+            return LevelsCallbackHandler.buildInitialMessage(player);
+        }
+
         Island island = player.getIsland();
         PlayerScreen screen = player.getState() != null && player.getState().getCurrentScreen() != null
                 ? player.getState().getCurrentScreen()

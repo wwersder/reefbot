@@ -22,12 +22,18 @@ import java.util.List;
 public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
 
     private final MessageDispatcher dispatcher;
+    private final CallbackDispatcher callbackDispatcher;
     private final TelegramClient telegramClient;
 
     @Override
     public void consume(Update update) {
         if (update.hasMyChatMember()) {
             handleMembershipChange(update);
+            return;
+        }
+
+        if (update.hasCallbackQuery()) {
+            callbackDispatcher.dispatch(update.getCallbackQuery());
             return;
         }
 
@@ -100,9 +106,13 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
                 builder.replyMarkup(response.keyboard());
             }
 
-            List<?> entities = response.entities();
-            if (entities != null && !entities.isEmpty()) {
-                builder.entities(response.entities());
+            if (response.parseMode() != null) {
+                builder.parseMode(response.parseMode());
+            } else {
+                List<?> entities = response.entities();
+                if (entities != null && !entities.isEmpty()) {
+                    builder.entities(response.entities());
+                }
             }
 
             telegramClient.execute(builder.build());

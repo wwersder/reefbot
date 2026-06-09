@@ -5,5 +5,6 @@ public enum PlayerScreen {
     FISHING_MENU,
     FISHING_ACTIVE,
     FISHING_RESULT,
+    FISHING_BONUSES,
     NPC_ENCOUNTER
 }
