@@ -12,6 +12,9 @@ import com.reefbot.service.game.GameHandler;
 import com.reefbot.util.KeyboardBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 
 @Component
 @RequiredArgsConstructor
@@ -22,11 +25,8 @@ public class FishingMenuHandler implements GameHandler {
     public static final String BTN_OPEN_SEA_LOCKED   = "🌊 В море 🔒 ур. 3";
     public static final String BTN_OPEN_SEA_UNLOCKED = "🌊 В море";
     public static final String BTN_BACK              = "◀️ Назад";
-    public static final String BTN_CAST              = "✅ Закинуть удочку";
     public static final String BTN_LEVELS            = "📊 Уровни";
-    public static final String BTN_BONUSES           = "✨ Бонусы";
 
-    private final FishingService fishingService;
     private final PlayerRepository playerRepository;
 
     @Override
@@ -41,9 +41,7 @@ public class FishingMenuHandler implements GameHandler {
             case BTN_REEF                                    -> spotDetail(FishingSpot.REEF, player);
             case BTN_OPEN_SEA_LOCKED, BTN_OPEN_SEA_UNLOCKED -> handleOpenSea(player);
             case BTN_BACK                                    -> goBack(player, island);
-            case BTN_CAST                                    -> castLine(player);
             case BTN_LEVELS                                  -> LevelsCallbackHandler.buildInitialMessage(player);
-            case BTN_BONUSES                                 -> showBonuses(player);
             default                                          -> buildFishingMenu(player);
         };
     }
@@ -64,29 +62,6 @@ public class FishingMenuHandler implements GameHandler {
             );
         }
         return spotDetail(FishingSpot.OPEN_SEA, player);
-    }
-
-    private BotResponse showBonuses(Player player) {
-        player.getState().setCurrentScreen(PlayerScreen.FISHING_BONUSES);
-        playerRepository.save(player);
-        return FishingBonusesHandler.buildBonusesScreen(player);
-    }
-
-    private BotResponse castLine(Player player) {
-        FishingSpot spot = player.getFishing().getFishingSpot();
-        if (spot == null) return buildFishingMenu(player);
-
-        fishingService.startFishing(player, spot);
-        player.getState().setCurrentScreen(PlayerScreen.FISHING_ACTIVE);
-        playerRepository.save(player);
-
-        String text = String.format("""
-                ⏳ Удочка заброшена %s
-
-                Возвращайся через %d мин — улов будет ждать.
-                """, spot.getDisplayName().toLowerCase(), spot.getDurationMinutes());
-
-        return new BotResponse(text, null, FishingActiveHandler.activeKeyboard());
     }
 
     private BotResponse goBack(Player player, Island island) {
@@ -151,12 +126,25 @@ public class FishingMenuHandler implements GameHandler {
                 bonusLine,
                 bonusHintLine);
 
-        KeyboardBuilder kb = KeyboardBuilder.builder().row(BTN_CAST);
+        // Inline keyboard on the message bubble; bottom ReplyKeyboard persists from fishing menu
+        InlineKeyboardRow castRow = new InlineKeyboardRow();
+        castRow.add(InlineKeyboardButton.builder()
+                .text("✅ Закинуть удочку")
+                .callbackData("cast:" + spot.name())
+                .build());
+
+        InlineKeyboardMarkup.InlineKeyboardMarkupBuilder kb = InlineKeyboardMarkup.builder()
+                .keyboardRow(castRow);
+
         if (hasBonuses) {
-            kb.row(BTN_BONUSES, BTN_BACK);
-        } else {
-            kb.row(BTN_BACK);
+            InlineKeyboardRow bonusRow = new InlineKeyboardRow();
+            bonusRow.add(InlineKeyboardButton.builder()
+                    .text("✨ Бонусы")
+                    .callbackData("bonus:show")
+                    .build());
+            kb.keyboardRow(bonusRow);
         }
+
         return new BotResponse(text, null, kb.build());
     }
 
