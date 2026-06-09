@@ -47,8 +47,7 @@ public class FishingBonusesHandler implements GameHandler {
         sb.append("✨ <b>Бонусы рыбака</b>\n\n");
 
         // Level bonuses
-        sb.append("🎣 <b>За уровень рыбака</b>\n");
-        sb.append(FishingService.levelName(level)).append(" · Ур. ").append(level).append("\n\n");
+        sb.append("🎣 <b>За уровень рыбака</b>\n\n");
 
         boolean anyBonus = false;
         if (level >= 2) { sb.append("• +1 к мин. улову на всех местах\n"); anyBonus = true; }
