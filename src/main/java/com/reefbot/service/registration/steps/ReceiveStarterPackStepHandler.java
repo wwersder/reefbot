@@ -68,9 +68,9 @@ public class ReceiveStarterPackStepHandler implements OnboardingStepHandler {
         // Activate player
         player.setOnboardingStep(OnboardingStep.FINISHED);
         player.setStatus(PlayerStatus.ACTIVE);
-        player.setCurrentScreen(PlayerScreen.MAIN);
-        player.setFishingLevel(1);
-        player.setFishingXp(0);
+        player.getState().setCurrentScreen(PlayerScreen.MAIN);
+        player.getFishing().setFishingLevel(1);
+        player.getFishing().setFishingXp(0);
         playerService.save(player);
 
         // Show main menu immediately with fishing hint

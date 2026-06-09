@@ -1,16 +1,18 @@
 package com.reefbot.service;
 
-import java.util.Optional;
-
+import com.reefbot.entity.Player;
+import com.reefbot.entity.PlayerFishing;
+import com.reefbot.entity.PlayerState;
 import com.reefbot.enums.OnboardingStep;
+import com.reefbot.enums.PlayerScreen;
 import com.reefbot.enums.PlayerStatus;
 import com.reefbot.repository.IslandRepository;
+import com.reefbot.repository.PlayerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.reefbot.entity.Player;
-import com.reefbot.repository.PlayerRepository;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -23,11 +25,12 @@ public class PlayerService {
         return playerRepository.findByTelegramId(telegramId);
     }
 
+    @Transactional
     public Player getOrCreatePlayer(Long telegramId, String username) {
-        Optional<Player> playerOptional = playerRepository.findByTelegramId(telegramId);
+        Optional<Player> existing = playerRepository.findByTelegramId(telegramId);
 
-        if (playerOptional.isPresent()) {
-            Player player = playerOptional.get();
+        if (existing.isPresent()) {
+            Player player = existing.get();
             if (username != null && !username.equals(player.getUsername())) {
                 player.setUsername(username);
                 return playerRepository.save(player);
@@ -35,12 +38,30 @@ public class PlayerService {
             return player;
         }
 
+        // Build state and fishing without IDs — cascade will persist them
+        PlayerState state = PlayerState.builder()
+                .currentScreen(PlayerScreen.MAIN)
+                .hasCompletedFirstFish(false)
+                .build();
+
+        PlayerFishing fishing = PlayerFishing.builder()
+                .fishingXp(0)
+                .fishingLevel(1)
+                .fishingNotified(false)
+                .build();
+
         Player player = Player.builder()
                 .telegramId(telegramId)
                 .username(username)
                 .onboardingStep(OnboardingStep.WELCOME)
                 .status(PlayerStatus.ONBOARDING)
+                .state(state)
+                .fishing(fishing)
                 .build();
+
+        // Wire back-references so cascade FK is set correctly
+        state.setPlayer(player);
+        fishing.setPlayer(player);
 
         return playerRepository.save(player);
     }
@@ -55,9 +76,9 @@ public class PlayerService {
             if (player.getIsland() != null) {
                 islandRepository.delete(player.getIsland());
             }
+            // state, fishing, inventory deleted via cascade + orphanRemoval
             playerRepository.delete(player);
             return true;
         }).orElse(false);
     }
-
 }

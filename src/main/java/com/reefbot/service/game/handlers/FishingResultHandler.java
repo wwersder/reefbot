@@ -29,13 +29,12 @@ public class FishingResultHandler implements GameHandler {
     @Override
     public BotResponse handle(Player player, Island island, String text) {
         if (!BTN_COLLECT.equals(text)) {
-            // Show the result screen again if player sends something unexpected
             return buildResultScreen(player, island, fishingService);
         }
 
         FishingResult result = fishingService.collectFish(player, island);
 
-        player.setCurrentScreen(PlayerScreen.MAIN);
+        player.getState().setCurrentScreen(PlayerScreen.MAIN);
         playerRepository.save(player);
 
         return buildCollectedResponse(result, player, island);
@@ -66,16 +65,14 @@ public class FishingResultHandler implements GameHandler {
             sb.append("\n\n🎣 Первый улов! Рыбалка — хороший способ пополнить запасы.");
         }
 
-        // Catch text (no keyboard) + followUp with main menu
         BotResponse catchMessage = new BotResponse(sb.toString());
         BotResponse mainMenu = MainMenuHandler.showMainMenu(player, island);
         return catchMessage.withFollowUp(mainMenu);
     }
 
-    /** Build the "Забрать улов" screen shown before collection. */
     public static BotResponse buildResultScreen(Player player, Island island, FishingService fishingService) {
-        String spot = player.getFishingSpot() != null
-                ? player.getFishingSpot().getDisplayName()
+        String spot = player.getFishing().getFishingSpot() != null
+                ? player.getFishing().getFishingSpot().getDisplayName()
                 : "неизвестно";
 
         String text = String.format("""

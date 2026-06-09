@@ -25,25 +25,20 @@ public class FishingService {
     private final Random random = new Random();
 
     public boolean isActive(Player player) {
-        return player.getFishingFinishAt() != null
-                && LocalDateTime.now().isBefore(player.getFishingFinishAt());
+        LocalDateTime finishAt = player.getFishing().getFishingFinishAt();
+        return finishAt != null && LocalDateTime.now().isBefore(finishAt);
     }
 
     public boolean isReady(Player player) {
-        return player.getFishingFinishAt() != null
-                && !LocalDateTime.now().isBefore(player.getFishingFinishAt());
-    }
-
-    /** Minutes remaining until catch is ready (0 if ready or not fishing). */
-    public long minutesRemaining(Player player) {
-        if (!isActive(player)) return 0;
-        return java.time.Duration.between(LocalDateTime.now(), player.getFishingFinishAt()).toMinutes() + 1;
+        LocalDateTime finishAt = player.getFishing().getFishingFinishAt();
+        return finishAt != null && !LocalDateTime.now().isBefore(finishAt);
     }
 
     /** Human-readable remaining time, e.g. "8 мин 42 сек" or "45 сек". */
     public String timeRemainingText(Player player) {
         if (!isActive(player)) return "0 сек";
-        long totalSeconds = java.time.Duration.between(LocalDateTime.now(), player.getFishingFinishAt()).getSeconds();
+        long totalSeconds = java.time.Duration.between(
+                LocalDateTime.now(), player.getFishing().getFishingFinishAt()).getSeconds();
         long minutes = totalSeconds / 60;
         long seconds = totalSeconds % 60;
         if (minutes > 0) return minutes + " мин " + seconds + " сек";
@@ -51,14 +46,14 @@ public class FishingService {
     }
 
     public void startFishing(Player player, FishingSpot spot) {
-        player.setFishingSpot(spot);
-        player.setFishingFinishAt(LocalDateTime.now().plusMinutes(spot.getDurationMinutes()));
-        player.setFishingNotified(false);
+        player.getFishing().setFishingSpot(spot);
+        player.getFishing().setFishingFinishAt(LocalDateTime.now().plusMinutes(spot.getDurationMinutes()));
+        player.getFishing().setFishingNotified(false);
         playerRepository.save(player);
     }
 
     public FishingResult collectFish(Player player, Island island) {
-        FishingSpot spot = player.getFishingSpot();
+        FishingSpot spot = player.getFishing().getFishingSpot();
 
         int fish = spot.getMinFish() + random.nextInt(spot.getMaxFish() - spot.getMinFish() + 1);
 
@@ -76,16 +71,16 @@ public class FishingService {
         islandRepository.save(island);
 
         int xpEarned = spot.getXpReward();
-        int totalXp = player.getFishingXp() + xpEarned;
+        int totalXp = player.getFishing().getFishingXp() + xpEarned;
         int newLevel = levelForXp(totalXp);
 
-        boolean wasFirst = !Boolean.TRUE.equals(player.getHasCompletedFirstFish());
+        boolean wasFirst = !Boolean.TRUE.equals(player.getState().getHasCompletedFirstFish());
 
-        player.setFishingXp(totalXp);
-        player.setFishingLevel(newLevel);
-        player.setFishingFinishAt(null);
-        player.setFishingSpot(null);
-        player.setHasCompletedFirstFish(true);
+        player.getFishing().setFishingXp(totalXp);
+        player.getFishing().setFishingLevel(newLevel);
+        player.getFishing().setFishingFinishAt(null);
+        player.getFishing().setFishingSpot(null);
+        player.getState().setHasCompletedFirstFish(true);
         playerRepository.save(player);
 
         return new FishingResult(spot, fish, bonusType, bonusAmount, xpEarned, totalXp, newLevel, wasFirst);
@@ -93,7 +88,7 @@ public class FishingService {
 
     public int xpForNextLevel(int level) {
         if (level >= XP_THRESHOLDS.length - 1) return 0;
-        return XP_THRESHOLDS[level]; // index = target level
+        return XP_THRESHOLDS[level];
     }
 
     private int levelForXp(int xp) {

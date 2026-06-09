@@ -16,6 +16,8 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 @RequiredArgsConstructor
 public class FishingActiveHandler implements GameHandler {
 
+    public static final String BTN_REFRESH = "🔄 Обновить";
+
     private final FishingService fishingService;
     private final PlayerRepository playerRepository;
 
@@ -24,18 +26,16 @@ public class FishingActiveHandler implements GameHandler {
         return PlayerScreen.FISHING_ACTIVE;
     }
 
-    public static final String BTN_REFRESH = "🔄 Обновить";
-
     @Override
     public BotResponse handle(Player player, Island island, String text) {
         if (FishingMenuHandler.BTN_BACK.equals(text)) {
-            player.setCurrentScreen(PlayerScreen.MAIN);
+            player.getState().setCurrentScreen(PlayerScreen.MAIN);
             playerRepository.save(player);
             return MainMenuHandler.showMainMenu(player, island);
         }
 
         if (fishingService.isReady(player)) {
-            player.setCurrentScreen(PlayerScreen.FISHING_RESULT);
+            player.getState().setCurrentScreen(PlayerScreen.FISHING_RESULT);
             playerRepository.save(player);
             return FishingResultHandler.buildResultScreen(player, island, fishingService);
         }
@@ -46,8 +46,8 @@ public class FishingActiveHandler implements GameHandler {
 
     public static BotResponse buildStatusScreen(Player player, FishingService fishingService, ReplyKeyboard keyboard) {
         String remaining = fishingService.timeRemainingText(player);
-        String spot = player.getFishingSpot() != null
-                ? player.getFishingSpot().getDisplayName().toLowerCase()
+        String spot = player.getFishing().getFishingSpot() != null
+                ? player.getFishing().getFishingSpot().getDisplayName().toLowerCase()
                 : "неизвестно";
 
         String text = String.format("""

@@ -45,19 +45,17 @@ public class MainMenuHandler implements GameHandler {
     /** Redirect fishing button based on current fishing state. */
     private BotResponse routeFishing(Player player, Island island) {
         if (fishingService.isReady(player)) {
-            // Auto-transition to result screen
-            player.setCurrentScreen(PlayerScreen.FISHING_RESULT);
+            player.getState().setCurrentScreen(PlayerScreen.FISHING_RESULT);
             playerRepository.save(player);
             return FishingResultHandler.buildResultScreen(player, island, fishingService);
         }
         if (fishingService.isActive(player)) {
-            player.setCurrentScreen(PlayerScreen.FISHING_ACTIVE);
+            player.getState().setCurrentScreen(PlayerScreen.FISHING_ACTIVE);
             playerRepository.save(player);
             return FishingActiveHandler.buildStatusScreen(player, fishingService,
                     FishingActiveHandler.activeKeyboard());
         }
-        // Start fresh fishing session
-        player.setCurrentScreen(PlayerScreen.FISHING_MENU);
+        player.getState().setCurrentScreen(PlayerScreen.FISHING_MENU);
         playerRepository.save(player);
         return FishingMenuHandler.buildFishingMenu(player);
     }
@@ -80,7 +78,7 @@ public class MainMenuHandler implements GameHandler {
     }
 
     private static KeyboardButton buildFishingButton(Player player) {
-        java.time.LocalDateTime finishAt = player.getFishingFinishAt();
+        java.time.LocalDateTime finishAt = player.getFishing().getFishingFinishAt();
         KeyboardButton btn = new KeyboardButton(BTN_FISHING);
         // Green when catch is ready and not yet collected
         if (finishAt != null && !java.time.LocalDateTime.now().isBefore(finishAt)) {

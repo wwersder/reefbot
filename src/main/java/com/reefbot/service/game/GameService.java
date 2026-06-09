@@ -35,8 +35,8 @@ public class GameService {
 
     public BotResponse handle(Player player, String text) {
         Island island = player.getIsland();
-        PlayerScreen screen = player.getCurrentScreen() != null
-                ? player.getCurrentScreen()
+        PlayerScreen screen = player.getState() != null && player.getState().getCurrentScreen() != null
+                ? player.getState().getCurrentScreen()
                 : PlayerScreen.MAIN;
 
         GameHandler handler = handlerMap.get(screen);

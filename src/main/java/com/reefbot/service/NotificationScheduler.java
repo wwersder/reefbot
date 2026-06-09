@@ -1,7 +1,9 @@
 package com.reefbot.service;
 
 import com.reefbot.entity.Player;
+import com.reefbot.entity.PlayerFishing;
 import com.reefbot.enums.PlayerScreen;
+import com.reefbot.repository.PlayerFishingRepository;
 import com.reefbot.repository.PlayerRepository;
 import com.reefbot.service.game.handlers.FishingResultHandler;
 import com.reefbot.util.KeyboardBuilder;
@@ -28,34 +30,29 @@ public class NotificationScheduler {
             Нажми «✅ Забрать улов» чтобы получить рыбу.
             """;
 
+    private final PlayerFishingRepository playerFishingRepository;
     private final PlayerRepository playerRepository;
     private final TelegramClient telegramClient;
 
-    /**
-     * Every 30 seconds: find players who finished fishing but haven't collected yet.
-     * Transitions them to FISHING_RESULT and sends a notification.
-     */
     @Scheduled(fixedDelay = 30_000)
     public void notifyFishingComplete() {
-        List<Player> ready = playerRepository.findFishingReady(LocalDateTime.now());
+        List<PlayerFishing> ready = playerFishingRepository.findFishingReady(LocalDateTime.now());
 
-        for (Player player : ready) {
+        for (PlayerFishing fishing : ready) {
+            Player player = fishing.getPlayer();
             try {
-                // Mark notified first to prevent duplicate sends on next scheduler run
-                player.setFishingNotified(true);
-                // Always transition to FISHING_RESULT so BTN_COLLECT routes correctly
-                player.setCurrentScreen(PlayerScreen.FISHING_RESULT);
+                // Mark notified first to prevent duplicate sends on next run
+                fishing.setFishingNotified(true);
+                player.getState().setCurrentScreen(PlayerScreen.FISHING_RESULT);
                 playerRepository.save(player);
 
-                String spotName = player.getFishingSpot() != null
-                        ? player.getFishingSpot().getDisplayName().toLowerCase()
+                String spotName = fishing.getFishingSpot() != null
+                        ? fishing.getFishingSpot().getDisplayName().toLowerCase()
                         : "у берега";
-
-                String text = FISHING_DONE_TEXT.formatted(spotName);
 
                 telegramClient.execute(SendMessage.builder()
                         .chatId(String.valueOf(player.getTelegramId()))
-                        .text(text)
+                        .text(FISHING_DONE_TEXT.formatted(spotName))
                         .replyMarkup(KeyboardBuilder.builder()
                                 .row(FishingResultHandler.BTN_COLLECT)
                                 .build())

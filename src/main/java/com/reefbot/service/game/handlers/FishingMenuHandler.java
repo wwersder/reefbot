@@ -16,12 +16,12 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class FishingMenuHandler implements GameHandler {
 
-    public static final String BTN_SHORE              = "🏖 У берега — 1 мин";
-    public static final String BTN_REEF               = "🪨 У рифа — 10 мин";
-    public static final String BTN_OPEN_SEA_LOCKED    = "🌊 В открытом море — 30 мин 🔒 ур. 3";
-    public static final String BTN_OPEN_SEA_UNLOCKED  = "🌊 В открытом море — 30 мин";
-    public static final String BTN_BACK               = "◀️ Назад";
-    public static final String BTN_CAST               = "✅ Закинуть удочку";
+    public static final String BTN_SHORE             = "🏖 У берега — 1 мин";
+    public static final String BTN_REEF              = "🪨 У рифа — 10 мин";
+    public static final String BTN_OPEN_SEA_LOCKED   = "🌊 В открытом море — 30 мин 🔒 ур. 3";
+    public static final String BTN_OPEN_SEA_UNLOCKED = "🌊 В открытом море — 30 мин";
+    public static final String BTN_BACK              = "◀️ Назад";
+    public static final String BTN_CAST              = "✅ Закинуть удочку";
 
     private final FishingService fishingService;
     private final PlayerRepository playerRepository;
@@ -34,26 +34,26 @@ public class FishingMenuHandler implements GameHandler {
     @Override
     public BotResponse handle(Player player, Island island, String text) {
         return switch (text) {
-            case BTN_SHORE                             -> spotDetail(FishingSpot.SHORE, player);
-            case BTN_REEF                              -> spotDetail(FishingSpot.REEF, player);
+            case BTN_SHORE                                -> spotDetail(FishingSpot.SHORE, player);
+            case BTN_REEF                                 -> spotDetail(FishingSpot.REEF, player);
             case BTN_OPEN_SEA_LOCKED, BTN_OPEN_SEA_UNLOCKED -> handleOpenSea(player);
-            case BTN_BACK                              -> goBack(player, island);
-            case BTN_CAST                              -> castLine(player);
-            default                                    -> buildFishingMenu(player);
+            case BTN_BACK                                 -> goBack(player, island);
+            case BTN_CAST                                 -> castLine(player);
+            default                                       -> buildFishingMenu(player);
         };
     }
 
     private BotResponse spotDetail(FishingSpot spot, Player player) {
-        // Temporarily encode chosen spot in fishingSpot field (not yet started)
-        player.setFishingSpot(spot);
+        player.getFishing().setFishingSpot(spot);
         playerRepository.save(player);
-        return buildSpotDetail(spot, player);
+        return buildSpotDetail(spot);
     }
 
     private BotResponse handleOpenSea(Player player) {
-        if (player.getFishingLevel() < FishingSpot.OPEN_SEA.getMinLevel()) {
+        if (player.getFishing().getFishingLevel() < FishingSpot.OPEN_SEA.getMinLevel()) {
             return new BotResponse(
-                    "🔒 Открытое море доступно с уровня рыбака 3.\nСейчас у тебя уровень " + player.getFishingLevel() + ".",
+                    "🔒 Открытое море доступно с уровня рыбака 3.\nСейчас у тебя уровень "
+                            + player.getFishing().getFishingLevel() + ".",
                     null,
                     buildFishingKeyboard(player)
             );
@@ -62,11 +62,11 @@ public class FishingMenuHandler implements GameHandler {
     }
 
     private BotResponse castLine(Player player) {
-        FishingSpot spot = player.getFishingSpot();
+        FishingSpot spot = player.getFishing().getFishingSpot();
         if (spot == null) return buildFishingMenu(player);
 
-        fishingService.startFishing(player, spot); // saves player with finishAt
-        player.setCurrentScreen(PlayerScreen.FISHING_ACTIVE);
+        fishingService.startFishing(player, spot);
+        player.getState().setCurrentScreen(PlayerScreen.FISHING_ACTIVE);
         playerRepository.save(player);
 
         String text = String.format("""
@@ -79,19 +79,19 @@ public class FishingMenuHandler implements GameHandler {
     }
 
     private BotResponse goBack(Player player, Island island) {
-        if (player.getFishingSpot() != null) {
+        if (player.getFishing().getFishingSpot() != null) {
             // From spot detail → back to spot selection
-            player.setFishingSpot(null);
+            player.getFishing().setFishingSpot(null);
             playerRepository.save(player);
             return buildFishingMenu(player);
         }
         // From spot selection → back to main menu
-        player.setCurrentScreen(PlayerScreen.MAIN);
+        player.getState().setCurrentScreen(PlayerScreen.MAIN);
         playerRepository.save(player);
         return MainMenuHandler.showMainMenu(player, island);
     }
 
-    // ── Static helpers ──────────────────────────────────────────────────────
+    // ── Static helpers ───────────────────────────────────────────────────────
 
     public static BotResponse buildFishingMenu(Player player) {
         String text = String.format("""
@@ -99,13 +99,13 @@ public class FishingMenuHandler implements GameHandler {
                 Уровень рыбака: %d · ⭐ %d XP
 
                 Куда забросить удочку?
-                """, player.getFishingLevel(), player.getFishingXp());
+                """, player.getFishing().getFishingLevel(), player.getFishing().getFishingXp());
 
         return new BotResponse(text, null, buildFishingKeyboard(player));
     }
 
     private static org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard buildFishingKeyboard(Player player) {
-        boolean openSeaLocked = player.getFishingLevel() < FishingSpot.OPEN_SEA.getMinLevel();
+        boolean openSeaLocked = player.getFishing().getFishingLevel() < FishingSpot.OPEN_SEA.getMinLevel();
         String openSeaBtn = openSeaLocked ? BTN_OPEN_SEA_LOCKED : BTN_OPEN_SEA_UNLOCKED;
 
         return KeyboardBuilder.builder()
@@ -114,7 +114,7 @@ public class FishingMenuHandler implements GameHandler {
                 .build();
     }
 
-    private static BotResponse buildSpotDetail(FishingSpot spot, Player player) {
+    private static BotResponse buildSpotDetail(FishingSpot spot) {
         String bonusLine = spot.getBonusResource() != null
                 ? String.format("\n%s Шанс %s: %d%%",
                     bonusEmoji(spot), bonusName(spot), spot.getBonusChance())
