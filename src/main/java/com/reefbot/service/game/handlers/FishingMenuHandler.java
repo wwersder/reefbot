@@ -1,6 +1,5 @@
 package com.reefbot.service.game.handlers;
 
-import com.reefbot.bot.handlers.BonusCallbackHandler;
 import com.reefbot.bot.handlers.LevelsCallbackHandler;
 import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Island;
@@ -25,6 +24,7 @@ public class FishingMenuHandler implements GameHandler {
     public static final String BTN_BACK              = "◀️ Назад";
     public static final String BTN_CAST              = "✅ Закинуть удочку";
     public static final String BTN_LEVELS            = "📊 Уровни";
+    public static final String BTN_BONUSES           = "✨ Бонусы";
 
     private final FishingService fishingService;
     private final PlayerRepository playerRepository;
@@ -43,6 +43,7 @@ public class FishingMenuHandler implements GameHandler {
             case BTN_BACK                                    -> goBack(player, island);
             case BTN_CAST                                    -> castLine(player);
             case BTN_LEVELS                                  -> LevelsCallbackHandler.buildInitialMessage(player);
+            case BTN_BONUSES                                 -> showBonuses(player);
             default                                          -> buildFishingMenu(player);
         };
     }
@@ -63,6 +64,12 @@ public class FishingMenuHandler implements GameHandler {
             );
         }
         return spotDetail(FishingSpot.OPEN_SEA, player);
+    }
+
+    private BotResponse showBonuses(Player player) {
+        player.getState().setCurrentScreen(PlayerScreen.FISHING_BONUSES);
+        playerRepository.save(player);
+        return FishingBonusesHandler.buildBonusesScreen(player);
     }
 
     private BotResponse castLine(Player player) {
@@ -117,11 +124,14 @@ public class FishingMenuHandler implements GameHandler {
                 .build();
     }
 
-    private static BotResponse buildSpotDetail(FishingSpot spot, Player player) {
+    public static BotResponse buildSpotDetail(FishingSpot spot, Player player) {
         String bonusLine = spot.getBonusResource() != null
                 ? String.format("\n%s Шанс %s: %d%%",
                     bonusEmoji(spot), bonusName(spot), spot.getBonusChance())
                 : "";
+
+        boolean hasBonuses = player.getFishing().getFishingLevel() >= 2;
+        String bonusHintLine = hasBonuses ? "\n\n✨ У вас активны бонусы рыбака" : "";
 
         String text = String.format("""
                 %s Рыбалка %s
@@ -130,7 +140,7 @@ public class FishingMenuHandler implements GameHandler {
 
                 ⏱ Время: %d мин
                 🐟 Улов: %d–%d рыбы
-                ⭐ Опыт: +%d XP%s
+                ⭐ Опыт: +%d XP%s%s
                 """,
                 spot.getDisplayName().split(" ")[0],
                 spot.getDisplayName().substring(spot.getDisplayName().indexOf(' ')),
@@ -138,25 +148,16 @@ public class FishingMenuHandler implements GameHandler {
                 spot.getDurationMinutes(),
                 spot.getMinFish(), spot.getMaxFish(),
                 spot.getXpReward(),
-                bonusLine);
+                bonusLine,
+                bonusHintLine);
 
-        BotResponse spotResponse = new BotResponse(text, null,
-                KeyboardBuilder.builder()
-                        .row(BTN_CAST)
-                        .row(BTN_BACK)
-                        .build());
-
-        // If player has level bonuses — append inline bonus hint as followUp
-        if (player.getFishing().getFishingLevel() >= 2) {
-            BotResponse bonusHint = new BotResponse(
-                    BonusCallbackHandler.HINT_TEXT,
-                    null,
-                    BonusCallbackHandler.showKeyboard()
-            );
-            return spotResponse.withFollowUp(bonusHint);
+        KeyboardBuilder kb = KeyboardBuilder.builder().row(BTN_CAST);
+        if (hasBonuses) {
+            kb.row(BTN_BONUSES, BTN_BACK);
+        } else {
+            kb.row(BTN_BACK);
         }
-
-        return spotResponse;
+        return new BotResponse(text, null, kb.build());
     }
 
     private static String spotDescription(FishingSpot spot) {
