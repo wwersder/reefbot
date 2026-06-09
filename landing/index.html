@@ -363,8 +363,8 @@
     <p class="section-sub">Ресурсы копятся пока ты офлайн. Приходи, принимай решения, развивай остров.</p>
     <div class="steps">
       <div class="step"><div class="step-glow"></div><div class="step-num">01</div><div class="step-icon">🏝</div><h3>Назови свой остров</h3><p>Пройди онбординг, получи стартовые ресурсы и дай имя острову.</p></div>
-      <div class="step"><div class="step-glow"></div><div class="step-num">02</div><div class="step-icon">⏳</div><h3>Пассивная добыча</h3><p>Здания работают 24/7 — ресурсы накапливаются даже когда ты не в сети.</p></div>
-      <div class="step"><div class="step-glow"></div><div class="step-num">03</div><div class="step-icon">🏗</div><h3>Строй и развивайся</h3><p>9 зданий трёх тиров. Каждое даёт ресурсы или открывает новые механики.</p></div>
+      <div class="step"><div class="step-glow"></div><div class="step-num">02</div><div class="step-icon">⚡</div><h3>Занимайся активностями</h3><p>Рыбалка, ферма и другие занятия приносят ресурсы и опыт. У каждой активности своя прокачка и бонусы.</p></div>
+      <div class="step"><div class="step-glow"></div><div class="step-num">03</div><div class="step-icon">🏗</div><h3>Строй и развивайся</h3><p>9 зданий трёх тиров. Каждое даёт ресурсы или открывает новые механики — в разработке.</p></div>
       <div class="step"><div class="step-glow"></div><div class="step-num">04</div><div class="step-icon">⚓</div><h3>Разблокируй зоны</h3><p>Набирай очки развития и открывай редкие зоны — вплоть до портовой с кораллами.</p></div>
     </div>
   </div>
@@ -473,16 +473,16 @@
         </div>
         <div class="phone-msgs">
           <div class="msg msg-bot">
-            <div class="msg-text">🏝 Привет, первооткрыватель!</div>
-          </div>
-          <div class="msg msg-bot">
-            <div class="msg-text">Твой остров уже ждёт тебя. Готов дать ему имя?</div>
+            <div class="msg-text">🔔 Удочка готова! Улов ждёт тебя у берега.</div>
           </div>
           <div class="msg msg-user">
-            <div class="msg-text">Да! Называю его <b>Коралловый риф</b> 🪸</div>
+            <div class="msg-text">🎣 Забрать улов</div>
           </div>
           <div class="msg msg-bot">
-            <div class="msg-text">🎉 Остров «Коралловый риф» основан!<br/>Получаешь стартовые ресурсы:<br/>🪵 ×20 · 🪨 ×10</div>
+            <div class="msg-text">🐟 Поймано: 3 рыбы<br/>⭐ +5 XP · Ур. 2 → Ур. 3<br/>🎊 Открыт бонус: +10% XP</div>
+          </div>
+          <div class="msg msg-bot">
+            <div class="msg-text">🏖 У берега · 🪨 У рифа · 🌊 В море</div>
           </div>
           <div class="msg msg-typing">
             <span></span><span></span><span></span>
@@ -543,9 +543,9 @@ resizeOrbit(); window.addEventListener('resize', resizeOrbit);
 function getOrbits() {
   const base = Math.min(W, H) / 2;
   return [
-    {r:base*.55, speed:.014, particles:['🪵','🪨'], size:Math.max(13,base*.08)},
-    {r:base*.76, speed:.009, particles:['🐟','🐚','🌿'], size:Math.max(11,base*.07)},
-    {r:base*.95, speed:.006, particles:['🪸','⚓','🏗','🌲'], size:Math.max(10,base*.063)},
+    {r:base*.55, speed:.014, particles:['🪵','🪨','🎣'], size:Math.max(13,base*.08)},
+    {r:base*.76, speed:.009, particles:['🐟','🐚','🌿','⭐'], size:Math.max(11,base*.07)},
+    {r:base*.95, speed:.006, particles:['🪸','⚓','🏗','🌲','🔱'], size:Math.max(10,base*.063)},
   ];
 }
 let t=0;
@@ -591,8 +591,8 @@ fetch('stats.json?t='+Date.now())
 // ── ROADMAP DECK ──────────────────────────────────────────
 const phases=[
   {cls:'done',eyebrow:'Фаза 1',title:'🏝 Онбординг',status:'✅ Готово',items:['Приветственный экран','Создание и имя острова','Стартовые ресурсы','Подключение к Telegram API']},
-  {cls:'progress',eyebrow:'Фаза 2',title:'🏗 Игровой цикл',status:'🔄 В разработке',items:['Пассивная генерация ресурсов','Строительство 9 зданий','Экран острова и инвентарь','Очки развития и зоны']},
-  {cls:'planned',eyebrow:'Фаза 3',title:'⚓ Экспедиции',status:'📋 Запланировано',items:['Морские экспедиции','Торговля с купцами','Случайные события','Уведомления о постройках']},
+  {cls:'done',eyebrow:'Фаза 2',title:'🎣 Рыбалка',status:'✅ Готово',items:['Активная рыбалка (3 места)','Уведомления об улове','10 уровней рыбака с бонусами','Команда /levels с навигацией']},
+  {cls:'progress',eyebrow:'Фаза 3',title:'🏗 Игровой цикл',status:'🔄 В разработке',items:['Строительство 9 зданий','Пассивная генерация ресурсов','Инвентарь и торговля','Очки развития и зоны']},
   {cls:'planned',eyebrow:'Фаза 4',title:'🌍 Мультиплеер',status:'🔒 Позже',items:['Альянсы и кланы','Рейтинг островов','Совместные постройки','Глобальные события']},
 ];
 const deck=document.getElementById('roadmapDeck');
