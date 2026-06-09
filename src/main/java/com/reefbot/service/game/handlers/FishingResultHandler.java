@@ -67,7 +67,30 @@ public class FishingResultHandler implements GameHandler {
 
         BotResponse catchMessage = new BotResponse(sb.toString());
         BotResponse mainMenu = MainMenuHandler.showMainMenu(player, island);
+
+        if (result.leveledUp()) {
+            BotResponse levelUpMessage = buildLevelUpMessage(result.newLevel());
+            return catchMessage.withFollowUp(levelUpMessage.withFollowUp(mainMenu));
+        }
+
         return catchMessage.withFollowUp(mainMenu);
+    }
+
+    private static BotResponse buildLevelUpMessage(int newLevel) {
+        String name = FishingService.levelName(newLevel);
+        String unlockText = FishingService.levelUnlockText(newLevel);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("🎊 Уровень рыбака повышен!\n\n");
+        sb.append(name).append(" · Уровень ").append(newLevel).append("\n\n");
+
+        if (unlockText != null) {
+            sb.append(unlockText);
+        } else {
+            sb.append("Продолжай рыбачить — впереди ещё много открытий.");
+        }
+
+        return new BotResponse(sb.toString());
     }
 
     public static BotResponse buildResultScreen(Player player, Island island, FishingService fishingService) {

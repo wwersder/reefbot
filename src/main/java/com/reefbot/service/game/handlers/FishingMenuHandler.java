@@ -94,12 +94,13 @@ public class FishingMenuHandler implements GameHandler {
     // ── Static helpers ───────────────────────────────────────────────────────
 
     public static BotResponse buildFishingMenu(Player player) {
+        int level = player.getFishing().getFishingLevel();
         String text = String.format("""
                 🎣 Рыбалка
-                Уровень рыбака: %d · ⭐ %d XP
+                %s · Ур. %d · ⭐ %d XP
 
                 Куда забросить удочку?
-                """, player.getFishing().getFishingLevel(), player.getFishing().getFishingXp());
+                """, FishingService.levelName(level), level, player.getFishing().getFishingXp());
 
         return new BotResponse(text, null, buildFishingKeyboard(player));
     }

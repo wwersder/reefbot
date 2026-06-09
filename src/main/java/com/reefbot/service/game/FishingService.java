@@ -17,7 +17,22 @@ import java.util.Random;
 @RequiredArgsConstructor
 public class FishingService {
 
-    private static final int[] XP_THRESHOLDS = {0, 30, 100, 250, 500, Integer.MAX_VALUE};
+    // Index = level-1, value = cumulative XP needed to reach that level
+    // Level 10 is max; Integer.MAX_VALUE is a guard so levelForXp never exceeds 10
+    private static final int[] XP_THRESHOLDS = {0, 50, 150, 350, 700, 1200, 2000, 3500, 6000, 10000, Integer.MAX_VALUE};
+
+    private static final String[] LEVEL_NAMES = {
+            "🪣 Любитель",     // 1
+            "🎣 Рыбак",        // 2
+            "🐟 Бывалый",      // 3
+            "🐠 Знаток рифов", // 4
+            "🦀 Охотник",      // 5
+            "⚓ Морской волк",  // 6
+            "🐬 Друг океана",  // 7
+            "🦈 Капитан глубин", // 8
+            "🌊 Повелитель морей", // 9
+            "🔱 Легенда архипелага" // 10
+    };
 
     private final ResourceService resourceService;
     private final IslandRepository islandRepository;
@@ -54,12 +69,22 @@ public class FishingService {
 
     public FishingResult collectFish(Player player, Island island) {
         FishingSpot spot = player.getFishing().getFishingSpot();
+        int oldLevel = player.getFishing().getFishingLevel();
 
-        int fish = spot.getMinFish() + random.nextInt(spot.getMaxFish() - spot.getMinFish() + 1);
+        // Apply level bonuses
+        int minFishBonus = oldLevel >= 2 ? 1 : 0;
+        int maxFishBonus = oldLevel >= 8 ? 2 : 0;
+        int effectiveMin = spot.getMinFish() + minFishBonus;
+        int effectiveMax = spot.getMaxFish() + maxFishBonus;
+        int fish = effectiveMin + random.nextInt(effectiveMax - effectiveMin + 1);
 
+        int xpMultiplierPct = oldLevel >= 7 ? 130 : (oldLevel >= 4 ? 110 : 100);
+        int xpEarned = spot.getXpReward() * xpMultiplierPct / 100;
+
+        int effectiveBonusChance = spot.getBonusChance() + (oldLevel >= 5 ? 20 : 0);
         ResourceType bonusType = null;
         int bonusAmount = 0;
-        if (spot.getBonusResource() != null && random.nextInt(100) < spot.getBonusChance()) {
+        if (spot.getBonusResource() != null && random.nextInt(100) < effectiveBonusChance) {
             bonusType = spot.getBonusResource();
             bonusAmount = 1;
         }
@@ -70,7 +95,6 @@ public class FishingService {
         }
         islandRepository.save(island);
 
-        int xpEarned = spot.getXpReward();
         int totalXp = player.getFishing().getFishingXp() + xpEarned;
         int newLevel = levelForXp(totalXp);
 
@@ -83,12 +107,33 @@ public class FishingService {
         player.getState().setHasCompletedFirstFish(true);
         playerRepository.save(player);
 
-        return new FishingResult(spot, fish, bonusType, bonusAmount, xpEarned, totalXp, newLevel, wasFirst);
+        return new FishingResult(spot, fish, bonusType, bonusAmount, xpEarned, totalXp, oldLevel, newLevel, wasFirst);
     }
 
     public int xpForNextLevel(int level) {
         if (level >= XP_THRESHOLDS.length - 1) return 0;
         return XP_THRESHOLDS[level];
+    }
+
+    public static String levelName(int level) {
+        int idx = Math.max(0, Math.min(level - 1, LEVEL_NAMES.length - 1));
+        return LEVEL_NAMES[idx];
+    }
+
+    /** What unlocks / improves at this level. Null = generic encouragement. */
+    public static String levelUnlockText(int level) {
+        return switch (level) {
+            case 2 -> "+1 к минимальному улову на всех местах — каждая поездка стала чуть выгоднее.";
+            case 3 -> "🔓 Открыто новое место: 🌊 В море\nДальше от берега — крупнее улов.";
+            case 4 -> "+10% XP за каждую рыбалку — прокачка пойдёт быстрее.";
+            case 5 -> "+20% шанс бонусного ресурса на всех местах.";
+            case 6 -> "🔮 Открыт новый ресурс: Жемчуг\nТеперь у рифа и в море можно найти жемчуг.";
+            case 7 -> "+30% XP за рыбалку — поздние уровни стали ближе.";
+            case 8 -> "+2 к максимальному улову на всех местах.";
+            case 9 -> "🎣🎣 Открыта вторая удочка!\nТеперь можно забросить удочку сразу в два места.";
+            case 10 -> "✨ Легендарный улов разблокирован.\nПри каждой рыбалке есть шанс поймать редкий артефакт.";
+            default -> null;
+        };
     }
 
     private int levelForXp(int xp) {

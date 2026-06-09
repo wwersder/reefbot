@@ -2,13 +2,13 @@ package com.reefbot.service;
 
 import com.reefbot.entity.Player;
 import com.reefbot.entity.PlayerFishing;
-import com.reefbot.enums.PlayerScreen;
 import com.reefbot.repository.PlayerFishingRepository;
 import com.reefbot.repository.PlayerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
@@ -29,10 +29,10 @@ public class NotificationScheduler {
             """;
 
     private final PlayerFishingRepository playerFishingRepository;
-    private final PlayerRepository playerRepository;
     private final TelegramClient telegramClient;
 
     @Scheduled(fixedDelay = 30_000)
+    @Transactional
     public void notifyFishingComplete() {
         List<PlayerFishing> ready = playerFishingRepository.findFishingReady(LocalDateTime.now());
 
@@ -41,8 +41,7 @@ public class NotificationScheduler {
             try {
                 // Mark notified first to prevent duplicate sends on next run
                 fishing.setFishingNotified(true);
-                player.getState().setCurrentScreen(PlayerScreen.FISHING_RESULT);
-                playerRepository.save(player);
+                playerFishingRepository.save(fishing);
 
                 String spotName = fishing.getFishingSpot() != null
                         ? fishing.getFishingSpot().getDisplayName().toLowerCase()

@@ -22,6 +22,11 @@ public record FishingResult(
         int bonusAmount,
         int xpEarned,
         int totalXp,
+        int oldLevel,
         int newLevel,
         boolean wasFirstCatch
-) {}
+) {
+    public boolean leveledUp() {
+        return newLevel > oldLevel;
+    }
+}
