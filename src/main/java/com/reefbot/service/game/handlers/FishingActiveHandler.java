@@ -42,7 +42,7 @@ public class FishingActiveHandler implements GameHandler {
     }
 
     public static BotResponse buildStatusScreen(Player player, FishingService fishingService, ReplyKeyboard keyboard) {
-        long remaining = fishingService.minutesRemaining(player);
+        String remaining = fishingService.timeRemainingText(player);
         String spot = player.getFishingSpot() != null
                 ? player.getFishingSpot().getDisplayName()
                 : "неизвестно";
@@ -50,7 +50,7 @@ public class FishingActiveHandler implements GameHandler {
         String text = String.format("""
                 ⏳ Удочка заброшена %s
 
-                Осталось: %d мин
+                Осталось: %s
                 """, spot.toLowerCase(), remaining);
 
         return new BotResponse(text, null, keyboard);

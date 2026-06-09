@@ -22,6 +22,15 @@ public class KeyboardBuilder {
         return this;
     }
 
+    public KeyboardBuilder row(KeyboardButton... buttons) {
+        KeyboardRow row = new KeyboardRow();
+        for (KeyboardButton button : buttons) {
+            row.add(button);
+        }
+        rows.add(row);
+        return this;
+    }
+
     public KeyboardBuilder resize(boolean value) {
         this.resize = value;
         return this;

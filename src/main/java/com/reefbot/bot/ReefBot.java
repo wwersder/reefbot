@@ -109,6 +109,10 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
         } catch (TelegramApiException e) {
             throw new RuntimeException("Failed to send Telegram response", e);
         }
+
+        if (response.followUp() != null) {
+            sendResponse(chatId, response.followUp());
+        }
     }
 
     private InputFile createInputFile(String photoPath) {

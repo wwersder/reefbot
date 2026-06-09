@@ -40,6 +40,16 @@ public class FishingService {
         return java.time.Duration.between(LocalDateTime.now(), player.getFishingFinishAt()).toMinutes() + 1;
     }
 
+    /** Human-readable remaining time, e.g. "8 мин 42 сек" or "45 сек". */
+    public String timeRemainingText(Player player) {
+        if (!isActive(player)) return "0 сек";
+        long totalSeconds = java.time.Duration.between(LocalDateTime.now(), player.getFishingFinishAt()).getSeconds();
+        long minutes = totalSeconds / 60;
+        long seconds = totalSeconds % 60;
+        if (minutes > 0) return minutes + " мин " + seconds + " сек";
+        return seconds + " сек";
+    }
+
     public void startFishing(Player player, FishingSpot spot) {
         player.setFishingSpot(spot);
         player.setFishingFinishAt(LocalDateTime.now().plusMinutes(spot.getDurationMinutes()));

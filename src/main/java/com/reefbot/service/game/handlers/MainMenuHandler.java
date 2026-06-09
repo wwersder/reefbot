@@ -11,16 +11,16 @@ import com.reefbot.util.KeyboardBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 
 @Component
 @RequiredArgsConstructor
 public class MainMenuHandler implements GameHandler {
 
-    // Button labels — used here and in FishingMenuHandler / ReceiveStarterPackStepHandler
-    public static final String BTN_ISLAND   = "🏝 Мой остров";
-    public static final String BTN_BUILD    = "🏗 Строить";
-    public static final String BTN_INV      = "📦 Инвентарь";
-    public static final String BTN_FISHING  = "🎣 Рыбалка";
+    public static final String BTN_ISLAND  = "🏝 Мой остров";
+    public static final String BTN_BUILD   = "🏗 Строить";
+    public static final String BTN_INV     = "📦 Инвентарь";
+    public static final String BTN_FISHING = "🎣 Рыбалка";
 
     private final FishingService fishingService;
     private final PlayerRepository playerRepository;
@@ -75,8 +75,18 @@ public class MainMenuHandler implements GameHandler {
     public static ReplyKeyboard keyboard(Player player) {
         return KeyboardBuilder.builder()
                 .row(BTN_ISLAND, BTN_BUILD)
-                .row(BTN_INV, BTN_FISHING)
+                .row(new KeyboardButton(BTN_INV), buildFishingButton(player))
                 .build();
+    }
+
+    private static KeyboardButton buildFishingButton(Player player) {
+        java.time.LocalDateTime finishAt = player.getFishingFinishAt();
+        KeyboardButton btn = new KeyboardButton(BTN_FISHING);
+        // Green when catch is ready and not yet collected
+        if (finishAt != null && !java.time.LocalDateTime.now().isBefore(finishAt)) {
+            btn.setStyle("success");
+        }
+        return btn;
     }
 
     public static String stageFor(int devPoints) {

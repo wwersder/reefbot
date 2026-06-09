@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class FishingResultHandler implements GameHandler {
 
-    private static final String BTN_COLLECT = "✅ Забрать улов";
+    public static final String BTN_COLLECT = "✅ Забрать улов";
 
     private final FishingService fishingService;
     private final PlayerRepository playerRepository;
@@ -43,7 +43,7 @@ public class FishingResultHandler implements GameHandler {
 
     private BotResponse buildCollectedResponse(FishingResult result, Player player, Island island) {
         StringBuilder sb = new StringBuilder();
-        sb.append("🎉 Улов готов!\n\n");
+        sb.append("🎉 Улов!\n\n");
         sb.append("Место: ").append(result.spot().getDisplayName()).append("\n");
         sb.append("Поймал: 🐟 ×").append(result.fishCaught());
 
@@ -66,12 +66,10 @@ public class FishingResultHandler implements GameHandler {
             sb.append("\n\n🎣 Первый улов! Рыбалка — хороший способ пополнить запасы.");
         }
 
-        String stage = MainMenuHandler.stageFor(island.getDevPoints());
-        String menuText = String.format("\n\n🏝 Остров «%s»\n%s · %d ОР",
-                island.getName(), stage, island.getDevPoints());
-        sb.append(menuText);
-
-        return new BotResponse(sb.toString(), null, MainMenuHandler.keyboard(player));
+        // Catch text (no keyboard) + followUp with main menu
+        BotResponse catchMessage = new BotResponse(sb.toString());
+        BotResponse mainMenu = MainMenuHandler.showMainMenu(player, island);
+        return catchMessage.withFollowUp(mainMenu);
     }
 
     /** Build the "Забрать улов" screen shown before collection. */
