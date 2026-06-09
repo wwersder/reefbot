@@ -5,8 +5,6 @@ import com.reefbot.entity.PlayerFishing;
 import com.reefbot.enums.PlayerScreen;
 import com.reefbot.repository.PlayerFishingRepository;
 import com.reefbot.repository.PlayerRepository;
-import com.reefbot.service.game.handlers.FishingResultHandler;
-import com.reefbot.util.KeyboardBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -27,7 +25,7 @@ public class NotificationScheduler {
             🔔 Улов готов!
 
             Удочка ждёт тебя %s.
-            Нажми «✅ Забрать улов» чтобы получить рыбу.
+            Возвращайся и забери рыбу.
             """;
 
     private final PlayerFishingRepository playerFishingRepository;
@@ -53,9 +51,6 @@ public class NotificationScheduler {
                 telegramClient.execute(SendMessage.builder()
                         .chatId(String.valueOf(player.getTelegramId()))
                         .text(FISHING_DONE_TEXT.formatted(spotName))
-                        .replyMarkup(KeyboardBuilder.builder()
-                                .row(FishingResultHandler.BTN_COLLECT)
-                                .build())
                         .build());
 
             } catch (TelegramApiException e) {
