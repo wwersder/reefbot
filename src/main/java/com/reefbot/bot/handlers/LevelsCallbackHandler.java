@@ -144,19 +144,18 @@ public class LevelsCallbackHandler implements CallbackHandler {
     private static InlineKeyboardMarkup buildKeyboardImpl(int current) {
         InlineKeyboardRow row = new InlineKeyboardRow();
 
-        if (current > 1) {
-            row.add(InlineKeyboardButton.builder()
-                    .text("◀️")
-                    .callbackData("levels:" + (current - 1))
-                    .build());
-        }
+        int prev = current > 1 ? current - 1 : MAX_LEVEL;
+        int next = current < MAX_LEVEL ? current + 1 : 1;
 
-        if (current < MAX_LEVEL) {
-            row.add(InlineKeyboardButton.builder()
-                    .text("▶️")
-                    .callbackData("levels:" + (current + 1))
-                    .build());
-        }
+        row.add(InlineKeyboardButton.builder()
+                .text("◀️")
+                .callbackData("levels:" + prev)
+                .build());
+
+        row.add(InlineKeyboardButton.builder()
+                .text("▶️")
+                .callbackData("levels:" + next)
+                .build());
 
         return InlineKeyboardMarkup.builder().keyboardRow(row).build();
     }

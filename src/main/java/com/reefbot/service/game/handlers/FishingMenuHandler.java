@@ -1,5 +1,7 @@
 package com.reefbot.service.game.handlers;
 
+import com.reefbot.bot.handlers.BonusCallbackHandler;
+import com.reefbot.bot.handlers.LevelsCallbackHandler;
 import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
@@ -22,7 +24,7 @@ public class FishingMenuHandler implements GameHandler {
     public static final String BTN_OPEN_SEA_UNLOCKED = "🌊 В море";
     public static final String BTN_BACK              = "◀️ Назад";
     public static final String BTN_CAST              = "✅ Закинуть удочку";
-    public static final String BTN_BONUSES           = "✨ Бонусы";
+    public static final String BTN_LEVELS            = "📊 Уровни";
 
     private final FishingService fishingService;
     private final PlayerRepository playerRepository;
@@ -35,20 +37,20 @@ public class FishingMenuHandler implements GameHandler {
     @Override
     public BotResponse handle(Player player, Island island, String text) {
         return switch (text) {
-            case BTN_SHORE                                -> spotDetail(FishingSpot.SHORE, player);
-            case BTN_REEF                                 -> spotDetail(FishingSpot.REEF, player);
+            case BTN_SHORE                                   -> spotDetail(FishingSpot.SHORE, player);
+            case BTN_REEF                                    -> spotDetail(FishingSpot.REEF, player);
             case BTN_OPEN_SEA_LOCKED, BTN_OPEN_SEA_UNLOCKED -> handleOpenSea(player);
-            case BTN_BACK                                 -> goBack(player, island);
-            case BTN_CAST                                 -> castLine(player);
-            case BTN_BONUSES                              -> showBonuses(player);
-            default                                       -> buildFishingMenu(player);
+            case BTN_BACK                                    -> goBack(player, island);
+            case BTN_CAST                                    -> castLine(player);
+            case BTN_LEVELS                                  -> LevelsCallbackHandler.buildInitialMessage(player);
+            default                                          -> buildFishingMenu(player);
         };
     }
 
     private BotResponse spotDetail(FishingSpot spot, Player player) {
         player.getFishing().setFishingSpot(spot);
         playerRepository.save(player);
-        return buildSpotDetail(spot);
+        return buildSpotDetail(spot, player);
     }
 
     private BotResponse handleOpenSea(Player player) {
@@ -61,12 +63,6 @@ public class FishingMenuHandler implements GameHandler {
             );
         }
         return spotDetail(FishingSpot.OPEN_SEA, player);
-    }
-
-    private BotResponse showBonuses(Player player) {
-        player.getState().setCurrentScreen(PlayerScreen.FISHING_BONUSES);
-        playerRepository.save(player);
-        return FishingBonusesHandler.buildBonusesScreen(player);
     }
 
     private BotResponse castLine(Player player) {
@@ -88,12 +84,10 @@ public class FishingMenuHandler implements GameHandler {
 
     private BotResponse goBack(Player player, Island island) {
         if (player.getFishing().getFishingSpot() != null) {
-            // From spot detail → back to spot selection
             player.getFishing().setFishingSpot(null);
             playerRepository.save(player);
             return buildFishingMenu(player);
         }
-        // From spot selection → back to main menu
         player.getState().setCurrentScreen(PlayerScreen.MAIN);
         playerRepository.save(player);
         return MainMenuHandler.showMainMenu(player, island);
@@ -116,19 +110,14 @@ public class FishingMenuHandler implements GameHandler {
     private static org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard buildFishingKeyboard(Player player) {
         boolean openSeaLocked = player.getFishing().getFishingLevel() < FishingSpot.OPEN_SEA.getMinLevel();
         String openSeaBtn = openSeaLocked ? BTN_OPEN_SEA_LOCKED : BTN_OPEN_SEA_UNLOCKED;
-        boolean hasBonuses = player.getFishing().getFishingLevel() >= 2;
 
-        KeyboardBuilder kb = KeyboardBuilder.builder()
-                .row(BTN_SHORE, BTN_REEF, openSeaBtn);
-        if (hasBonuses) {
-            kb.row(BTN_BONUSES, BTN_BACK);
-        } else {
-            kb.row(BTN_BACK);
-        }
-        return kb.build();
+        return KeyboardBuilder.builder()
+                .row(BTN_SHORE, BTN_REEF, openSeaBtn)
+                .row(BTN_LEVELS, BTN_BACK)
+                .build();
     }
 
-    private static BotResponse buildSpotDetail(FishingSpot spot) {
+    private static BotResponse buildSpotDetail(FishingSpot spot, Player player) {
         String bonusLine = spot.getBonusResource() != null
                 ? String.format("\n%s Шанс %s: %d%%",
                     bonusEmoji(spot), bonusName(spot), spot.getBonusChance())
@@ -151,11 +140,23 @@ public class FishingMenuHandler implements GameHandler {
                 spot.getXpReward(),
                 bonusLine);
 
-        return new BotResponse(text, null,
+        BotResponse spotResponse = new BotResponse(text, null,
                 KeyboardBuilder.builder()
                         .row(BTN_CAST)
                         .row(BTN_BACK)
                         .build());
+
+        // If player has level bonuses — append inline bonus hint as followUp
+        if (player.getFishing().getFishingLevel() >= 2) {
+            BotResponse bonusHint = new BotResponse(
+                    BonusCallbackHandler.HINT_TEXT,
+                    null,
+                    BonusCallbackHandler.showKeyboard()
+            );
+            return spotResponse.withFollowUp(bonusHint);
+        }
+
+        return spotResponse;
     }
 
     private static String spotDescription(FishingSpot spot) {
