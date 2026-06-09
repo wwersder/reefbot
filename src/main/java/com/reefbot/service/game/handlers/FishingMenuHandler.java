@@ -16,10 +16,10 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class FishingMenuHandler implements GameHandler {
 
-    public static final String BTN_SHORE             = "🏖 У берега — 1 мин";
-    public static final String BTN_REEF              = "🪨 У рифа — 10 мин";
-    public static final String BTN_OPEN_SEA_LOCKED   = "🌊 В открытом море — 30 мин 🔒 ур. 3";
-    public static final String BTN_OPEN_SEA_UNLOCKED = "🌊 В открытом море — 30 мин";
+    public static final String BTN_SHORE             = "🏖 У берега";
+    public static final String BTN_REEF              = "🪨 У рифа";
+    public static final String BTN_OPEN_SEA_LOCKED   = "🌊 В море 🔒 ур. 3";
+    public static final String BTN_OPEN_SEA_UNLOCKED = "🌊 В море";
     public static final String BTN_BACK              = "◀️ Назад";
     public static final String BTN_CAST              = "✅ Закинуть удочку";
 
