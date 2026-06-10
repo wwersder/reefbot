@@ -30,7 +30,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class ShoreZoneHandler implements GameHandler {
 
-    public static final String BTN_FISHING = "🎣 Рыбалка";
+    public static final String BTN_FISHING = "Рыбалка";
     public static final String BTN_BACK    = "◀️ На остров";
 
     private static final List<String> FLAVOR = List.of(
@@ -126,7 +126,7 @@ public class ShoreZoneHandler implements GameHandler {
     }
 
     private static ReplyKeyboard keyboard(Player player) {
-        KeyboardButton fishingBtn = new KeyboardButton(BTN_FISHING);
+        KeyboardButton fishingBtn = KeyboardBuilder.btn(BTN_FISHING, ReefEmoji.FISHING.id());
         LocalDateTime finishAt = player.getFishing().getFishingFinishAt();
         if (finishAt != null && !LocalDateTime.now().isBefore(finishAt)) {
             fishingBtn.setStyle("success");

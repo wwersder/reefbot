@@ -49,6 +49,13 @@ public class KeyboardBuilder {
                 .build();
     }
 
+    /** Кнопка с кастомным эмодзи-иконкой (иконка отображается перед текстом). */
+    public static KeyboardButton btn(String text, String iconCustomEmojiId) {
+        KeyboardButton btn = new KeyboardButton(text);
+        btn.setIconCustomEmojiId(iconCustomEmojiId);
+        return btn;
+    }
+
     public static KeyboardBuilder builder() {
         return new KeyboardBuilder();
     }

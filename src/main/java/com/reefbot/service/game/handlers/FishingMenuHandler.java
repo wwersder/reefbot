@@ -24,12 +24,12 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class FishingMenuHandler implements GameHandler {
 
-    public static final String BTN_SHORE             = ReefEmoji.SHORE_TEXT    + " У берега";
-    public static final String BTN_REEF              = ReefEmoji.REEF_TEXT     + " У рифа";
-    public static final String BTN_OPEN_SEA_LOCKED   = ReefEmoji.OPEN_SEA_TEXT + " В море 🔒 ур. 3";
-    public static final String BTN_OPEN_SEA_UNLOCKED = ReefEmoji.OPEN_SEA_TEXT + " В море";
+    public static final String BTN_SHORE             = "У берега";
+    public static final String BTN_REEF              = "У рифа";
+    public static final String BTN_OPEN_SEA_LOCKED   = "В море 🔒 ур. 3";
+    public static final String BTN_OPEN_SEA_UNLOCKED = "В море";
     public static final String BTN_BACK              = "◀️ Назад";
-    public static final String BTN_LEVELS            = ReefEmoji.LEVELS_TEXT   + " Уровни";
+    public static final String BTN_LEVELS            = "Уровни";
     public static final String BTN_CAST              = "✅ Закинуть удочку";
     public static final String BTN_BONUSES           = "✨ Бонусы";
 
@@ -124,11 +124,18 @@ public class FishingMenuHandler implements GameHandler {
 
     private static org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard buildFishingKeyboard(Player player) {
         boolean openSeaLocked = player.getFishing().getFishingLevel() < FishingSpot.OPEN_SEA.getMinLevel();
-        String openSeaBtn = openSeaLocked ? BTN_OPEN_SEA_LOCKED : BTN_OPEN_SEA_UNLOCKED;
+        String openSeaLabel = openSeaLocked ? BTN_OPEN_SEA_LOCKED : BTN_OPEN_SEA_UNLOCKED;
 
         return KeyboardBuilder.builder()
-                .row(BTN_SHORE, BTN_REEF, openSeaBtn)
-                .row(BTN_LEVELS, BTN_BACK)
+                .row(
+                    KeyboardBuilder.btn(BTN_SHORE, ReefEmoji.SHORE.id()),
+                    KeyboardBuilder.btn(BTN_REEF,  ReefEmoji.REEF.id()),
+                    KeyboardBuilder.btn(openSeaLabel, ReefEmoji.OPEN_SEA.id())
+                )
+                .row(
+                    KeyboardBuilder.btn(BTN_LEVELS, ReefEmoji.LEVELS.id()),
+                    new org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton(BTN_BACK)
+                )
                 .build();
     }
 
