@@ -111,14 +111,15 @@ public class FishingMenuHandler implements GameHandler {
 
     public static BotResponse buildFishingMenu(Player player) {
         int level = player.getFishing().getFishingLevel();
-        String text = String.format("""
-                🎣 Рыбалка
-                %s · Ур. %d · ⭐ %d XP
 
-                Куда забросить удочку?
-                """, FishingService.levelName(level), level, player.getFishing().getFishingXp());
+        RichText rt = new RichText();
+        rt.emoji(ReefEmoji.FISHING).add(" ").bold("Рыбалка")
+          .add("\n")
+          .add(FishingService.levelName(level) + " · Ур. " + level + " · ")
+          .emoji(ReefEmoji.STAR).add(" " + player.getFishing().getFishingXp() + " XP")
+          .add("\n\nКуда забросить удочку?");
 
-        return new BotResponse(text, null, buildFishingKeyboard(player));
+        return rt.build(buildFishingKeyboard(player));
     }
 
     private static org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard buildFishingKeyboard(Player player) {
