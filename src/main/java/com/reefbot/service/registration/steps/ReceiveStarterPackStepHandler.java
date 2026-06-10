@@ -78,7 +78,7 @@ public class ReceiveStarterPackStepHandler implements OnboardingStepHandler {
                 🏝 Остров «%s» готов к развитию!
 
                 🎣 В стартовом наборе нашлась старая удочка.
-                Самое время испытать её — нажми «Рыбалка».
+                Самое время испытать её — загляни на 🏖 Берег.
 
                 %s · %d ОР
                 """,
@@ -86,6 +86,6 @@ public class ReceiveStarterPackStepHandler implements OnboardingStepHandler {
                 MainMenuHandler.stageFor(island.getDevPoints()),
                 island.getDevPoints());
 
-        return new BotResponse(welcomeText, null, MainMenuHandler.keyboard(player));
+        return new BotResponse(welcomeText, null, MainMenuHandler.keyboard(player, island));
     }
 }
