@@ -29,9 +29,9 @@ public class FishingActiveHandler implements GameHandler {
     @Override
     public BotResponse handle(Player player, Island island, String text) {
         if (FishingMenuHandler.BTN_BACK.equals(text)) {
-            player.getState().setCurrentScreen(PlayerScreen.MAIN);
+            player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
             playerRepository.save(player);
-            return MainMenuHandler.showMainMenu(player, island);
+            return ShoreZoneHandler.buildZoneScreen(player);
         }
 
         if (fishingService.isReady(player)) {

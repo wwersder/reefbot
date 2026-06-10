@@ -34,7 +34,8 @@ public class FishingResultHandler implements GameHandler {
 
         FishingResult result = fishingService.collectFish(player, island);
 
-        player.getState().setCurrentScreen(PlayerScreen.MAIN);
+        // После сбора игрок возвращается в зону «Берег» (навигация: остров → зона → активность)
+        player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
         playerRepository.save(player);
 
         return buildCollectedResponse(result, player, island);
@@ -66,14 +67,14 @@ public class FishingResultHandler implements GameHandler {
         }
 
         BotResponse catchMessage = new BotResponse(sb.toString());
-        BotResponse mainMenu = MainMenuHandler.showMainMenu(player, island);
+        BotResponse zoneScreen = ShoreZoneHandler.buildZoneScreen(player);
 
         if (result.leveledUp()) {
             BotResponse levelUpMessage = buildLevelUpMessage(result.newLevel());
-            return catchMessage.withFollowUp(levelUpMessage.withFollowUp(mainMenu));
+            return catchMessage.withFollowUp(levelUpMessage.withFollowUp(zoneScreen));
         }
 
-        return catchMessage.withFollowUp(mainMenu);
+        return catchMessage.withFollowUp(zoneScreen);
     }
 
     private static BotResponse buildLevelUpMessage(int newLevel) {

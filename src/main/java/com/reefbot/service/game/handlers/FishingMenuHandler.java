@@ -95,9 +95,9 @@ public class FishingMenuHandler implements GameHandler {
             playerRepository.save(player);
             return buildFishingMenu(player);
         }
-        player.getState().setCurrentScreen(PlayerScreen.MAIN);
+        player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
         playerRepository.save(player);
-        return MainMenuHandler.showMainMenu(player, island);
+        return ShoreZoneHandler.buildZoneScreen(player);
     }
 
     // ── Static helpers ───────────────────────────────────────────────────────
