@@ -4,6 +4,9 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
   <title>ReefBot — Построй свой остров в Telegram</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet"/>
   <style>
     :root {
       --bg: #04091a;
@@ -120,6 +123,14 @@
     .bld-card.t2-card:hover{border-color:rgba(0,200,255,.4)}
     .bld-card.t3-card:hover{border-color:rgba(124,106,247,.5)}
 
+    /* ── CLASSIFIED BUILDINGS ── */
+    .bld-card.classified{border-color:rgba(93,128,153,.12);cursor:default}
+    .bld-card.classified:hover{transform:none;box-shadow:none;border-color:rgba(93,128,153,.22)}
+    .classified-lock{font-size:1.1rem;margin-bottom:6px;opacity:.4}
+    .redact-bar{display:block;height:13px;border-radius:4px;background:rgba(93,128,153,.2);margin-bottom:4px}
+    .redact-sm{height:10px;border-radius:3px;background:rgba(93,128,153,.14);display:inline-block;vertical-align:middle}
+    .bld-note{margin-top:20px;font-size:.78rem;color:var(--muted);font-style:italic}
+
     /* ── ZONES ── */
     .zones-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
     .zone-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 18px;text-align:center;transition:border-color .25s,transform .2s}
@@ -128,6 +139,16 @@
     .zone-name{font-weight:700;font-size:.9rem;margin-bottom:4px}
     .zone-req{font-size:.75rem;color:var(--muted)}
     .zone-locked{font-size:.68rem;font-weight:700;color:var(--gold);background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.2);border-radius:8px;padding:2px 8px;display:inline-block;margin-top:6px}
+
+    /* ── ECONOMY TEASER ── */
+    .teaser-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:48px}
+    .teaser-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:26px 22px;position:relative;overflow:hidden;transition:border-color .25s,transform .2s}
+    .teaser-card:hover{border-color:rgba(240,192,64,.3);transform:translateY(-3px)}
+    .teaser-soon{position:absolute;top:14px;right:14px;font-size:.6rem;font-weight:800;letter-spacing:2px;color:var(--gold);background:rgba(240,192,64,.08);border:1px solid rgba(240,192,64,.2);border-radius:8px;padding:2px 8px}
+    .teaser-icon{font-size:2rem;margin-bottom:12px}
+    .teaser-title{font-weight:800;font-size:.95rem;margin-bottom:6px}
+    .teaser-desc{color:var(--muted);font-size:.83rem;line-height:1.65}
+    .teaser-card.dim{opacity:.55;pointer-events:none}
 
     /* ── ROADMAP ── */
     .roadmap-scene{position:relative;height:360px;display:flex;align-items:center;justify-content:center;perspective:1200px;user-select:none;overflow:hidden}
@@ -171,7 +192,6 @@
     .cta-btn-big{display:inline-flex;align-items:center;gap:10px;font-size:1.05rem;padding:16px 32px}
     .btn-arrow{font-size:1.1rem;transition:transform .2s}
     .cta-btn-big:hover .btn-arrow{transform:translateX(4px)}
-    /* phone mockup */
     .cta-phone{background:#0a1628;border:1px solid rgba(0,200,255,.2);border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4),0 0 0 1px rgba(0,200,255,.05)}
     .phone-bar{display:flex;gap:6px;padding:12px 16px 8px;background:#061020}
     .phone-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.12)}
@@ -193,7 +213,6 @@
     @keyframes typingDot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
     .phone-input-bar{padding:10px 14px;background:#061020;border-top:1px solid rgba(0,200,255,.08)}
     .phone-input-fake{background:#0f1f35;border:1px solid rgba(0,200,255,.1);border-radius:20px;padding:8px 14px;font-size:.78rem;color:var(--muted)}
-    .cta-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
     @media(max-width:900px){
       .cta-inner{flex-direction:column;gap:48px}
       .cta-right{width:100%;max-width:340px;align-self:center}
@@ -217,12 +236,9 @@
     .fadeup-d3{animation-delay:.3s}
 
     @media(max-width:800px){
-      /* NAV */
       nav{padding:12px 16px}
       .nav-links{display:none}
       .nav-btn{padding:7px 14px;font-size:.78rem}
-
-      /* HERO */
       .hero{padding:80px 16px 40px;min-height:unset}
       .hero::after{height:60px}
       .hero-inner{flex-direction:column-reverse;gap:24px;text-align:center}
@@ -233,40 +249,25 @@
       .hero-btns{justify-content:center;flex-direction:column;align-items:center}
       .btn-primary,.btn-ghost{width:100%;max-width:300px;text-align:center;justify-content:center}
       .badge{font-size:.72rem}
-
-      /* STATS */
       .stats-band{padding:32px 16px}
       .stats-inner{grid-template-columns:repeat(2,1fr);gap:10px}
       .stat-card{padding:18px 12px}
       .stat-num{font-size:2.1rem}
-
-      /* SECTIONS */
       section{padding:52px 16px}
       .section-title{font-size:1.5rem}
       .section-sub{font-size:.9rem;margin-bottom:32px}
-
-      /* HOW IT WORKS */
       .steps{grid-template-columns:1fr;gap:14px}
       .step{padding:22px 20px}
-
-      /* RESOURCES */
       .res-grid{flex-direction:column}
       .res-card{min-width:unset}
-
-      /* BUILDINGS */
       .bld-grid{grid-template-columns:1fr;gap:14px}
       .bld-card{padding:18px}
-
-      /* ZONES */
       .zones-grid{grid-template-columns:repeat(2,1fr);gap:10px}
       .zone-card{padding:16px 12px}
-
-      /* ROADMAP */
+      .teaser-grid{grid-template-columns:1fr;gap:12px}
       .roadmap-scene{height:400px;margin:0 -16px;padding:0 16px}
       .rcard{width:calc(100vw - 64px);max-width:280px;padding:22px}
       .rcard-title{font-size:1.05rem}
-
-      /* CTA */
       .cta-section{padding:60px 16px}
       .cta-inner{flex-direction:column;gap:36px}
       .cta-right{width:100%;max-width:100%;align-self:stretch}
@@ -276,24 +277,98 @@
       .cta-perks{gap:12px}
       .cta-btn-big{width:100%;justify-content:center}
       .phone-msgs{min-height:180px}
-
-      /* FOOTER */
       footer{flex-direction:column;gap:8px;padding:24px 16px}
     }
-
     @media(max-width:380px){
       .stats-inner{grid-template-columns:1fr 1fr}
       .zones-grid{grid-template-columns:1fr 1fr}
       .rcard{width:calc(100vw - 48px)}
     }
+
+    /* ── CONFIRMED BUILDINGS ── */
+    .bld-confirmed{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+    .bld-c-card{background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:22px 20px;position:relative;overflow:hidden;transition:transform .2s,border-color .25s,box-shadow .25s}
+    .bld-c-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0}
+    .bld-c-forest::before{background:linear-gradient(90deg,#1a8c3a,#38c96a)}
+    .bld-c-shore::before{background:linear-gradient(90deg,#0080b4,#00c8ff)}
+    .bld-c-settlement::before{background:linear-gradient(90deg,#a06820,#f0a030)}
+    .bld-c-forest:hover{border-color:rgba(40,160,60,.38);box-shadow:0 8px 28px rgba(40,160,60,.08);transform:translateY(-3px)}
+    .bld-c-shore:hover{border-color:rgba(0,155,200,.38);box-shadow:0 8px 28px rgba(0,155,200,.08);transform:translateY(-3px)}
+    .bld-c-settlement:hover{border-color:rgba(200,160,50,.38);box-shadow:0 8px 28px rgba(200,160,50,.07);transform:translateY(-3px)}
+    .bld-c-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+    .bld-c-icon{font-size:2rem;line-height:1}
+    .bld-c-meta{text-align:right}
+    .bld-c-tier{display:block;font-size:.58rem;font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:2px;color:var(--muted);margin-bottom:3px;text-transform:uppercase}
+    .bld-c-fileid{font-size:.55rem;font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--muted);letter-spacing:1.5px;opacity:.35}
+    .bld-c-name{font-weight:700;font-size:1.05rem;margin-bottom:4px;font-family:'Space Grotesk',sans-serif;letter-spacing:-.2px}
+    .bld-c-zone{font-size:.74rem;color:var(--muted);margin-bottom:13px;font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:.5px}
+    .bld-c-effect{font-size:.9rem;font-weight:700;color:var(--accent2);margin-bottom:13px;font-family:'Space Grotesk',sans-serif}
+    .bld-c-chips{display:flex;flex-wrap:wrap;gap:6px}
+    .bld-c-chip{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:3px 9px;font-size:.72rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.3px}
+    /* ── SEALED FILES ── */
+    .bld-sealed-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+    .bld-sealed-label{font-size:.6rem;font-weight:900;letter-spacing:2px;color:rgba(220,70,70,.48);border:1px solid rgba(220,70,70,.18);padding:3px 9px;border-radius:4px;text-transform:uppercase}
+    .bld-sealed-sub{font-size:.74rem;color:rgba(93,128,153,.4);font-style:italic}
+    .bld-classified-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .bld-sealed{background:rgba(93,128,153,.03);border:1px solid rgba(93,128,153,.1);border-radius:12px;padding:16px 14px;position:relative;overflow:hidden}
+    .bld-sealed-id{font-size:.56rem;font-family:'IBM Plex Mono',monospace;color:rgba(93,128,153,.35);letter-spacing:2.5px;margin-bottom:11px}
+    .bld-sealed-lock{font-size:1.4rem;opacity:.14;margin-bottom:9px;line-height:1}
+    .bld-sealed-stamp{display:inline-block;font-size:.55rem;font-weight:600;font-family:'IBM Plex Mono',monospace;letter-spacing:2px;text-transform:uppercase;color:rgba(220,70,70,.4);border:1px solid rgba(220,70,70,.16);border-radius:4px;padding:2px 6px;margin-bottom:10px}
+    .bld-s-rl{height:9px;border-radius:3px;background:rgba(93,128,153,.14);margin-bottom:5px}
+    .bld-s-rl.sm{height:7px}
+    .dossier-footer{margin-top:14px;padding:12px 16px;background:rgba(93,128,153,.04);border:1px solid rgba(93,128,153,.09);border-radius:10px;font-size:.76rem;color:var(--muted);line-height:1.6}
+
+    /* ── ZONE MAP ── */
+    .zone-map{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .zmap-card{border-radius:20px;overflow:hidden;border:1px solid;transition:transform .25s,box-shadow .3s,border-color .25s;min-height:240px;display:flex;flex-direction:column;position:relative;cursor:default}
+    .zmap-card.unlocked{cursor:pointer}
+    .zmap-card.unlocked:hover{transform:translateY(-6px)}
+    .zmap-inner{flex:1;padding:28px 22px 22px;display:flex;flex-direction:column;position:relative;z-index:1}
+    /* Atmospheres */
+    .zmap-forest{background:linear-gradient(160deg,#0f3020 0%,#09180d 55%,#060f08 100%);border-color:rgba(40,160,60,.22)}
+    .zmap-forest.unlocked:hover{border-color:rgba(40,160,60,.55);box-shadow:0 16px 48px rgba(40,160,60,.14)}
+    .zmap-shore{background:linear-gradient(160deg,#0d2d42 0%,#07182a 55%,#040e1c 100%);border-color:rgba(0,155,210,.22)}
+    .zmap-shore.unlocked:hover{border-color:rgba(0,155,210,.55);box-shadow:0 16px 48px rgba(0,155,210,.14)}
+    .zmap-settlement{background:linear-gradient(160deg,#251a08 0%,#160f04 55%,#0e0a02 100%);border-color:rgba(200,155,45,.22)}
+    .zmap-settlement.unlocked:hover{border-color:rgba(200,155,45,.55);box-shadow:0 16px 48px rgba(200,155,45,.1)}
+    .zmap-hills{background:linear-gradient(160deg,#161310 0%,#100d0b 55%,#0d0b09 100%);border-color:rgba(110,100,80,.12)}
+    .zmap-plains{background:linear-gradient(160deg,#121808 0%,#0d1206 55%,#090e04 100%);border-color:rgba(85,105,45,.12)}
+    .zmap-port{background:linear-gradient(160deg,#090b20 0%,#060818 55%,#040614 100%);border-color:rgba(55,75,160,.12)}
+    /* Radial atmosphere glow (top-left, behind content) */
+    .zmap-glow{position:absolute;top:-40px;left:-20px;width:220px;height:220px;border-radius:50%;pointer-events:none;z-index:0}
+    .zmap-forest .zmap-glow{background:radial-gradient(circle,rgba(40,160,60,.28) 0%,transparent 65%)}
+    .zmap-shore .zmap-glow{background:radial-gradient(circle,rgba(0,155,210,.28) 0%,transparent 65%)}
+    .zmap-settlement .zmap-glow{background:radial-gradient(circle,rgba(200,155,45,.22) 0%,transparent 65%)}
+    .zmap-hills .zmap-glow{background:radial-gradient(circle,rgba(110,100,80,.18) 0%,transparent 65%)}
+    .zmap-plains .zmap-glow{background:radial-gradient(circle,rgba(85,105,45,.16) 0%,transparent 65%)}
+    .zmap-port .zmap-glow{background:radial-gradient(circle,rgba(55,75,160,.2) 0%,transparent 65%)}
+    .zmap-emoji{font-size:2.6rem;line-height:1;margin-bottom:14px}
+    .zmap-name{font-weight:900;font-size:1.12rem;margin-bottom:7px}
+    .zmap-desc{font-size:.82rem;color:var(--muted);line-height:1.68;flex:1}
+    .zmap-status{margin-top:18px}
+    .zmap-avail{font-size:.68rem;font-weight:800;color:var(--accent2);background:rgba(0,255,179,.08);border:1px solid rgba(0,255,179,.22);border-radius:8px;padding:3px 10px;display:inline-block;letter-spacing:.3px}
+    .zmap-locked-badge{font-size:.68rem;font-weight:800;color:var(--gold);background:rgba(240,192,64,.08);border:1px solid rgba(240,192,64,.22);border-radius:8px;padding:3px 10px;display:inline-block}
+    /* Locked veil — frosted glass over content */
+    .zmap-veil{position:absolute;inset:0;border-radius:inherit;background:rgba(4,9,26,.58);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:22px}
+    .zmap-veil-lock{font-size:2.2rem;opacity:.32}
+
+    @media(max-width:800px){
+      .bld-confirmed{grid-template-columns:1fr}
+      .bld-classified-strip{grid-template-columns:repeat(2,1fr)}
+      .zone-map{grid-template-columns:repeat(2,1fr)}
+      .zmap-card{min-height:200px}
+      .zmap-inner{padding:22px 18px 18px}
+    }
+    @media(max-width:440px){
+      .bld-classified-strip{grid-template-columns:1fr 1fr}
+      .zone-map{grid-template-columns:1fr 1fr}
+    }
   </style>
 </head>
 <body>
 
-<!-- BG PARTICLES -->
 <div class="bg-layer"><canvas id="bgCanvas"></canvas></div>
 
-<!-- NAV -->
 <nav>
   <a class="nav-logo" href="#">
     <img src="logo.png" alt="ReefBot"/>
@@ -302,18 +377,18 @@
   <div class="nav-links">
     <a href="#how">Механики</a>
     <a href="#buildings">Постройки</a>
+    <a href="#economy">Экономика</a>
     <a href="#roadmap">Роадмап</a>
   </div>
   <a class="nav-btn" href="https://t.me/reefbot_news" target="_blank">📢 Следить за разработкой</a>
 </nav>
 
-<!-- HERO -->
 <section class="hero">
   <div class="hero-inner">
     <div class="hero-text fadeup">
-      <div class="badge"><span class="badge-dot"></span>Активная разработка</div>
+      <div class="badge"><span class="badge-dot"></span>Активная разработка · 2026</div>
       <h1>Построй свой<br/><span class="accent">остров в море</span></h1>
-      <p class="hero-sub">ReefBot — idle-игра прямо в Telegram. Добывай ресурсы, возводи здания, развивай дикий островок до процветающего порта.</p>
+      <p class="hero-sub">ReefBot — idle-игра прямо в Telegram. Добывай ресурсы, возводи здания, развивай дикий островок — и посмотри, как далеко зайдёшь.</p>
       <div class="hero-btns">
         <a class="btn-primary" href="https://t.me/reefbot_news" target="_blank">📢 Следить за новостями</a>
         <a class="btn-ghost" href="#how">Как это работает ↓</a>
@@ -331,7 +406,6 @@
   </div>
 </section>
 
-<!-- WAVE -->
 <div class="wave-divider" style="background:var(--bg)">
   <svg viewBox="0 0 1440 60" preserveAspectRatio="none" height="60" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M0,30 C240,60 480,0 720,30 C960,60 1200,0 1440,30 L1440,60 L0,60 Z" fill="#081525"/>
@@ -341,14 +415,12 @@
 <!-- STATS -->
 <div class="stats-band">
   <div class="stats-inner">
-    <div class="stat-card"><div class="stat-num" id="stat-buildings">—</div><div class="stat-lbl">Зданий в игре</div></div>
-    <div class="stat-card"><div class="stat-num" id="stat-resources">—</div><div class="stat-lbl">Типов ресурсов</div></div>
     <div class="stat-card"><div class="stat-num" id="stat-zones">—</div><div class="stat-lbl">Зон острова</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-resources">—</div><div class="stat-lbl">Типов ресурсов</div></div>
     <div class="stat-card"><div class="stat-num" id="stat-migrations">—</div><div class="stat-lbl">Миграций БД</div></div>
   </div>
 </div>
 
-<!-- WAVE 2 -->
 <div class="wave-divider" style="background:var(--surface)">
   <svg viewBox="0 0 1440 60" preserveAspectRatio="none" height="60" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M0,30 C360,0 720,60 1080,30 C1260,15 1380,45 1440,30 L1440,60 L0,60 Z" fill="#04091a"/>
@@ -362,10 +434,10 @@
     <div class="section-title">Как работает игра</div>
     <p class="section-sub">Ресурсы копятся пока ты офлайн. Приходи, принимай решения, развивай остров.</p>
     <div class="steps">
-      <div class="step"><div class="step-glow"></div><div class="step-num">01</div><div class="step-icon">🏝</div><h3>Назови свой остров</h3><p>Пройди онбординг, получи стартовые ресурсы и дай имя острову.</p></div>
-      <div class="step"><div class="step-glow"></div><div class="step-num">02</div><div class="step-icon">⚡</div><h3>Занимайся активностями</h3><p>Рыбалка, ферма и другие занятия приносят ресурсы и опыт. У каждой активности своя прокачка и бонусы.</p></div>
-      <div class="step"><div class="step-glow"></div><div class="step-num">03</div><div class="step-icon">🏗</div><h3>Строй и развивайся</h3><p>9 зданий трёх тиров. Каждое даёт ресурсы или открывает новые механики — в разработке.</p></div>
-      <div class="step"><div class="step-glow"></div><div class="step-num">04</div><div class="step-icon">⚓</div><h3>Разблокируй зоны</h3><p>Набирай очки развития и открывай редкие зоны — вплоть до портовой с кораллами.</p></div>
+      <div class="step"><div class="step-glow"></div><div class="step-num">01</div><div class="step-icon">🏝</div><h3>Назови свой остров</h3><p>Пройди онбординг, получи стартовые ресурсы и дай имя своему уголку архипелага.</p></div>
+      <div class="step"><div class="step-glow"></div><div class="step-num">02</div><div class="step-icon">⚡</div><h3>Занимайся активностями</h3><p>Рыбалка, охота, сбор — у каждой своя прокачка и бонусы. Ресурсы идут в дело.</p></div>
+      <div class="step"><div class="step-glow"></div><div class="step-num">03</div><div class="step-icon">🗺</div><h3>Исследуй зоны острова</h3><p>Шесть зон — шесть разных историй. Каждая открывается в своё время и живёт по своим правилам.</p></div>
+      <div class="step"><div class="step-glow"></div><div class="step-num">04</div><div class="step-icon">🏗</div><h3>Строй и развивай</h3><p>Постройки дают пассивный доход, крафт и новые механики. Чем больше зон освоено — тем глубже становится экономика острова.</p></div>
     </div>
   </div>
 </section>
@@ -374,11 +446,11 @@
 <section style="background:var(--surface);padding:64px 24px">
   <div class="container">
     <div class="section-eyebrow">Ресурсы</div>
-    <div class="section-title">5 типов ресурсов</div>
-    <p class="section-sub">Каждый нужен для строительства. Редкие добываются только в поздних зонах острова.</p>
+    <div class="section-title">Что добывается на острове</div>
+    <p class="section-sub">Базовые ресурсы идут на стройку. Редкие — в крафт и торговлю. Есть и то, о чём пока не рассказываем.</p>
     <div class="res-grid">
-      <div class="res-card"><div class="res-emoji">🪵</div><div><div class="res-name">Древесина</div><div class="res-sub">Лесная зона · базовый</div></div></div>
-      <div class="res-card"><div class="res-emoji">🪨</div><div><div class="res-name">Камень</div><div class="res-sub">Холмовая зона · базовый</div></div></div>
+      <div class="res-card"><div class="res-emoji">🪵</div><div><div class="res-name">Древесина</div><div class="res-sub">Лесная зона · основа</div></div></div>
+      <div class="res-card"><div class="res-emoji">🪨</div><div><div class="res-name">Камень</div><div class="res-sub">Холмовая зона · основа</div></div></div>
       <div class="res-card"><div class="res-emoji">🐟</div><div><div class="res-name">Рыба</div><div class="res-sub">Береговая зона · торговля</div></div></div>
       <div class="res-card"><div class="res-emoji">🐚</div><div><div class="res-name">Ракушки</div><div class="res-sub">Побережье<br/><span class="res-rare">✦ Редкий</span></div></div></div>
       <div class="res-card"><div class="res-emoji">🪸</div><div><div class="res-name">Коралл</div><div class="res-sub">Портовая зона<br/><span class="res-rare">✦✦ Очень редкий</span></div></div></div>
@@ -390,18 +462,90 @@
 <section id="buildings">
   <div class="container">
     <div class="section-eyebrow">Постройки</div>
-    <div class="section-title">9 зданий · 3 тира</div>
-    <p class="section-sub">Более поздние здания требуют пресреквизиты и строятся дольше, но дают больше.</p>
-    <div class="bld-grid">
-      <div class="bld-card t1-card"><div class="bld-head"><div class="bld-name">🪓 Лесорубная хижина</div><span class="tier t1">T1</span></div><div class="bld-zone">🌲 Лесная зона</div><div class="bld-effect">+8 🪵/час</div><div class="bld-cost"><span class="chip">🪵 15</span><span class="chip">🪨 5</span><span class="chip">⏱ 30 мин</span></div></div>
-      <div class="bld-card t1-card"><div class="bld-head"><div class="bld-name">🎣 Рыбацкий помост</div><span class="tier t1">T1</span></div><div class="bld-zone">🏖 Береговая зона</div><div class="bld-effect">+6 🐟/час</div><div class="bld-cost"><span class="chip">🪵 10</span><span class="chip">🪨 5</span><span class="chip">⏱ 15 мин</span></div></div>
-      <div class="bld-card t1-card"><div class="bld-head"><div class="bld-name">📦 Склад</div><span class="tier t1">T1</span></div><div class="bld-zone">🏠 Жилая зона</div><div class="bld-effect">+150 к ёмкости</div><div class="bld-cost"><span class="chip">🪵 20</span><span class="chip">🪨 10</span><span class="chip">⏱ 45 мин</span></div></div>
-      <div class="bld-card t2-card"><div class="bld-head"><div class="bld-name">⛏ Каменоломня</div><span class="tier t2">T2</span></div><div class="bld-zone">⛰ Холмовая зона</div><div class="bld-effect">+5 🪨/час</div><div class="bld-cost"><span class="chip">🪵 25</span><span class="chip">🪨 15</span><span class="chip">⏱ 1 ч</span></div></div>
-      <div class="bld-card t2-card"><div class="bld-head"><div class="bld-name">🪚 Лесопилка</div><span class="tier t2">T2</span></div><div class="bld-zone">🌲 Лесная зона</div><div class="bld-effect">Перерабатывает древесину</div><div class="bld-cost"><span class="chip">🪵 40</span><span class="chip">🪨 20</span><span class="chip">⏱ 2 ч</span></div></div>
-      <div class="bld-card t2-card"><div class="bld-head"><div class="bld-name">🌿 Огород</div><span class="tier t2">T2</span></div><div class="bld-zone">🏠 Жилая зона</div><div class="bld-effect">+4 🍞/час</div><div class="bld-cost"><span class="chip">🪵 20</span><span class="chip">🪨 10</span><span class="chip">⏱ 90 мин</span></div></div>
-      <div class="bld-card t2-card"><div class="bld-head"><div class="bld-name">🛶 Рыбацкая пристань</div><span class="tier t2">T2</span></div><div class="bld-zone">🏖 Береговая зона</div><div class="bld-effect">+12 🐟/час</div><div class="bld-cost"><span class="chip">🪵 30</span><span class="chip">🪨 20</span><span class="chip">🐟 10</span><span class="chip">⏱ 2 ч</span></div></div>
-      <div class="bld-card t2-card"><div class="bld-head"><div class="bld-name">🏪 Рыночная лавка</div><span class="tier t2">T2</span></div><div class="bld-zone">🏠 Жилая зона</div><div class="bld-effect">Торговля с купцами</div><div class="bld-cost"><span class="chip">🪵 35</span><span class="chip">🪨 15</span><span class="chip">🐟 10</span><span class="chip">⏱ 90 мин</span></div></div>
-      <div class="bld-card t3-card"><div class="bld-head"><div class="bld-name">🪸 Коралловый ныряльщик</div><span class="tier t3">T3</span></div><div class="bld-zone">⚓ Портовая зона</div><div class="bld-effect">+3 🪸/час</div><div class="bld-cost"><span class="chip">🪵 60</span><span class="chip">🪨 40</span><span class="chip">🐟 20</span><span class="chip">⏱ 4 ч</span></div></div>
+    <div class="section-title">Архив острова</div>
+    <p class="section-sub">Часть документов рассекречена. Остальные — под грифом до завершения разработки.</p>
+
+    <div class="bld-confirmed">
+      <div class="bld-c-card bld-c-forest">
+        <div class="bld-c-top">
+          <div class="bld-c-icon">🪓</div>
+          <div class="bld-c-meta"><span class="bld-c-tier">ТИР I</span><span class="bld-c-fileid">FILE·001</span></div>
+        </div>
+        <div class="bld-c-name">Лесорубная хижина</div>
+        <div class="bld-c-zone">🌲 Лесная зона</div>
+        <div class="bld-c-effect">+8 🪵/час</div>
+        <div class="bld-c-chips"><span class="bld-c-chip">🪵 15</span><span class="bld-c-chip">🪨 5</span><span class="bld-c-chip">⏱ 30 мин</span></div>
+      </div>
+      <div class="bld-c-card bld-c-shore">
+        <div class="bld-c-top">
+          <div class="bld-c-icon">🎣</div>
+          <div class="bld-c-meta"><span class="bld-c-tier">ТИР I</span><span class="bld-c-fileid">FILE·002</span></div>
+        </div>
+        <div class="bld-c-name">Рыбацкий помост</div>
+        <div class="bld-c-zone">🏖 Береговая зона</div>
+        <div class="bld-c-effect">+6 🐟/час</div>
+        <div class="bld-c-chips"><span class="bld-c-chip">🪵 10</span><span class="bld-c-chip">🪨 5</span><span class="bld-c-chip">⏱ 15 мин</span></div>
+      </div>
+      <div class="bld-c-card bld-c-settlement">
+        <div class="bld-c-top">
+          <div class="bld-c-icon">📦</div>
+          <div class="bld-c-meta"><span class="bld-c-tier">ТИР I</span><span class="bld-c-fileid">FILE·003</span></div>
+        </div>
+        <div class="bld-c-name">Склад</div>
+        <div class="bld-c-zone">🏠 Поселение</div>
+        <div class="bld-c-effect">+150 к ёмкости</div>
+        <div class="bld-c-chips"><span class="bld-c-chip">🪵 20</span><span class="bld-c-chip">🪨 10</span><span class="bld-c-chip">⏱ 45 мин</span></div>
+      </div>
+      <div class="bld-c-card bld-c-forest">
+        <div class="bld-c-top">
+          <div class="bld-c-icon">🪚</div>
+          <div class="bld-c-meta"><span class="bld-c-tier">ТИР II</span><span class="bld-c-fileid">FILE·004</span></div>
+        </div>
+        <div class="bld-c-name">Лесопилка</div>
+        <div class="bld-c-zone">🌲 Лесная зона</div>
+        <div class="bld-c-effect">Переработка древесины</div>
+        <div class="bld-c-chips"><span class="bld-c-chip">🪵 40</span><span class="bld-c-chip">🪨 20</span><span class="bld-c-chip">⏱ 2 ч</span></div>
+      </div>
+    </div>
+
+    <div class="bld-sealed-header">
+      <span class="bld-sealed-label">ЗАСЕКРЕЧЕНО</span>
+      <span class="bld-sealed-sub">Документы не подлежат разглашению</span>
+    </div>
+
+    <div class="bld-classified-strip">
+      <div class="bld-sealed">
+        <div class="bld-sealed-id">FILE · ???</div>
+        <div class="bld-sealed-lock">🔒</div>
+        <div class="bld-sealed-stamp">засекречено</div>
+        <div class="bld-s-rl" style="width:75%"></div><div class="bld-s-rl sm" style="width:50%"></div>
+        <div style="height:5px"></div><div class="bld-s-rl sm" style="width:38%"></div>
+      </div>
+      <div class="bld-sealed">
+        <div class="bld-sealed-id">FILE · ???</div>
+        <div class="bld-sealed-lock">🔒</div>
+        <div class="bld-sealed-stamp">засекречено</div>
+        <div class="bld-s-rl" style="width:65%"></div><div class="bld-s-rl sm" style="width:45%"></div>
+        <div style="height:5px"></div><div class="bld-s-rl sm" style="width:55%"></div>
+      </div>
+      <div class="bld-sealed">
+        <div class="bld-sealed-id">FILE · ???</div>
+        <div class="bld-sealed-lock">🔒</div>
+        <div class="bld-sealed-stamp">засекречено</div>
+        <div class="bld-s-rl" style="width:80%"></div><div class="bld-s-rl sm" style="width:48%"></div>
+        <div style="height:5px"></div><div class="bld-s-rl sm" style="width:33%"></div>
+      </div>
+      <div class="bld-sealed">
+        <div class="bld-sealed-id">FILE · ???</div>
+        <div class="bld-sealed-lock">🔒</div>
+        <div class="bld-sealed-stamp">засекречено</div>
+        <div class="bld-s-rl" style="width:70%"></div><div class="bld-s-rl sm" style="width:46%"></div>
+        <div style="height:5px"></div><div class="bld-s-rl sm" style="width:60%"></div>
+      </div>
+    </div>
+
+    <div class="dossier-footer">
+      📁 Архив пополняется по мере разработки. Число построек, тиры и характеристики — не окончательны.
     </div>
   </div>
 </section>
@@ -409,22 +553,121 @@
 <!-- ZONES -->
 <section style="background:var(--surface);padding:64px 24px">
   <div class="container">
-    <div class="section-eyebrow">Острова</div>
-    <div class="section-title">6 зон острова</div>
-    <p class="section-sub">Начинаешь с трёх базовых зон. Остальные открываются по мере роста острова.</p>
-    <div class="zones-grid">
-      <div class="zone-card"><span class="zone-emoji">🌲</span><div class="zone-name">Лесная зона</div><div class="zone-req">Открыта сразу</div></div>
-      <div class="zone-card"><span class="zone-emoji">🏖</span><div class="zone-name">Береговая зона</div><div class="zone-req">Открыта сразу</div></div>
-      <div class="zone-card"><span class="zone-emoji">🏠</span><div class="zone-name">Жилая зона</div><div class="zone-req">Открыта сразу</div></div>
-      <div class="zone-card"><span class="zone-emoji">⛰</span><div class="zone-name">Холмовая зона</div><div class="zone-req">10 ОР</div><span class="zone-locked">🔓 10 очков</span></div>
-      <div class="zone-card"><span class="zone-emoji">🌾</span><div class="zone-name">Равнинная зона</div><div class="zone-req">20 ОР</div><span class="zone-locked">🔓 20 очков</span></div>
-      <div class="zone-card"><span class="zone-emoji">⚓</span><div class="zone-name">Портовая зона</div><div class="zone-req">35 ОР</div><span class="zone-locked">🔓 35 очков</span></div>
+    <div class="section-eyebrow">Зоны острова</div>
+    <div class="section-title">Карта острова</div>
+    <p class="section-sub">Главное меню — это карта. Три зоны открыты сразу. Остальные — по мере развития острова.</p>
+    <div class="zone-map">
+
+      <div class="zmap-card unlocked zmap-forest">
+        <div class="zmap-glow"></div>
+        <div class="zmap-inner">
+          <div class="zmap-emoji">🌲</div>
+          <div class="zmap-name">Лес</div>
+          <div class="zmap-desc">Лесорубы, охота, тихие тропы. Основа любого строительства на острове.</div>
+          <div class="zmap-status"><span class="zmap-avail">✓ Открыта</span></div>
+        </div>
+      </div>
+
+      <div class="zmap-card unlocked zmap-shore">
+        <div class="zmap-glow"></div>
+        <div class="zmap-inner">
+          <div class="zmap-emoji">🏖</div>
+          <div class="zmap-name">Берег</div>
+          <div class="zmap-desc">Рыбалка, приливы, мелкие находки. Первое место, куда ты придёшь.</div>
+          <div class="zmap-status"><span class="zmap-avail">✓ Открыта</span></div>
+        </div>
+      </div>
+
+      <div class="zmap-card unlocked zmap-settlement">
+        <div class="zmap-glow"></div>
+        <div class="zmap-inner">
+          <div class="zmap-emoji">🏠</div>
+          <div class="zmap-name">Поселение</div>
+          <div class="zmap-desc">Таверна, рынок, жители. Центр жизни острова.</div>
+          <div class="zmap-status"><span class="zmap-avail">✓ Открыта</span></div>
+        </div>
+      </div>
+
+      <div class="zmap-card locked zmap-hills">
+        <div class="zmap-glow"></div>
+        <div class="zmap-inner">
+          <div class="zmap-emoji">⛰</div>
+          <div class="zmap-name">Холмы</div>
+          <div class="zmap-desc">Каменные жилы, шахты и то, что живёт в глубине.</div>
+        </div>
+        <div class="zmap-veil">
+          <span class="zmap-veil-lock">🔒</span>
+          <span class="zmap-locked-badge">10 ОР</span>
+        </div>
+      </div>
+
+      <div class="zmap-card locked zmap-plains">
+        <div class="zmap-glow"></div>
+        <div class="zmap-inner">
+          <div class="zmap-emoji">🌾</div>
+          <div class="zmap-name">Равнина</div>
+          <div class="zmap-desc">Поля, урожай, мельница. Кормит остров — если успеть.</div>
+        </div>
+        <div class="zmap-veil">
+          <span class="zmap-veil-lock">🔒</span>
+          <span class="zmap-locked-badge">20 ОР</span>
+        </div>
+      </div>
+
+      <div class="zmap-card locked zmap-port">
+        <div class="zmap-glow"></div>
+        <div class="zmap-inner">
+          <div class="zmap-emoji">⚓</div>
+          <div class="zmap-name">Порт</div>
+          <div class="zmap-desc">Суда, маршруты, экспедиции. Откуда приходят корабли — и куда уходят.</div>
+        </div>
+        <div class="zmap-veil">
+          <span class="zmap-veil-lock">🔒</span>
+          <span class="zmap-locked-badge">35 ОР</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ECONOMY -->
+<section id="economy">
+  <div class="container">
+    <div class="section-eyebrow">Экономика · в разработке</div>
+    <div class="section-title">Торговля и рынок</div>
+    <p class="section-sub">Ресурсы — не цель, а средство. Что-то уже проектируется. Многое — ещё нет.</p>
+    <div class="teaser-grid">
+      <div class="teaser-card">
+        <div class="teaser-soon">СКОРО</div>
+        <div class="teaser-icon">🏪</div>
+        <div class="teaser-title">Приезжий купец</div>
+        <div class="teaser-desc">В поселение иногда заглядывает торговец. У каждого — свой товар и своя цена. Встречи ограничены.</div>
+      </div>
+      <div class="teaser-card">
+        <div class="teaser-soon">СКОРО</div>
+        <div class="teaser-icon">🦪</div>
+        <div class="teaser-title">Аукцион жемчуга</div>
+        <div class="teaser-desc">В порту — еженедельные торги. Что ставят на продажу и кто покупает — узнаешь в игре.</div>
+      </div>
+      <div class="teaser-card dim">
+        <div class="teaser-soon">ПОЗЖЕ</div>
+        <div class="teaser-icon">🚢</div>
+        <div class="teaser-title">Маршруты и экспедиции</div>
+        <div class="teaser-desc">Флот, другие острова архипелага, морская торговля. Подробности — когда придёт время.</div>
+      </div>
+      <div class="teaser-card dim">
+        <div class="teaser-soon">???</div>
+        <div class="teaser-icon">❓</div>
+        <div class="teaser-title">Засекречено</div>
+        <div class="teaser-desc">Ещё одна механика. Раскроется в нужный момент.</div>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- ROADMAP -->
-<section id="roadmap">
+<section id="roadmap" style="background:var(--surface);padding:88px 24px">
   <div class="container">
     <div class="section-eyebrow">Роадмап</div>
     <div class="section-title">Этапы разработки</div>
@@ -473,16 +716,16 @@
         </div>
         <div class="phone-msgs">
           <div class="msg msg-bot">
-            <div class="msg-text">🔔 Удочка готова! Улов ждёт тебя у берега.</div>
+            <div class="msg-text">🏝 Остров «Sunrise»<br/>🌱 Дикий островок · 3 ОР<br/><br/>🏖 Улов готов!</div>
           </div>
           <div class="msg msg-user">
-            <div class="msg-text">🎣 Забрать улов</div>
+            <div class="msg-text">🏖 Берег</div>
           </div>
           <div class="msg msg-bot">
-            <div class="msg-text">🐟 Поймано: 3 рыбы<br/>⭐ +5 XP · Ур. 2 → Ур. 3<br/>🎊 Открыт бонус: +10% XP</div>
+            <div class="msg-text">🎣 Рыбалка: ✅ улов готов!<br/>Нажми чтобы забрать.</div>
           </div>
           <div class="msg msg-bot">
-            <div class="msg-text">🏖 У берега · 🪨 У рифа · 🌊 В море</div>
+            <div class="msg-text">🐟 Поймано: 3 рыбы · +6 XP<br/>⭐ Уровень рыбака: 3 → 4<br/>🎊 +10% XP за рыбалку</div>
           </div>
           <div class="msg msg-typing">
             <span></span><span></span><span></span>
@@ -545,7 +788,7 @@ function getOrbits() {
   return [
     {r:base*.55, speed:.014, particles:['🪵','🪨','🎣'], size:Math.max(13,base*.08)},
     {r:base*.76, speed:.009, particles:['🐟','🐚','🌿','⭐'], size:Math.max(11,base*.07)},
-    {r:base*.95, speed:.006, particles:['🪸','⚓','🏗','🌲','🔱'], size:Math.max(10,base*.063)},
+    {r:base*.95, speed:.006, particles:['🪸','⚓','🏗','🌲','🗺'], size:Math.max(10,base*.063)},
   ];
 }
 let t=0;
@@ -569,31 +812,53 @@ function drawOrbit() {
 }
 drawOrbit();
 
-// ── STATS FROM JSON ───────────────────────────────────────
+// ── STATS ─────────────────────────────────────────────────
 function animCount(el, target) {
+  if (!el) return;
   let cur=0; const step=Math.ceil(target/28);
   const tmr=setInterval(()=>{cur=Math.min(cur+step,target);el.textContent=cur;if(cur>=target)clearInterval(tmr);},45);
 }
-const statMap={'stat-buildings':s=>s.buildings,'stat-resources':s=>s.resourceTypes,'stat-zones':s=>s.islandZones,'stat-migrations':s=>s.dbMigrations};
 fetch('stats.json?t='+Date.now())
   .then(r=>r.json())
-  .then(stats=>{
+  .then(s=>{
     const obs=new IntersectionObserver(entries=>{
-      entries.forEach(e=>{if(!e.isIntersecting)return;animCount(e.target,statMap[e.target.id](stats));obs.unobserve(e.target);});
+      entries.forEach(e=>{
+        if(!e.isIntersecting) return;
+        const id = e.target.id;
+        if(id==='stat-zones')     animCount(e.target, s.islandZones);
+        if(id==='stat-resources') animCount(e.target, s.resourceTypes);
+        if(id==='stat-migrations')animCount(e.target, s.dbMigrations);
+        obs.unobserve(e.target);
+      });
     },{threshold:.5});
-    Object.keys(statMap).forEach(id=>{const el=document.getElementById(id);if(el)obs.observe(el);});
+    ['stat-zones','stat-resources','stat-migrations'].forEach(id=>{
+      const el=document.getElementById(id); if(el) obs.observe(el);
+    });
   })
   .catch(()=>{
-    const fb={'stat-buildings':9,'stat-resources':5,'stat-zones':6,'stat-migrations':6};
-    Object.entries(fb).forEach(([id,v])=>{const el=document.getElementById(id);if(el)animCount(el,v);});
+    animCount(document.getElementById('stat-zones'), 6);
+    animCount(document.getElementById('stat-resources'), 5);
+    animCount(document.getElementById('stat-migrations'), 10);
   });
 
 // ── ROADMAP DECK ──────────────────────────────────────────
 const phases=[
-  {cls:'done',eyebrow:'Фаза 1',title:'🏝 Онбординг',status:'✅ Готово',items:['Приветственный экран','Создание и имя острова','Стартовые ресурсы','Подключение к Telegram API']},
-  {cls:'done',eyebrow:'Фаза 2',title:'🎣 Рыбалка',status:'✅ Готово',items:['Активная рыбалка (3 места)','Уведомления об улове','10 уровней рыбака с бонусами','Команда /levels с навигацией']},
-  {cls:'progress',eyebrow:'Фаза 3',title:'🏗 Игровой цикл',status:'🔄 В разработке',items:['Строительство 9 зданий','Пассивная генерация ресурсов','Инвентарь и торговля','Очки развития и зоны']},
-  {cls:'planned',eyebrow:'Фаза 4',title:'🌍 Мультиплеер',status:'🔒 Позже',items:['Альянсы и кланы','Рейтинг островов','Совместные постройки','Глобальные события']},
+  {
+    cls:'done', eyebrow:'Фаза 1', title:'🏝 Онбординг + Рыбалка', status:'✅ Готово',
+    items:['Онбординг: имя острова, стартовые ресурсы','Рыбалка в 3 местах с таймерами','10 уровней рыбака с бонусами','Уведомления об улове']
+  },
+  {
+    cls:'done', eyebrow:'Фаза 2', title:'🗺 Навигация по зонам', status:'✅ Готово',
+    items:['6 зон острова в главном меню','Дайджест активностей на главном экране','Тизер следующей закрытой зоны','Анимированные кастом-эмодзи в интерфейсе']
+  },
+  {
+    cls:'progress', eyebrow:'Фаза 3', title:'🏗 Экономика острова', status:'🔄 В разработке',
+    items:['Постройки по зонам','Пассивная генерация ресурсов','Торговля: купец и аукцион','Очки развития — полный цикл']
+  },
+  {
+    cls:'planned', eyebrow:'Фаза 4', title:'🌊 Архипелаг', status:'🔒 Позже',
+    items:['Экспедиции между островами','Рейтинг и репутация','Рыночная торговля','Сезонные события']
+  },
 ];
 const deck=document.getElementById('roadmapDeck');
 const dotsEl=document.getElementById('roadDots');

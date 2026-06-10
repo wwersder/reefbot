@@ -79,7 +79,7 @@ public class FishingService {
         int fish = effectiveMin + random.nextInt(effectiveMax - effectiveMin + 1);
 
         int xpMultiplierPct = oldLevel >= 7 ? 130 : (oldLevel >= 4 ? 110 : 100);
-        int xpEarned = spot.getXpReward() * xpMultiplierPct / 100;
+        int xpEarned = (int) Math.round(spot.getXpReward() * xpMultiplierPct / 100.0);
 
         int effectiveBonusChance = spot.getBonusChance() + (oldLevel >= 5 ? 20 : 0);
         ResourceType bonusType = null;
