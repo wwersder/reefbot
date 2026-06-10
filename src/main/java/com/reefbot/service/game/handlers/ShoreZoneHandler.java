@@ -3,8 +3,10 @@ package com.reefbot.service.game.handlers;
 import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
+import com.reefbot.enums.FishingSpot;
 import com.reefbot.enums.PlayerScreen;
 import com.reefbot.enums.ZoneType;
+import com.reefbot.util.ReefEmoji;
 import com.reefbot.repository.PlayerRepository;
 import com.reefbot.service.game.FishingService;
 import com.reefbot.service.game.GameHandler;
@@ -33,7 +35,12 @@ public class ShoreZoneHandler implements GameHandler {
     private static final List<String> FLAVOR = List.of(
             "Старый причал поскрипывает на волнах.\nПахнет солью и водорослями.",
             "Волны лениво накатывают на песок.\nЧайки кружат над водой.",
-            "Прибой выбросил на берег пучки водорослей.\nГде-то вдалеке плеснула рыба."
+            "Прибой выбросил на берег пучки водорослей.\nГде-то вдалеке плеснула рыба.",
+            "Горизонт окрасился в янтарь.\nМелкая рябь бежит по воде.",
+            "Морской бриз треплет листья пальм.\nТихо и спокойно.",
+            "Песок хрустит под ногами.\nВолна принесла перламутровую ракушку.",
+            "Закат красит море в медь.\nСамое время забросить удочку.",
+            "В воздухе пахнет дождём — но небо чистое.\nМоре спокойно."
     );
 
     private final FishingService fishingService;
@@ -83,22 +90,24 @@ public class ShoreZoneHandler implements GameHandler {
     public static BotResponse buildZoneScreen(Player player) {
         String flavor = FLAVOR.get(ThreadLocalRandom.current().nextInt(FLAVOR.size()));
 
-        String text = ZoneType.SHORE.getDisplayName() + "\n"
+        String text = "<b>" + ReefEmoji.SHORE_TEXT + " Берег</b>\n\n"
                 + flavor + "\n\n"
                 + fishingStatusLine(player);
 
-        return new BotResponse(text, ZoneType.SHORE.getBannerPath(), keyboard(player));
+        return new BotResponse(text, ZoneType.SHORE.getBannerPath(), keyboard(player), null, null, "HTML");
     }
 
     private static String fishingStatusLine(Player player) {
         LocalDateTime finishAt = player.getFishing().getFishingFinishAt();
         if (finishAt == null) {
-            return "🎣 Рыбалка: свободна";
+            return "🎣 <b>Рыбалка:</b> свободна";
         }
         if (!LocalDateTime.now().isBefore(finishAt)) {
-            return "🎣 Рыбалка: ✅ улов готов — забери!";
+            FishingSpot spot = player.getFishing().getFishingSpot();
+            String spotPart = spot != null ? FishingMenuHandler.spotDisplayHtml(spot) + " — " : "";
+            return "🎣 <b>Рыбалка:</b> " + spotPart + "есть улов! ✅";
         }
-        return "🎣 Рыбалка: ⏳ ещё " + remainingText(finishAt);
+        return "🎣 <b>Рыбалка:</b> ⏳ ещё " + remainingText(finishAt);
     }
 
     private static String remainingText(LocalDateTime finishAt) {

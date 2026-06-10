@@ -43,10 +43,11 @@ public class FishingResultHandler implements GameHandler {
 
     private BotResponse buildCollectedResponse(FishingResult result, Player player, Island island) {
         StringBuilder sb = new StringBuilder();
-        sb.append("🎉 Улов!\n\n");
-        sb.append("Место: ").append(result.spot().getDisplayName()).append("\n");
-        sb.append("Поймал: 🐟 ×").append(result.fishCaught());
+        sb.append("🎉 <b>Улов!</b>\n\n");
 
+        sb.append("<b>Место:</b> ").append(FishingMenuHandler.spotDisplayHtml(result.spot())).append("\n");
+
+        sb.append("<b>Поймал:</b> 🐟 ×").append(result.fishCaught());
         if (result.bonusType() != null) {
             String bonusEmoji = switch (result.bonusType()) {
                 case SHELLS -> "🐚";
@@ -55,9 +56,10 @@ public class FishingResultHandler implements GameHandler {
             };
             sb.append(", ").append(bonusEmoji).append(" ×").append(result.bonusAmount());
         }
+        sb.append("\n");
 
+        sb.append("<b>Опыт рыбака:</b> +").append(result.xpEarned()).append(" ⭐️");
         int nextLevelXp = fishingService.xpForNextLevel(result.newLevel());
-        sb.append("\n\nОпыт рыбака: +").append(result.xpEarned()).append(" ⭐");
         if (nextLevelXp > 0) {
             sb.append("  (всего ").append(result.totalXp()).append("/").append(nextLevelXp).append(")");
         }
@@ -66,7 +68,7 @@ public class FishingResultHandler implements GameHandler {
             sb.append("\n\n🎣 Первый улов! Рыбалка — хороший способ пополнить запасы.");
         }
 
-        BotResponse catchMessage = new BotResponse(sb.toString());
+        BotResponse catchMessage = BotResponse.html(sb.toString());
         BotResponse zoneScreen = ShoreZoneHandler.buildZoneScreen(player);
 
         if (result.leveledUp()) {

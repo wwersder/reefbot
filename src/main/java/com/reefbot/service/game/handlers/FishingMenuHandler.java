@@ -10,19 +10,24 @@ import com.reefbot.repository.PlayerRepository;
 import com.reefbot.service.game.FishingService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.util.KeyboardBuilder;
+import com.reefbot.util.ReefEmoji;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Component
 @RequiredArgsConstructor
 public class FishingMenuHandler implements GameHandler {
 
-    public static final String BTN_SHORE             = "🏖 У берега";
-    public static final String BTN_REEF              = "🪨 У рифа";
-    public static final String BTN_OPEN_SEA_LOCKED   = "🌊 В море 🔒 ур. 3";
-    public static final String BTN_OPEN_SEA_UNLOCKED = "🌊 В море";
+    public static final String BTN_SHORE             = ReefEmoji.SHORE_TEXT    + " У берега";
+    public static final String BTN_REEF              = ReefEmoji.REEF_TEXT     + " У рифа";
+    public static final String BTN_OPEN_SEA_LOCKED   = ReefEmoji.OPEN_SEA_TEXT + " В море 🔒 ур. 3";
+    public static final String BTN_OPEN_SEA_UNLOCKED = ReefEmoji.OPEN_SEA_TEXT + " В море";
     public static final String BTN_BACK              = "◀️ Назад";
-    public static final String BTN_LEVELS            = "📊 Уровни";
+    public static final String BTN_LEVELS            = ReefEmoji.LEVELS_TEXT   + " Уровни";
     public static final String BTN_CAST              = "✅ Закинуть удочку";
     public static final String BTN_BONUSES           = "✨ Бонусы";
 
@@ -125,31 +130,21 @@ public class FishingMenuHandler implements GameHandler {
     }
 
     public static BotResponse buildSpotDetail(FishingSpot spot, Player player) {
-        String bonusLine = spot.getBonusResource() != null
-                ? String.format("\n%s Шанс %s: %d%%",
-                    bonusEmoji(spot), bonusName(spot), spot.getBonusChance())
-                : "";
-
         boolean hasBonuses = player.getFishing().getFishingLevel() >= 2;
+
+        String bonusResourceLine = spot.getBonusResource() != null
+                ? "\n" + bonusEmoji(spot) + " <b>Шанс " + bonusName(spot) + ":</b> " + spot.getBonusChance() + "%"
+                : "";
         String bonusHintLine = hasBonuses ? "\n\n✨ У вас активны бонусы рыбака" : "";
 
-        String text = String.format("""
-                %s Рыбалка %s
-
-                %s
-
-                ⏱ Время: %d мин
-                🐟 Улов: %d–%d рыбы
-                ⭐ Опыт: +%d XP%s%s
-                """,
-                spot.getDisplayName().split(" ")[0],
-                spot.getDisplayName().substring(spot.getDisplayName().indexOf(' ')),
-                spotDescription(spot),
-                spot.getDurationMinutes(),
-                spot.getMinFish(), spot.getMaxFish(),
-                spot.getXpReward(),
-                bonusLine,
-                bonusHintLine);
+        String text = "🎣 <b>Рыбалка " + spotDisplayHtml(spot) + "</b>\n\n"
+                + spotRandomDesc(spot) + "\n\n"
+                + spotRandomSub(spot) + "\n\n"
+                + "⏱ <b>Время:</b> " + spot.getDurationMinutes() + " мин\n"
+                + "🐟 <b>Улов:</b> " + spot.getMinFish() + "–" + spot.getMaxFish() + " рыбы\n"
+                + "⭐️ <b>Опыт:</b> +" + spot.getXpReward() + " XP"
+                + bonusResourceLine
+                + bonusHintLine;
 
         KeyboardBuilder kb = KeyboardBuilder.builder().row(BTN_CAST);
         if (hasBonuses) {
@@ -157,15 +152,68 @@ public class FishingMenuHandler implements GameHandler {
         } else {
             kb.row(BTN_BACK);
         }
-        return new BotResponse(text, null, kb.build());
+        return BotResponse.html(text, kb.build());
     }
 
-    private static String spotDescription(FishingSpot spot) {
+    /** Название спота для HTML-текстов (с нашими кастомными эмодзи). */
+    public static String spotDisplayHtml(FishingSpot spot) {
         return switch (spot) {
-            case SHORE    -> "Спокойное место у кромки воды.\nБыстро, но улов скромный.\n\nПодходит если хочешь быстро попробовать\nили у тебя мало времени.";
-            case REEF     -> "Рыба здесь крупнее — прячется\nпод камнями. Стоит подождать.\n\nЛучший выбор для ежедневной игры —\nхороший баланс улова и времени.";
-            case OPEN_SEA -> "Далеко от берега, глубокая вода.\nБогатый улов, но нужно терпение.\n\nИдеально: забросил, занялся другим,\nвернулся — и вытащил большой улов.";
+            case SHORE    -> ReefEmoji.SHORE_TEXT    + " У берега";
+            case REEF     -> ReefEmoji.REEF_TEXT     + " У рифа";
+            case OPEN_SEA -> ReefEmoji.OPEN_SEA_TEXT + " В открытом море";
         };
+    }
+
+    private static final Map<FishingSpot, List<String>> SPOT_DESCS = Map.of(
+            FishingSpot.SHORE, List.of(
+                    "Спокойное место у кромки воды. Быстро, но улов скромный.",
+                    "Мелкая вода, видно каждый камень. Рыба мелкая, но клюёт охотно.",
+                    "Тихое местечко. Удочку видно до самого дна.",
+                    "Вода прозрачная, рыбы немного — но поймать можно быстро.",
+                    "Прибрежная полоса — первый выбор каждого рыбака."
+            ),
+            FishingSpot.REEF, List.of(
+                    "Рыба здесь крупнее — прячется под камнями. Стоит подождать.",
+                    "Коралловые рифы кишат живностью. Придётся немного подождать — оно того стоит.",
+                    "Тёплая вода у рифа привлекает хорошую рыбу. Терпение вознаграждается.",
+                    "Пёстрые рыбы снуют между кораллами. Улов богаче берега.",
+                    "Под рифом прячется нечто ценное. Нужна выдержка."
+            ),
+            FishingSpot.OPEN_SEA, List.of(
+                    "Далеко от берега, глубокая вода. Богатый улов, но нужно терпение.",
+                    "Открытое море таит крупную добычу. Жди — и не пожалеешь.",
+                    "Синяя даль, берега не видно. Только ты, удочка и горизонт.",
+                    "Глубокая вода скрывает богатый улов. Придётся набраться терпения.",
+                    "Здесь водится настоящая рыба. Ждать долго, но результат впечатляет."
+            )
+    );
+
+    private static final Map<FishingSpot, List<String>> SPOT_SUBS = Map.of(
+            FishingSpot.SHORE, List.of(
+                    "Подходит если хочешь быстро попробовать, нужны ресурсы срочно, или у тебя мало времени.",
+                    "Лучший выбор если возвращаешься ненадолго или хочешь быстро поднять XP.",
+                    "Идеально для коротких сессий — забросил, вернулся через минуту."
+            ),
+            FishingSpot.REEF, List.of(
+                    "Лучший выбор для ежедневной игры — хороший баланс улова и времени.",
+                    "Оптимальный вариант если есть 10 минут — улов в разы богаче берега.",
+                    "Здесь стоит задержаться — рыба покрупнее, шанс ракушек выше."
+            ),
+            FishingSpot.OPEN_SEA, List.of(
+                    "Идеально: забросил, занялся другим, вернулся — и вытащил большой улов.",
+                    "Подходит если уходишь надолго — пусть удочка работает пока тебя нет.",
+                    "Лучший выбор на ночь или когда уходишь на несколько часов."
+            )
+    );
+
+    private static String spotRandomDesc(FishingSpot spot) {
+        List<String> list = SPOT_DESCS.get(spot);
+        return list.get(ThreadLocalRandom.current().nextInt(list.size()));
+    }
+
+    private static String spotRandomSub(FishingSpot spot) {
+        List<String> list = SPOT_SUBS.get(spot);
+        return list.get(ThreadLocalRandom.current().nextInt(list.size()));
     }
 
     private static String bonusEmoji(FishingSpot spot) {
