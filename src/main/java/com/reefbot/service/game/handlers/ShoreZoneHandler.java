@@ -11,6 +11,7 @@ import com.reefbot.repository.PlayerRepository;
 import com.reefbot.service.game.FishingService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.util.KeyboardBuilder;
+import com.reefbot.util.RichText;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
@@ -90,24 +91,30 @@ public class ShoreZoneHandler implements GameHandler {
     public static BotResponse buildZoneScreen(Player player) {
         String flavor = FLAVOR.get(ThreadLocalRandom.current().nextInt(FLAVOR.size()));
 
-        String text = "<b>" + ReefEmoji.SHORE_TEXT + " Берег</b>\n\n"
-                + flavor + "\n\n"
-                + fishingStatusLine(player);
+        RichText rt = new RichText();
+        rt.beginBold().emoji(ReefEmoji.SHORE).add(" Берег").endBold()
+          .add("\n\n")
+          .add(flavor)
+          .add("\n\n");
+        appendFishingStatus(rt, player);
 
-        return new BotResponse(text, ZoneType.SHORE.getBannerPath(), keyboard(player), null, null, "HTML");
+        return rt.build(ZoneType.SHORE.getBannerPath(), keyboard(player));
     }
 
-    private static String fishingStatusLine(Player player) {
+    private static void appendFishingStatus(RichText rt, Player player) {
         LocalDateTime finishAt = player.getFishing().getFishingFinishAt();
+        rt.emoji(ReefEmoji.FISHING).add(" ").bold("Рыбалка:").add(" ");
         if (finishAt == null) {
-            return "🎣 <b>Рыбалка:</b> свободна";
-        }
-        if (!LocalDateTime.now().isBefore(finishAt)) {
+            rt.add("свободна");
+        } else if (!LocalDateTime.now().isBefore(finishAt)) {
             FishingSpot spot = player.getFishing().getFishingSpot();
-            String spotPart = spot != null ? FishingMenuHandler.spotDisplayHtml(spot) + " — " : "";
-            return "🎣 <b>Рыбалка:</b> " + spotPart + "есть улов! ✅";
+            if (spot != null) {
+                rt.emoji(FishingMenuHandler.spotEmojiDef(spot)).add(" " + FishingMenuHandler.spotName(spot) + " — ");
+            }
+            rt.add("есть улов! ").emoji(ReefEmoji.CHECK);
+        } else {
+            rt.add("⏳ ещё " + remainingText(finishAt));
         }
-        return "🎣 <b>Рыбалка:</b> ⏳ ещё " + remainingText(finishAt);
     }
 
     private static String remainingText(LocalDateTime finishAt) {

@@ -9,8 +9,10 @@ import com.reefbot.enums.PlayerScreen;
 import com.reefbot.repository.PlayerRepository;
 import com.reefbot.service.game.FishingService;
 import com.reefbot.service.game.GameHandler;
+import com.reefbot.util.EmojiUtil;
 import com.reefbot.util.KeyboardBuilder;
 import com.reefbot.util.ReefEmoji;
+import com.reefbot.util.RichText;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -132,19 +134,25 @@ public class FishingMenuHandler implements GameHandler {
     public static BotResponse buildSpotDetail(FishingSpot spot, Player player) {
         boolean hasBonuses = player.getFishing().getFishingLevel() >= 2;
 
-        String bonusResourceLine = spot.getBonusResource() != null
-                ? "\n" + bonusEmoji(spot) + " <b>Шанс " + bonusName(spot) + ":</b> " + spot.getBonusChance() + "%"
-                : "";
-        String bonusHintLine = hasBonuses ? "\n\n✨ У вас активны бонусы рыбака" : "";
+        RichText rt = new RichText();
 
-        String text = "🎣 <b>Рыбалка " + spotDisplayHtml(spot) + "</b>\n\n"
-                + spotRandomDesc(spot) + "\n\n"
-                + spotRandomSub(spot) + "\n\n"
-                + "⏱ <b>Время:</b> " + spot.getDurationMinutes() + " мин\n"
-                + "🐟 <b>Улов:</b> " + spot.getMinFish() + "–" + spot.getMaxFish() + " рыбы\n"
-                + "⭐️ <b>Опыт:</b> +" + spot.getXpReward() + " XP"
-                + bonusResourceLine
-                + bonusHintLine;
+        // Заголовок: 🎣 Рыбалка 🌴 У берега (весь bold, эмодзи — кастомные)
+        rt.beginBold()
+          .emoji(ReefEmoji.FISHING).add(" Рыбалка ").emoji(spotEmojiDef(spot)).add(" " + spotName(spot))
+          .endBold()
+          .add("\n\n")
+          .add(spotRandomDesc(spot)).add("\n\n")
+          .add(spotRandomSub(spot)).add("\n\n")
+          .emoji(ReefEmoji.TIMER).add(" ").bold("Время:").add(" " + spot.getDurationMinutes() + " мин\n")
+          .emoji(ReefEmoji.FISH).add(" ").bold("Улов:").add(" " + spot.getMinFish() + "–" + spot.getMaxFish() + " рыбы\n")
+          .emoji(ReefEmoji.STAR).add(" ").bold("Опыт:").add(" +" + spot.getXpReward() + " XP");
+
+        if (spot.getBonusResource() != null) {
+            rt.add("\n" + bonusEmoji(spot) + " ").bold("Шанс " + bonusName(spot) + ":").add(" " + spot.getBonusChance() + "%");
+        }
+        if (hasBonuses) {
+            rt.add("\n\n").emoji(ReefEmoji.SPARKLES).add(" У вас активны бонусы рыбака");
+        }
 
         KeyboardBuilder kb = KeyboardBuilder.builder().row(BTN_CAST);
         if (hasBonuses) {
@@ -152,15 +160,24 @@ public class FishingMenuHandler implements GameHandler {
         } else {
             kb.row(BTN_BACK);
         }
-        return BotResponse.html(text, kb.build());
+        return rt.build(kb.build());
     }
 
-    /** Название спота для HTML-текстов (с нашими кастомными эмодзи). */
-    public static String spotDisplayHtml(FishingSpot spot) {
+    /** EmojiUtil.Def места рыбалки — для кастом-эмодзи в тексте. */
+    public static EmojiUtil.Def spotEmojiDef(FishingSpot spot) {
         return switch (spot) {
-            case SHORE    -> ReefEmoji.SHORE_TEXT    + " У берега";
-            case REEF     -> ReefEmoji.REEF_TEXT     + " У рифа";
-            case OPEN_SEA -> ReefEmoji.OPEN_SEA_TEXT + " В открытом море";
+            case SHORE    -> ReefEmoji.SHORE;
+            case REEF     -> ReefEmoji.REEF;
+            case OPEN_SEA -> ReefEmoji.OPEN_SEA;
+        };
+    }
+
+    /** Название места без эмодзи (для составных строк). */
+    public static String spotName(FishingSpot spot) {
+        return switch (spot) {
+            case SHORE    -> "У берега";
+            case REEF     -> "У рифа";
+            case OPEN_SEA -> "В открытом море";
         };
     }
 

@@ -9,6 +9,8 @@ import com.reefbot.service.game.FishingResult;
 import com.reefbot.service.game.FishingService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.util.KeyboardBuilder;
+import com.reefbot.util.ReefEmoji;
+import com.reefbot.util.RichText;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -42,33 +44,34 @@ public class FishingResultHandler implements GameHandler {
     }
 
     private BotResponse buildCollectedResponse(FishingResult result, Player player, Island island) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("🎉 <b>Улов!</b>\n\n");
+        RichText rt = new RichText();
+        rt.emoji(ReefEmoji.PARTY).add(" ").bold("Улов!").add("\n\n")
+          .bold("Место:").add(" ").emoji(FishingMenuHandler.spotEmojiDef(result.spot()))
+                                  .add(" " + FishingMenuHandler.spotName(result.spot())).add("\n")
+          .bold("Поймал:").add(" ").emoji(ReefEmoji.FISH).add(" ×" + result.fishCaught());
 
-        sb.append("<b>Место:</b> ").append(FishingMenuHandler.spotDisplayHtml(result.spot())).append("\n");
-
-        sb.append("<b>Поймал:</b> 🐟 ×").append(result.fishCaught());
         if (result.bonusType() != null) {
-            String bonusEmoji = switch (result.bonusType()) {
+            String bonusChar = switch (result.bonusType()) {
                 case SHELLS -> "🐚";
                 case CORAL  -> "🪸";
                 default     -> "✨";
             };
-            sb.append(", ").append(bonusEmoji).append(" ×").append(result.bonusAmount());
+            rt.add(", " + bonusChar + " ×" + result.bonusAmount());
         }
-        sb.append("\n");
 
-        sb.append("<b>Опыт рыбака:</b> +").append(result.xpEarned()).append(" ⭐️");
+        rt.add("\n")
+          .bold("Опыт рыбака:").add(" +" + result.xpEarned() + " ").emoji(ReefEmoji.STAR);
+
         int nextLevelXp = fishingService.xpForNextLevel(result.newLevel());
         if (nextLevelXp > 0) {
-            sb.append("  (всего ").append(result.totalXp()).append("/").append(nextLevelXp).append(")");
+            rt.add("  (всего " + result.totalXp() + "/" + nextLevelXp + ")");
         }
 
         if (result.wasFirstCatch()) {
-            sb.append("\n\n🎣 Первый улов! Рыбалка — хороший способ пополнить запасы.");
+            rt.add("\n\n").emoji(ReefEmoji.FISHING).add(" Первый улов! Рыбалка — хороший способ пополнить запасы.");
         }
 
-        BotResponse catchMessage = BotResponse.html(sb.toString());
+        BotResponse catchMessage = rt.build();
         BotResponse zoneScreen = ShoreZoneHandler.buildZoneScreen(player);
 
         if (result.leveledUp()) {
