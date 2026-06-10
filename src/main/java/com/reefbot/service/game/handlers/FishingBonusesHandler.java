@@ -60,7 +60,6 @@ public class FishingBonusesHandler implements GameHandler {
             sb.append("Пока нет — достигни уровня 2\n");
         }
 
-        return BotResponse.html(sb.toString(),
-                KeyboardBuilder.builder().row(BTN_BACK).build());
+        return BotResponse.html(sb.toString());
     }
 }
