@@ -7,7 +7,9 @@ import com.reefbot.enums.PlayerScreen;
 import com.reefbot.enums.ZoneType;
 import com.reefbot.repository.PlayerRepository;
 import com.reefbot.service.game.GameHandler;
+import com.reefbot.util.EmojiUtil;
 import com.reefbot.util.KeyboardBuilder;
+import com.reefbot.util.RichText;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
@@ -25,6 +27,12 @@ public class MainMenuHandler implements GameHandler {
 
     public static final String BTN_ISLAND = "🏝 Мой остров";
     public static final String BTN_INV    = "🎒 Инвентарь";
+
+    // ── Стадии острова ────────────────────────────────────────────────────────
+    private static final EmojiUtil.Def STAGE_WILD   = EmojiUtil.e("🌿", "5449850741667668411");
+    private static final EmojiUtil.Def STAGE_YOUNG  = EmojiUtil.e("🏡", "5411519258062516765");
+    private static final EmojiUtil.Def STAGE_LIVELY = EmojiUtil.e("🐬", "5805338278450175585");
+    private static final EmojiUtil.Def STAGE_BLOOM  = EmojiUtil.e("🍀", "5807669483619226764");
 
     private final PlayerRepository playerRepository;
 
@@ -69,25 +77,27 @@ public class MainMenuHandler implements GameHandler {
     // ── Static helpers (called from other handlers on back-navigation) ────────
 
     public static BotResponse showMainMenu(Player player, Island island) {
-        String stage = stageFor(island.getDevPoints());
-        StringBuilder sb = new StringBuilder()
-                .append("🏝 Остров «").append(island.getName()).append("»\n")
-                .append(stage).append(" · ").append(island.getDevPoints()).append(" ОР");
+        int dp = island.getDevPoints();
+        RichText rt = new RichText()
+                .bold("🏝 Остров «" + island.getName() + "»")
+                .add("\n")
+                .emoji(stageEmojiFor(dp)).add(" " + stageNameFor(dp))
+                .add(" · " + dp + " ОР");
 
         List<String> digest = buildDigest(player);
-        sb.append("\n");
+        rt.add("\n");
         if (digest.isEmpty()) {
-            sb.append("\n").append(randomAtmosphere());
+            rt.add("\n" + randomAtmosphere());
         } else {
-            digest.forEach(line -> sb.append("\n").append(line));
+            digest.forEach(line -> rt.add("\n" + line));
         }
 
         String tease = nextLockedZoneLine(island);
         if (tease != null) {
-            sb.append("\n").append(tease);
+            rt.add("\n" + tease);
         }
 
-        return new BotResponse(sb.toString(), null, keyboard(player, island));
+        return rt.build(keyboard(player, island));
     }
 
     public static ReplyKeyboard keyboard(Player player, Island island) {
@@ -170,11 +180,24 @@ public class MainMenuHandler implements GameHandler {
         return ATMOSPHERE.get(ThreadLocalRandom.current().nextInt(ATMOSPHERE.size()));
     }
 
+    /** Полная строка «эмодзи + название» — для экранов без RichText (MyIsland и др.). */
     public static String stageFor(int devPoints) {
-        if (devPoints >= 61) return "🏙 Процветающий город";
-        if (devPoints >= 21) return "⚓ Развивающийся порт";
-        if (devPoints >= 7)  return "🏘 Рыбацкая деревня";
-        return "🌱 Дикий островок";
+        EmojiUtil.Def d = stageEmojiFor(devPoints);
+        return d.placeholder() + " " + stageNameFor(devPoints);
+    }
+
+    public static String stageNameFor(int devPoints) {
+        if (devPoints >= 60) return "Расцветающий остров";
+        if (devPoints >= 25) return "Оживлённый остров";
+        if (devPoints >= 10) return "Молодое поселение";
+        return "Дикий клочок земли";
+    }
+
+    public static EmojiUtil.Def stageEmojiFor(int devPoints) {
+        if (devPoints >= 60) return STAGE_BLOOM;
+        if (devPoints >= 25) return STAGE_LIVELY;
+        if (devPoints >= 10) return STAGE_YOUNG;
+        return STAGE_WILD;
     }
 
     private static PlayerScreen screenFor(ZoneType zone) {
