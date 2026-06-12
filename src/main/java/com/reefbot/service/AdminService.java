@@ -25,8 +25,9 @@ import java.util.Optional;
  *   /del     &lt;playerId&gt;
  *   /tide    &lt;playerId&gt;
  *   /give    &lt;playerId&gt; &lt;ресурс&gt; &lt;количество&gt;
- *   /speedup   &lt;playerId&gt; [buildingType]  — оставить 10 сек до конца стройки
- *   /buildings &lt;playerId&gt;               — статус всех зданий игрока
+ *   /speedup   &lt;playerId&gt; [buildingType]          — оставить 10 сек до конца стройки
+ *   /buildings &lt;playerId&gt;                        — статус всех зданий игрока
+ *   /produce   &lt;playerId&gt; &lt;BUILDING_TYPE&gt; &lt;кол&gt; — накинуть N единиц в копилку здания
  *
  *   Ресурсы для /give: fish, shells, wood, stone, coral, devpoints (или dp), xp
  *   Количество может быть отрицательным (списать).
@@ -67,6 +68,10 @@ public class AdminService {
 
         if (text.startsWith("/buildings ")) {
             return handleBuildings(text.substring(11).trim());
+        }
+
+        if (text.startsWith("/produce ")) {
+            return handleProduce(text.substring(9).trim());
         }
 
         return null;
@@ -353,5 +358,92 @@ public class AdminService {
         }
 
         return new BotResponse(sb.toString().trim());
+    }
+
+    // ── /produce <playerId> <BUILDING_TYPE> <amount> ──────────────────────
+
+    /**
+     * Откатывает productionCollectedAt назад так, чтобы calcAccumulated() вернул
+     * ровно {@code amount} (или cap, если amount его превышает).
+     *
+     * Формула: collectedAt = now - (amount / prodPerHour) * 3600 сек.
+     */
+    private BotResponse handleProduce(String args) {
+        String[] parts = args.split("\\s+", 3);
+        if (parts.length != 3) {
+            return new BotResponse(
+                "Неверный формат. Используй:\n/produce <playerId> <BUILDING_TYPE> <количество>\n\n"
+                + "Пример: /produce 3 FISHING_PIER 5"
+            );
+        }
+
+        long playerId;
+        int amount;
+        try {
+            playerId = Long.parseLong(parts[0]);
+            amount   = Integer.parseInt(parts[2]);
+        } catch (NumberFormatException e) {
+            return new BotResponse("playerId и количество должны быть числами.");
+        }
+
+        if (amount < 0) {
+            return new BotResponse("Количество должно быть >= 0.");
+        }
+
+        String typeArg = parts[1].toUpperCase();
+        com.reefbot.enums.BuildingType buildingType;
+        try {
+            buildingType = com.reefbot.enums.BuildingType.valueOf(typeArg);
+        } catch (IllegalArgumentException e) {
+            return new BotResponse("Неизвестный тип здания: " + typeArg + "\nДоступные: FISHING_PIER");
+        }
+
+        Optional<Player> playerOpt = playerRepository.findById(playerId);
+        if (playerOpt.isEmpty()) {
+            return new BotResponse("Игрок #" + playerId + " не найден.");
+        }
+
+        Island island = islandRepository.findByPlayer(playerOpt.get()).orElse(null);
+        if (island == null) {
+            return new BotResponse("У игрока #" + playerId + " нет острова.");
+        }
+
+        IslandBuilding building = buildingRepository
+                .findByIslandAndBuildingType(island, buildingType)
+                .orElse(null);
+
+        if (building == null || building.getLevel() == 0) {
+            return new BotResponse("Здание " + typeArg + " у игрока #" + playerId + " ещё не построено.");
+        }
+        if (building.getBuildFinishAt() != null) {
+            return new BotResponse("Здание " + typeArg + " сейчас в процессе стройки/апгрейда.\nДождись завершения.");
+        }
+
+        int lvl        = building.getLevel();
+        int prodPerHour = buildingType.productionPerHourAt(lvl);
+        int cap         = buildingType.capAt(lvl);
+
+        // Капаем по потолку и предупреждаем
+        String capWarning = "";
+        if (amount > cap) {
+            capWarning = "\n⚠️ Запрошено " + amount + ", но потолок " + cap + " — выставлено " + cap + ".";
+            amount = cap;
+        }
+
+        // collectedAt = now - (amount / prodPerHour) * 3600 сек
+        // Используем double чтобы дроби не терялись
+        long secondsBack = Math.round((double) amount / prodPerHour * 3600);
+        building.setProductionCollectedAt(LocalDateTime.now().minusSeconds(secondsBack));
+        buildingRepository.save(building);
+
+        log.info("Admin produce: player#{} {} +{} (set collectedAt -{} sec)",
+                playerId, typeArg, amount, secondsBack);
+
+        return new BotResponse(String.format(
+            "✅ %s игрока #%d: в копилке теперь %d %s%s",
+            buildingType.nameAt(lvl), playerId, amount,
+            buildingType == com.reefbot.enums.BuildingType.FISHING_PIER ? "🐟" : "ед.",
+            capWarning
+        ));
     }
 }
