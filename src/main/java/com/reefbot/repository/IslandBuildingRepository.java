@@ -13,4 +13,7 @@ public interface IslandBuildingRepository extends JpaRepository<IslandBuilding, 
     Optional<IslandBuilding> findByIslandAndBuildingType(Island island, BuildingType type);
 
     List<IslandBuilding> findAllByIsland(Island island);
+
+    /** Все здания острова, у которых идёт стройка (buildFinishAt != null). */
+    List<IslandBuilding> findAllByIslandAndBuildFinishAtIsNotNull(Island island);
 }
