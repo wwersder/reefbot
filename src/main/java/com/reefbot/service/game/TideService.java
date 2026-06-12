@@ -118,6 +118,13 @@ public class TideService {
 
     // ── Scheduling ────────────────────────────────────────────────────────
 
+    /** Admin: force-activate tide for a player right now. */
+    @Transactional
+    public void forceTide(Player player) {
+        initTide(player, LocalDateTime.now());
+        playerRepository.save(player);
+    }
+
     /** First tide for a new player — available in 1–2 hours. */
     @Transactional
     public void scheduleFirstTide(Player player) {

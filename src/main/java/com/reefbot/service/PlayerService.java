@@ -28,6 +28,10 @@ public class PlayerService {
         return playerRepository.findByTelegramId(telegramId);
     }
 
+    public Optional<Player> findById(Long playerId) {
+        return playerRepository.findById(playerId);
+    }
+
     @Transactional
     public Player getOrCreatePlayer(Long telegramId, String username) {
         Optional<Player> existing = playerRepository.findByTelegramId(telegramId);
