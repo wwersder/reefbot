@@ -45,4 +45,10 @@ public class PlayerTide {
     /** True if notification has been sent for the current tide. */
     @Builder.Default
     private Boolean tideNotified = false;
+
+    /**
+     * Когда игрок последний раз прочёсывал пляж.
+     * NULL = никогда → доступно сразу. Кулдаун 4 часа.
+     */
+    private LocalDateTime beachScannedAt;
 }

@@ -182,11 +182,15 @@ public class TideGameHandler implements GameHandler {
                 if (qty > 1) rt.add(" ×" + qty);
                 rt.add("\n");
             }
+            if (reward.shells() > 0) {
+                rt.add("  🐚 ×" + reward.shells() + "\n");
+            }
             rt.add("\nПредметы добавлены в инвентарь.");
         } else {
-            rt.add("Ничего ценного не нашлось — ");
-            rt.beginBold().add("+5 🐚").endBold();
-            rt.add(" за попытку.");
+            // 0 попаданий — только утешительные ракушки
+            rt.add("Замки не поддались — улов унесло волной.\n");
+            rt.add("Но ").beginBold().add("+").add(String.valueOf(reward.shells())).add(" 🐚").endBold()
+              .add(" остались на берегу.");
         }
 
         rt.add("\n\nСледующий прилив придёт через несколько часов.");
@@ -218,8 +222,9 @@ public class TideGameHandler implements GameHandler {
 
     private BotResponse handleTake(Player player, Island island) {
         TideReward reward = tideService.finishGame(player);
-        if (!reward.hasItems() && reward.consolationShells() > 0) {
-            island.setShells(island.getShells() + reward.consolationShells());
+        // Ракушки теперь всегда: при победе — бонус, при поражении — утешение
+        if (reward.shells() > 0) {
+            island.setShells(island.getShells() + reward.shells());
             islandRepository.save(island);
         }
         player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);

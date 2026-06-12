@@ -33,6 +33,7 @@ public class ShoreZoneHandler implements GameHandler {
 
     public static final String BTN_FISHING = "Рыбалка";
     public static final String BTN_TIDE    = "🌊 Прилив!";
+    public static final String BTN_BEACH   = "🌊 Прочесать пляж";
     public static final String BTN_BACK    = "◀️ На остров";
 
     private static final List<String> FLAVOR = List.of(
@@ -60,6 +61,7 @@ public class ShoreZoneHandler implements GameHandler {
         return switch (text) {
             case BTN_FISHING -> routeFishing(player, island);
             case BTN_TIDE    -> routeTide(player, island);
+            case BTN_BEACH   -> scanBeach(player, island);
             case BTN_BACK    -> goBack(player, island);
             default          -> buildZoneScreen(player, tideService);
         };
@@ -89,6 +91,33 @@ public class ShoreZoneHandler implements GameHandler {
         return TideGameHandler.buildEntryScreen(player, tideService);
     }
 
+    private BotResponse scanBeach(Player player, Island island) {
+        if (!tideService.isBeachReady(player)) {
+            // Кнопка видна только когда готово — но на случай двойного нажатия
+            return buildZoneScreen(player, tideService);
+        }
+        TideService.BeachResult result = tideService.scanBeach(player, island);
+
+        RichText rt = new RichText();
+        rt.beginBold().add("🌊 Прочёсан пляж").endBold()
+          .add("\n\n")
+          .add(result.flavorText())
+          .add("\n\n");
+
+        if (result.rare()) {
+            rt.beginBold().add("+").add(String.valueOf(result.shells())).add(" 🐚").endBold()
+              .add(" — редкая находка!");
+        } else {
+            rt.add("+").beginBold().add(String.valueOf(result.shells())).add(" 🐚").endBold();
+        }
+
+        rt.add("\n\nСледующий раз через 4 часа.");
+
+        BotResponse findMessage = rt.build();
+        BotResponse zoneScreen  = buildZoneScreen(player, tideService);
+        return findMessage.withFollowUp(zoneScreen);
+    }
+
     private BotResponse goBack(Player player, Island island) {
         player.getState().setCurrentScreen(PlayerScreen.MAIN);
         playerRepository.save(player);
@@ -116,6 +145,8 @@ public class ShoreZoneHandler implements GameHandler {
         if (tideService != null) {
             rt.add("\n");
             appendTideStatus(rt, player, tideService);
+            rt.add("\n");
+            appendBeachStatus(rt, player, tideService);
         }
 
         return rt.build(ZoneType.SHORE.getBannerPath(), keyboard(player, tideService));
@@ -146,6 +177,15 @@ public class ShoreZoneHandler implements GameHandler {
         }
     }
 
+    private static void appendBeachStatus(RichText rt, Player player, TideService tideService) {
+        rt.add("🏖 ").bold("Пляж:").add(" ");
+        if (tideService.isBeachReady(player)) {
+            rt.add("можно прочесать!");
+        } else {
+            rt.add(tideService.beachCooldownText(player));
+        }
+    }
+
     private static String remainingText(LocalDateTime finishAt) {
         long totalSeconds = Math.max(0, Duration.between(LocalDateTime.now(), finishAt).getSeconds());
         long minutes = totalSeconds / 60;
@@ -163,10 +203,19 @@ public class ShoreZoneHandler implements GameHandler {
 
         KeyboardBuilder kb = KeyboardBuilder.builder().row(fishingBtn);
 
-        if (tideService != null && tideService.isActive(player)) {
-            KeyboardButton tideBtn = new KeyboardButton(BTN_TIDE);
-            tideBtn.setStyle("success");
-            kb.row(tideBtn);
+        if (tideService != null) {
+            if (tideService.isActive(player)) {
+                KeyboardButton tideBtn = new KeyboardButton(BTN_TIDE);
+                tideBtn.setStyle("success");
+                kb.row(tideBtn);
+            }
+
+            // «Прочесать пляж» — всегда видна, зелёная когда готово
+            KeyboardButton beachBtn = new KeyboardButton(BTN_BEACH);
+            if (tideService.isBeachReady(player)) {
+                beachBtn.setStyle("success");
+            }
+            kb.row(beachBtn);
         }
 
         kb.row(new KeyboardButton(BTN_BACK));

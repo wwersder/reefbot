@@ -7,7 +7,9 @@ import com.reefbot.entity.InventoryItem;
 import com.reefbot.entity.Player;
 import com.reefbot.entity.PlayerTide;
 import com.reefbot.enums.ConsumableItem;
+import com.reefbot.entity.Island;
 import com.reefbot.repository.InventoryRepository;
+import com.reefbot.repository.IslandRepository;
 import com.reefbot.repository.PlayerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -71,6 +73,7 @@ public class TideService {
 
     private final PlayerRepository playerRepository;
     private final InventoryRepository inventoryRepository;
+    private final IslandRepository islandRepository;
 
     // ── State queries ─────────────────────────────────────────────────────
 
@@ -228,7 +231,7 @@ public class TideService {
 
     private TideReward buildReward(Player player, int hits) {
         if (hits == 0) {
-            return new TideReward(Map.of(), 5); // 5 shells consolation
+            return new TideReward(Map.of(), 5); // утешение — только ракушки
         }
 
         List<ConsumableItem[]> pool = REWARD_POOLS.get(Math.min(hits, 3));
@@ -247,7 +250,14 @@ public class TideService {
         for (ConsumableItem c : bundle) {
             items.merge(c, 1, Integer::sum);
         }
-        return new TideReward(items, 0);
+
+        // Ракушки всегда идут вместе с расходниками — количество растёт с попаданиями
+        int shells = switch (hits) {
+            case 1 -> 5;
+            case 2 -> 10;
+            default -> 20; // 3 попадания
+        };
+        return new TideReward(items, shells);
     }
 
     private TideRollsData parseJson(String json) {
@@ -266,6 +276,79 @@ public class TideService {
         }
     }
 
+    // ── Beach scan ────────────────────────────────────────────────────────
+
+    private static final int BEACH_COOLDOWN_HOURS = 4;
+
+    private static final List<String> BEACH_SMALL = List.of(
+            "Пара ракушек у кромки воды.",
+            "Волна оставила несколько ракушек.",
+            "Среди гальки нашлось немного ракушек.",
+            "Мелочь, но всё же — горсть ракушек.",
+            "Прибой выбросил немного.",
+            "Ракушки под ногами — не пустой поход."
+    );
+
+    private static final List<String> BEACH_MEDIUM = List.of(
+            "Неплохая находка — целая горка ракушек.",
+            "Хороший улов с пляжа.",
+            "Прилив постарался — больше обычного.",
+            "Повезло — ракушки собрались в одном месте."
+    );
+
+    private static final List<String> BEACH_RARE = List.of(
+            "🍾 Бутылка с запиской! Внутри — горсть ракушек и старая карта с крестиком.",
+            "🍾 Запечатанная бутылка. Послание незнакомца... и горка ракушек на прощание.",
+            "🍾 Бутылочная почта! Кто-то богатый писал — внутри полно ракушек."
+    );
+
+    public boolean isBeachReady(Player player) {
+        PlayerTide tide = player.getTide();
+        if (tide == null || tide.getBeachScannedAt() == null) return true;
+        return LocalDateTime.now().isAfter(tide.getBeachScannedAt().plusHours(BEACH_COOLDOWN_HOURS));
+    }
+
+    public String beachCooldownText(Player player) {
+        PlayerTide tide = player.getTide();
+        if (tide == null || tide.getBeachScannedAt() == null) return "готово";
+        LocalDateTime readyAt = tide.getBeachScannedAt().plusHours(BEACH_COOLDOWN_HOURS);
+        long totalSeconds = Math.max(0, java.time.Duration.between(LocalDateTime.now(), readyAt).getSeconds());
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        if (hours > 0) return "через " + hours + " ч " + minutes + " мин";
+        return "через " + minutes + " мин";
+    }
+
+    @Transactional
+    public BeachResult scanBeach(Player player, Island island) {
+        player.getTide().setBeachScannedAt(LocalDateTime.now());
+
+        int roll = ThreadLocalRandom.current().nextInt(100);
+        int shells;
+        boolean rare;
+        String flavor;
+
+        if (roll < 5) {                    // 5% — редкость (бутылка)
+            shells = 20;
+            rare = true;
+            flavor = BEACH_RARE.get(ThreadLocalRandom.current().nextInt(BEACH_RARE.size()));
+        } else if (roll < 20) {            // 15% — хорошая находка
+            shells = 8 + ThreadLocalRandom.current().nextInt(8); // 8–15
+            rare = false;
+            flavor = BEACH_MEDIUM.get(ThreadLocalRandom.current().nextInt(BEACH_MEDIUM.size()));
+        } else {                           // 80% — мелочь
+            shells = 2 + ThreadLocalRandom.current().nextInt(4); // 2–5
+            rare = false;
+            flavor = BEACH_SMALL.get(ThreadLocalRandom.current().nextInt(BEACH_SMALL.size()));
+        }
+
+        island.setShells(island.getShells() + shells);
+        islandRepository.save(island);
+        playerRepository.save(player);
+
+        return new BeachResult(shells, rare, flavor);
+    }
+
     // ── Inner records ─────────────────────────────────────────────────────
 
     public record TideRollsData(
@@ -273,7 +356,9 @@ public class TideService {
             @JsonProperty("narrativeIndex") int narrativeIndex
     ) {}
 
-    public record TideReward(Map<ConsumableItem, Integer> items, int consolationShells) {
+    public record TideReward(Map<ConsumableItem, Integer> items, int shells) {
         public boolean hasItems() { return !items.isEmpty(); }
     }
+
+    public record BeachResult(int shells, boolean rare, String flavorText) {}
 }
