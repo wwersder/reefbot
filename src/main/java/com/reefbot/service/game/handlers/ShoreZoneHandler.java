@@ -2,12 +2,15 @@ package com.reefbot.service.game.handlers;
 
 import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Island;
+import com.reefbot.entity.IslandBuilding;
 import com.reefbot.entity.Player;
+import com.reefbot.enums.BuildingType;
 import com.reefbot.enums.FishingSpot;
 import com.reefbot.enums.PlayerScreen;
 import com.reefbot.enums.ZoneType;
 import com.reefbot.util.ReefEmoji;
 import com.reefbot.repository.PlayerRepository;
+import com.reefbot.service.game.BuildingService;
 import com.reefbot.service.game.FishingService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.service.game.TideService;
@@ -21,6 +24,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -31,10 +35,11 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class ShoreZoneHandler implements GameHandler {
 
-    public static final String BTN_FISHING = "Рыбалка";
-    public static final String BTN_TIDE    = "🌊 Прилив!";
-    public static final String BTN_BEACH   = "🌊 Прочесать пляж";
-    public static final String BTN_BACK    = "◀️ На остров";
+    public static final String BTN_FISHING   = "Рыбалка";
+    public static final String BTN_TIDE      = "🌊 Прилив!";
+    public static final String BTN_BEACH     = "🌊 Прочесать пляж";
+    public static final String BTN_BUILDINGS = "🏗 Здания";
+    public static final String BTN_BACK      = "◀️ На остров";
 
     private static final List<String> FLAVOR = List.of(
             "Старый причал поскрипывает на волнах.\nПахнет солью и водорослями.",
@@ -49,6 +54,7 @@ public class ShoreZoneHandler implements GameHandler {
 
     private final FishingService fishingService;
     private final TideService tideService;
+    private final BuildingService buildingService;
     private final PlayerRepository playerRepository;
 
     @Override
@@ -59,11 +65,15 @@ public class ShoreZoneHandler implements GameHandler {
     @Override
     public BotResponse handle(Player player, Island island, String text) {
         return switch (text) {
-            case BTN_FISHING -> routeFishing(player, island);
-            case BTN_TIDE    -> routeTide(player, island);
-            case BTN_BEACH   -> scanBeach(player, island);
-            case BTN_BACK    -> goBack(player, island);
-            default          -> buildZoneScreen(player, tideService);
+            case BTN_FISHING   -> routeFishing(player, island);
+            case BTN_TIDE      -> routeTide(player, island);
+            case BTN_BEACH     -> scanBeach(player, island);
+            case BTN_BUILDINGS -> routeBuildings(player, island);
+            case BTN_BACK      -> goBack(player, island);
+            default            -> {
+                IslandBuilding pier = buildingService.find(island, BuildingType.FISHING_PIER).orElse(null);
+                yield buildZoneScreen(player, tideService, pier);
+            }
         };
     }
 
@@ -91,6 +101,17 @@ public class ShoreZoneHandler implements GameHandler {
         return TideGameHandler.buildEntryScreen(player, tideService);
     }
 
+    private BotResponse routeBuildings(Player player, Island island) {
+        // Автофинализация готовых построек при входе на экран
+        Optional<IslandBuilding> pierOpt = buildingService.find(island, BuildingType.FISHING_PIER);
+        if (pierOpt.isPresent() && buildingService.isConstructionReady(pierOpt.get())) {
+            pierOpt = Optional.of(buildingService.finalize(pierOpt.get()));
+        }
+        player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE_BUILDINGS);
+        playerRepository.save(player);
+        return ShoreBuildingsHandler.buildBuildingsScreen(island, pierOpt.orElse(null));
+    }
+
     private BotResponse scanBeach(Player player, Island island) {
         if (!tideService.isBeachReady(player)) {
             // Кнопка видна только когда готово — но на случай двойного нажатия
@@ -114,7 +135,8 @@ public class ShoreZoneHandler implements GameHandler {
         rt.add("\n\nСледующий раз через 4 часа.");
 
         BotResponse findMessage = rt.build();
-        BotResponse zoneScreen  = buildZoneScreen(player, tideService);
+        IslandBuilding pier = buildingService.find(island, BuildingType.FISHING_PIER).orElse(null);
+        BotResponse zoneScreen  = buildZoneScreen(player, tideService, pier);
         return findMessage.withFollowUp(zoneScreen);
     }
 
@@ -133,6 +155,14 @@ public class ShoreZoneHandler implements GameHandler {
 
     /** Полный экран зоны с приливом (если tideService != null). */
     public static BotResponse buildZoneScreen(Player player, TideService tideService) {
+        return buildZoneScreen(player, tideService, null);
+    }
+
+    /**
+     * Полный экран зоны. Принимает опциональный pier для отображения статуса здания.
+     * Вызывается с pier=null когда pier недоступен (статика без репозитория).
+     */
+    public static BotResponse buildZoneScreen(Player player, TideService tideService, IslandBuilding pier) {
         String flavor = FLAVOR.get(ThreadLocalRandom.current().nextInt(FLAVOR.size()));
 
         RichText rt = new RichText();
@@ -149,7 +179,12 @@ public class ShoreZoneHandler implements GameHandler {
             appendBeachStatus(rt, player, tideService);
         }
 
-        return rt.build(ZoneType.SHORE.getBannerPath(), keyboard(player, tideService));
+        if (pier != null) {
+            rt.add("\n");
+            appendPierStatus(rt, pier);
+        }
+
+        return rt.build(ZoneType.SHORE.getBannerPath(), keyboard(player, tideService, pier));
     }
 
     private static void appendFishingStatus(RichText rt, Player player) {
@@ -186,6 +221,20 @@ public class ShoreZoneHandler implements GameHandler {
         }
     }
 
+    private static void appendPierStatus(RichText rt, IslandBuilding pier) {
+        rt.add("🎣 ").bold("Помост:").add(" ");
+        if (pier.getBuildFinishAt() != null && LocalDateTime.now().isBefore(pier.getBuildFinishAt())) {
+            // Строится
+            long mins = Math.max(1, Duration.between(LocalDateTime.now(), pier.getBuildFinishAt()).toMinutes());
+            rt.add("⏳ строится (" + mins + " мин)");
+        } else if (pier.getLevel() > 0 && pier.getBuildFinishAt() == null) {
+            // Работает
+            int acc = ShoreBuildingsHandler.calcAccumulated(pier);
+            int cap = BuildingType.FISHING_PIER.capAt(pier.getLevel());
+            rt.add("ур." + pier.getLevel() + " — " + acc + "/" + cap + " 🐟");
+        }
+    }
+
     private static String remainingText(LocalDateTime finishAt) {
         long totalSeconds = Math.max(0, Duration.between(LocalDateTime.now(), finishAt).getSeconds());
         long minutes = totalSeconds / 60;
@@ -195,6 +244,10 @@ public class ShoreZoneHandler implements GameHandler {
     }
 
     private static ReplyKeyboard keyboard(Player player, TideService tideService) {
+        return keyboard(player, tideService, null);
+    }
+
+    private static ReplyKeyboard keyboard(Player player, TideService tideService, IslandBuilding pier) {
         KeyboardButton fishingBtn = KeyboardBuilder.btn(BTN_FISHING, ReefEmoji.FISHING.id());
         LocalDateTime finishAt = player.getFishing().getFishingFinishAt();
         if (finishAt != null && !LocalDateTime.now().isBefore(finishAt)) {
@@ -217,6 +270,13 @@ public class ShoreZoneHandler implements GameHandler {
             }
             kb.row(beachBtn);
         }
+
+        // «Здания» — зелёная если есть накопленная рыба для сбора
+        KeyboardButton buildingsBtn = new KeyboardButton(BTN_BUILDINGS);
+        if (pier != null && ShoreBuildingsHandler.calcAccumulated(pier) > 0) {
+            buildingsBtn.setStyle("success");
+        }
+        kb.row(buildingsBtn);
 
         kb.row(new KeyboardButton(BTN_BACK));
         return kb.build();
