@@ -258,15 +258,19 @@ public class TideGameHandler implements GameHandler {
      * При ошибке возвращает случайное значение-заглушку.
      */
     private int sendDice(Long chatId) {
+        int value = ThreadLocalRandom.current().nextInt(6) + 1; // fallback
         try {
             Message msg = telegramClient.execute(
                     SendDice.builder().chatId(String.valueOf(chatId)).emoji("🎲").build()
             );
-            return msg.getDice().getValue();
+            value = msg.getDice().getValue();
+            Thread.sleep(4000); // ждём пока анимация кубика завершится
         } catch (TelegramApiException e) {
             log.warn("Не удалось отправить кубик игроку {}, используем fallback", chatId, e);
-            return ThreadLocalRandom.current().nextInt(6) + 1;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt(); // восстанавливаем флаг прерывания
         }
+        return value;
     }
 
     // ── Text helpers ───────────────────────────────────────────────────────
