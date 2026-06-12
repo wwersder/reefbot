@@ -22,6 +22,7 @@ public class FishingActiveHandler implements GameHandler {
     private final FishingService fishingService;
     private final FishingInventoryHandler fishingInventoryHandler;
     private final PlayerRepository playerRepository;
+    private final com.reefbot.service.game.TideService tideService;
 
     @Override
     public PlayerScreen getScreen() {
@@ -33,7 +34,7 @@ public class FishingActiveHandler implements GameHandler {
         if (FishingMenuHandler.BTN_BACK.equals(text)) {
             player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
             playerRepository.save(player);
-            return ShoreZoneHandler.buildZoneScreen(player);
+            return ShoreZoneHandler.buildZoneScreen(player, tideService);
         }
 
         if (BTN_INVENTORY.equals(text)) {

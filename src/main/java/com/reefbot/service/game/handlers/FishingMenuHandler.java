@@ -37,6 +37,7 @@ public class FishingMenuHandler implements GameHandler {
     private final FishingService fishingService;
     private final PlayerRepository playerRepository;
     private final FishingInventoryHandler fishingInventoryHandler;
+    private final com.reefbot.service.game.TideService tideService;
 
     @Override
     public PlayerScreen getScreen() {
@@ -131,7 +132,7 @@ public class FishingMenuHandler implements GameHandler {
         if (fishingService.isActive(player) || fishingService.isReady(player)) {
             player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
             playerRepository.save(player);
-            return ShoreZoneHandler.buildZoneScreen(player);
+            return ShoreZoneHandler.buildZoneScreen(player, tideService);
         }
         // Spot выбран, но удочка ещё не заброшена — вернуть к выбору места
         if (player.getFishing().getFishingSpot() != null) {
@@ -141,7 +142,7 @@ public class FishingMenuHandler implements GameHandler {
         }
         player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
         playerRepository.save(player);
-        return ShoreZoneHandler.buildZoneScreen(player);
+        return ShoreZoneHandler.buildZoneScreen(player, tideService);
     }
 
     // ── Static helpers ───────────────────────────────────────────────────────

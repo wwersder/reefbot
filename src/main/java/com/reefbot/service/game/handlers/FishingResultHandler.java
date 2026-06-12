@@ -22,6 +22,7 @@ public class FishingResultHandler implements GameHandler {
 
     private final FishingService fishingService;
     private final PlayerRepository playerRepository;
+    private final com.reefbot.service.game.TideService tideService;
 
     @Override
     public PlayerScreen getScreen() {
@@ -72,7 +73,7 @@ public class FishingResultHandler implements GameHandler {
         }
 
         BotResponse catchMessage = rt.build();
-        BotResponse zoneScreen = ShoreZoneHandler.buildZoneScreen(player);
+        BotResponse zoneScreen = ShoreZoneHandler.buildZoneScreen(player, tideService);
 
         if (result.leveledUp()) {
             BotResponse levelUpMessage = buildLevelUpMessage(result.newLevel());
