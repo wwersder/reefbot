@@ -21,6 +21,15 @@ public class Player {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Версия для оптимистичной блокировки.
+     * Если два потока одновременно загрузили и изменили одного игрока,
+     * второй save() бросит ObjectOptimisticLockingFailureException.
+     * MessageDispatcher перехватывает это и повторяет запрос с актуальными данными.
+     */
+    @Version
+    private Long version;
+
     private Long telegramId;
 
     private String username;
