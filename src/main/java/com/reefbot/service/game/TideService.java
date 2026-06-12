@@ -1,6 +1,7 @@
 package com.reefbot.service.game;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reefbot.entity.InventoryItem;
 import com.reefbot.entity.Player;
@@ -18,7 +19,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
@@ -66,7 +66,8 @@ public class TideService {
         "Обломок шлюпки с ящиком под сиденьем."
     };
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private final PlayerRepository playerRepository;
     private final InventoryRepository inventoryRepository;
@@ -103,19 +104,6 @@ public class TideService {
         }
     }
 
-    /** Expected dice result for current round (pre-determined). */
-    public int getCurrentRoll(Player player) {
-        try {
-            TideRollsData data = parseJson(player.getTide().getTideRollsJson());
-            int idx = player.getTide().getTideRoundIndex();
-            return data.rolls().get(idx);
-        } catch (Exception e) {
-            return 4; // fallback
-        }
-    }
-
-    // ── Game actions ──────────────────────────────────────────────────────
-
     // ── Scheduling ────────────────────────────────────────────────────────
 
     /** Admin: force-activate tide for a player right now. */
@@ -141,17 +129,15 @@ public class TideService {
         // caller must save player
     }
 
-    /** Pre-roll dice + set timestamps for the tide window starting at {@code available}. */
+    /** Set timestamps and pick reward/narrative for the tide window starting at {@code available}. */
     private void initTide(Player player, LocalDateTime available) {
-        Random rnd = ThreadLocalRandom.current();
-        List<Integer> rolls = List.of(rnd.nextInt(6) + 1, rnd.nextInt(6) + 1, rnd.nextInt(6) + 1);
-        int rewardIndex    = rnd.nextInt(REWARD_POOLS.get(3).size());
-        int narrativeIndex = rnd.nextInt(NARRATIVES.length);
+        int rewardIndex    = ThreadLocalRandom.current().nextInt(REWARD_POOLS.get(3).size());
+        int narrativeIndex = ThreadLocalRandom.current().nextInt(NARRATIVES.length);
 
         PlayerTide tide = player.getTide();
         tide.setTideAvailableAt(available);
         tide.setTideExpiresAt(available.plusMinutes(WINDOW_MINUTES));
-        tide.setTideRollsJson(toJson(new TideRollsData(rolls, rewardIndex, narrativeIndex)));
+        tide.setTideRollsJson(toJson(new TideRollsData(rewardIndex, narrativeIndex)));
         tide.setTideRoundIndex(0);
         tide.setTideHits(0);
         tide.setTideNotified(false);
@@ -160,20 +146,22 @@ public class TideService {
     // ── Game actions ──────────────────────────────────────────────────────
 
     /**
-     * Player guesses: true = high (>3), false = low (≤3).
-     * Returns the result with the actual dice value.
+     * Called when the player guessed correctly (dice value already determined by Telegram).
+     * Increments roundIndex and hits.
      */
     @Transactional
-    public RoundResult resolveRound(Player player, boolean guessHigh) {
-        int roll = getCurrentRoll(player);
-        boolean correct = guessHigh ? (roll > 3) : (roll <= 3);
-
+    public void resolveCorrectRound(Player player) {
         PlayerTide tide = player.getTide();
         tide.setTideRoundIndex(tide.getTideRoundIndex() + 1);
-        if (correct) tide.setTideHits(tide.getTideHits() + 1);
-
+        tide.setTideHits(tide.getTideHits() + 1);
         playerRepository.save(player);
-        return new RoundResult(correct, roll);
+    }
+
+    /** Called when the player guessed wrong — resets tide, schedules the next one. */
+    @Transactional
+    public void failGame(Player player) {
+        scheduleNextTide(player);
+        playerRepository.save(player);
     }
 
     /**
@@ -281,12 +269,9 @@ public class TideService {
     // ── Inner records ─────────────────────────────────────────────────────
 
     public record TideRollsData(
-            @JsonProperty("rolls") List<Integer> rolls,
             @JsonProperty("rewardIndex") int rewardIndex,
             @JsonProperty("narrativeIndex") int narrativeIndex
     ) {}
-
-    public record RoundResult(boolean correct, int roll) {}
 
     public record TideReward(Map<ConsumableItem, Integer> items, int consolationShells) {
         public boolean hasItems() { return !items.isEmpty(); }

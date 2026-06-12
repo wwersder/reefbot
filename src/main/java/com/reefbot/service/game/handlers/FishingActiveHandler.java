@@ -16,9 +16,11 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 @RequiredArgsConstructor
 public class FishingActiveHandler implements GameHandler {
 
-    public static final String BTN_REFRESH = "🔄 Обновить";
+    public static final String BTN_REFRESH   = "🔄 Обновить";
+    public static final String BTN_INVENTORY = FishingMenuHandler.BTN_INVENTORY;
 
     private final FishingService fishingService;
+    private final FishingInventoryHandler fishingInventoryHandler;
     private final PlayerRepository playerRepository;
 
     @Override
@@ -32,6 +34,12 @@ public class FishingActiveHandler implements GameHandler {
             player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
             playerRepository.save(player);
             return ShoreZoneHandler.buildZoneScreen(player);
+        }
+
+        if (BTN_INVENTORY.equals(text)) {
+            player.getState().setCurrentScreen(PlayerScreen.FISHING_INVENTORY);
+            playerRepository.save(player);
+            return fishingInventoryHandler.buildScreen(player);
         }
 
         if (fishingService.isReady(player)) {
@@ -50,18 +58,21 @@ public class FishingActiveHandler implements GameHandler {
                 ? player.getFishing().getFishingSpot().getDisplayName().toLowerCase()
                 : "неизвестно";
 
+        String effectsLine = FishingMenuHandler.activeEffectsLine(player);
+        String effectsText = effectsLine.isEmpty() ? "" : "\n⚡ Активно: " + effectsLine;
+
         String text = String.format("""
-                ⏳ Удочка заброшена %s
+                ⏳ Удочка заброшена %s%s
 
                 Возвращайся через %s — улов будет ждать.
-                """, spot, remaining);
+                """, spot, effectsText, remaining);
 
         return new BotResponse(text, null, keyboard);
     }
 
     public static ReplyKeyboard activeKeyboard() {
         return KeyboardBuilder.builder()
-                .row(BTN_REFRESH, FishingMenuHandler.BTN_BACK)
+                .row(BTN_REFRESH, BTN_INVENTORY, FishingMenuHandler.BTN_BACK)
                 .build();
     }
 }

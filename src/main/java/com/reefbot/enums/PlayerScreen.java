@@ -14,5 +14,6 @@ public enum PlayerScreen {
     FISHING_RESULT,
     FISHING_BONUSES,
     ZONE_SHORE_TIDE,
+    FISHING_INVENTORY,
     NPC_ENCOUNTER
 }

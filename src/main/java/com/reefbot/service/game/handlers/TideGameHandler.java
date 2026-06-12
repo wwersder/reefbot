@@ -7,37 +7,49 @@ import com.reefbot.enums.ConsumableItem;
 import com.reefbot.enums.PlayerScreen;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.service.game.TideService;
-import com.reefbot.service.game.TideService.RoundResult;
 import com.reefbot.service.game.TideService.TideReward;
 import com.reefbot.repository.IslandRepository;
 import com.reefbot.repository.PlayerRepository;
 import com.reefbot.util.KeyboardBuilder;
 import com.reefbot.util.RichText;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.methods.send.SendDice;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Мини-игра «Прилив»: три броска кубика с угадыванием (высокое/низкое).
+ * Мини-игра «Прилив»: до трёх бросков кубика с угадыванием (больше/меньше трёх).
  * Экран: ZONE_SHORE_TIDE.
+ *
+ * Правила:
+ *  - угадал → раунд выигран, можно рискнуть ещё раз или забрать
+ *  - не угадал → игра проиграна, лут «унесло в море»
+ *  - забрать можно только если выиграл хотя бы 1 раунд
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class TideGameHandler implements GameHandler {
 
     // ── Button labels ──────────────────────────────────────────────────────
 
-    public static final String BTN_OPEN = "🗝 Открыть";
-    public static final String BTN_HIGH = "⬆️ Высокое (4–6)";
-    public static final String BTN_LOW  = "⬇️ Низкое (1–3)";
-    public static final String BTN_NEXT = "🎲 Следующий бросок";
-    public static final String BTN_TAKE = "🎁 Забрать";
+    public static final String BTN_OPEN = "🗝 Попробовать удачу";
+    public static final String BTN_HIGH = "⬆️ Больше трёх";
+    public static final String BTN_LOW  = "⬇️ Три или меньше";
+    public static final String BTN_NEXT = "🎲 Рискнуть ещё раз";
+    public static final String BTN_TAKE = "🎁 Забрать улов";
     public static final String BTN_BACK = "◀️ На берег";
 
     private final TideService tideService;
+    private final TelegramClient telegramClient;
     private final PlayerRepository playerRepository;
     private final IslandRepository islandRepository;
 
@@ -48,6 +60,10 @@ public class TideGameHandler implements GameHandler {
 
     @Override
     public BotResponse handle(Player player, Island island, String text) {
+        if (!tideService.isActive(player)) {
+            // Tide expired mid-session — route back to shore
+            return goBack(player, island);
+        }
         return switch (text) {
             case BTN_OPEN -> buildGuessScreen(player);
             case BTN_HIGH -> handleGuess(player, true);
@@ -59,7 +75,7 @@ public class TideGameHandler implements GameHandler {
         };
     }
 
-    // ── Screen builders ────────────────────────────────────────────────────
+    // ── Entry screen (called statically from ShoreZoneHandler) ────────────
 
     /**
      * Entry screen — shown when player taps 🌊 Прилив! on shore.
@@ -67,67 +83,94 @@ public class TideGameHandler implements GameHandler {
      */
     public static BotResponse buildEntryScreen(Player player, TideService tideService) {
         String narrative = tideService.getNarrative(player);
+
         RichText rt = new RichText();
         rt.beginBold().add("🌊 Прилив").endBold()
           .add("\n\n")
           .add(narrative)
           .add("\n\n")
-          .add("Что-то лежит у воды. Угадай три броска кубика — ")
-          .add("попаданий больше, награда лучше.");
+          .add("Море вынесло кое-что на берег. Угадай бросок кубика — ")
+          .beginBold().add("верно").endBold()
+          .add(" значит можешь рискнуть ещё раз или взять уже есть. ")
+          .beginBold().add("Промахнёшься — лут унесёт волной.")
+          .endBold();
 
-        return rt.build(guessKeyboard(true));
+        ReplyKeyboard kb = KeyboardBuilder.builder()
+                .row(new KeyboardButton(BTN_OPEN))
+                .row(new KeyboardButton(BTN_BACK))
+                .build();
+
+        return rt.build(kb);
     }
 
-    /** Guess screen for current round. */
+    // ── Screen builders ────────────────────────────────────────────────────
+
+    /** Экран выбора: высокое или низкое? */
     private BotResponse buildGuessScreen(Player player) {
-        int round = player.getTide().getTideRoundIndex() + 1; // 1-based for display
+        int round = player.getTide().getTideRoundIndex() + 1; // 1-based
         int hits  = player.getTide().getTideHits();
 
         RichText rt = new RichText();
-        rt.beginBold().add("🎲 Бросок " + round + " из 3").endBold()
-          .add("\n")
-          .add(hitsLine(hits, round - 1))
-          .add("\n\n")
-          .add("Кубик крутится... Угадай: высокое (4–6) или низкое (1–3)?");
+        rt.beginBold().add("🎲 Бросок " + round + " из 3").endBold();
+        if (hits > 0) {
+            rt.add("  ").add(hitsDots(hits, round - 1));
+        }
+        rt.add("\n\n")
+          .add(roundPrompt(round));
 
-        return rt.build(guessKeyboard(round == 1));
+        return rt.build(guessKeyboard(hits));
     }
 
-    /** Called after a guess — shows the dice result + hit/miss. */
-    private BotResponse buildResultScreen(Player player, RoundResult result, int roundJustPlayed) {
-        int hits       = player.getTide().getTideHits();
-        boolean done   = tideService.isCompleted(player);
-        int nextRound  = player.getTide().getTideRoundIndex() + 1; // for display (1-based)
+    /** Экран победы в раунде — кубик уже отправлен Telegram'ом отдельным сообщением. */
+    private BotResponse buildSuccessScreen(Player player, int diceValue, int roundJustWon) {
+        int hits = player.getTide().getTideHits(); // уже обновлён
+        boolean done = tideService.isCompleted(player);
 
         RichText rt = new RichText();
-        rt.beginBold().add("🎲 Кубик: " + result.roll()).endBold()
-          .add("  ")
-          .add(result.correct() ? "✅ Верно!" : "❌ Промах")
-          .add("\n")
-          .add(hitsLine(hits, roundJustPlayed))
-          .add("\n\n");
+        rt.beginBold().add("🎲 Выпало " + diceValue).endBold()
+          .add(" — ✅ Угадал!\n\n")
+          .add(roundSuccessText(roundJustWon))
+          .add("\n\n")
+          .add(hitsDots(hits, roundJustWon));
 
         if (!done) {
-            rt.add("Бросок " + nextRound + " из 3. Продолжишь?");
-        } else {
-            rt.add("Три броска сделано! Забирай, что выбросило море.");
+            rt.add("\n\n").add("Продолжишь или заберёшь?");
         }
 
-        ReplyKeyboard keyboard = done
-                ? KeyboardBuilder.builder().row(btn(BTN_TAKE, true)).row(new KeyboardButton(BTN_BACK)).build()
-                : KeyboardBuilder.builder()
-                    .row(new KeyboardButton(BTN_NEXT))
-                    .row(btn(BTN_TAKE, false))
+        ReplyKeyboard kb;
+        if (done) {
+            kb = KeyboardBuilder.builder()
+                    .row(btn(BTN_TAKE, true))
                     .row(new KeyboardButton(BTN_BACK))
                     .build();
+        } else {
+            kb = KeyboardBuilder.builder()
+                    .row(btn(BTN_TAKE, false), new KeyboardButton(BTN_NEXT))
+                    .row(new KeyboardButton(BTN_BACK))
+                    .build();
+        }
 
-        return rt.build(keyboard);
+        return rt.build(kb);
     }
 
-    /** Reward screen — shown after finishGame(). */
-    private BotResponse buildRewardScreen(Player player, TideReward reward) {
+    /** Экран поражения — игра окончена, лут унесло. */
+    private BotResponse buildFailureScreen(int diceValue, int roundNumber, int hitsBefore) {
         RichText rt = new RichText();
-        rt.beginBold().add("🌊 Прилив закончился").endBold()
+        rt.beginBold().add("🎲 Выпало " + diceValue).endBold()
+          .add(" — ❌ Не угадал\n\n")
+          .add(failureText(roundNumber, hitsBefore));
+
+        rt.add("\n\nСледующий прилив придёт через несколько часов.");
+
+        return rt.build(KeyboardBuilder.builder()
+                .row(new KeyboardButton(BTN_BACK))
+                .build());
+    }
+
+    /** Экран награды после «Забрать». */
+    private BotResponse buildRewardScreen(TideReward reward) {
+        RichText rt = new RichText();
+        rt.beginBold().add("🌊 Прилив схлынул").endBold()
           .add("\n\n");
 
         if (reward.hasItems()) {
@@ -135,41 +178,53 @@ public class TideGameHandler implements GameHandler {
             for (Map.Entry<ConsumableItem, Integer> entry : reward.items().entrySet()) {
                 ConsumableItem item = entry.getKey();
                 int qty = entry.getValue();
-                rt.add("  " + item.getDisplayName());
+                rt.add("  ").add(item.getDisplayName());
                 if (qty > 1) rt.add(" ×" + qty);
                 rt.add("\n");
             }
-            rt.add("\n").add("Предметы добавлены в инвентарь.");
+            rt.add("\nПредметы добавлены в инвентарь.");
         } else {
-            rt.add("Улов не ахти — ");
-            rt.beginBold().add("+5 🐚 Ракушки").endBold();
+            rt.add("Ничего ценного не нашлось — ");
+            rt.beginBold().add("+5 🐚").endBold();
             rt.add(" за попытку.");
         }
 
         rt.add("\n\nСледующий прилив придёт через несколько часов.");
 
-        return rt.build(KeyboardBuilder.builder().row(new KeyboardButton(BTN_BACK)).build());
+        return rt.build(KeyboardBuilder.builder()
+                .row(new KeyboardButton(BTN_BACK))
+                .build());
     }
 
     // ── Action handlers ────────────────────────────────────────────────────
 
-    private BotResponse handleGuess(Player player, boolean high) {
-        int roundJustPlayed = player.getTide().getTideRoundIndex() + 1; // before increment
-        RoundResult result  = tideService.resolveRound(player, high);
-        return buildResultScreen(player, result, roundJustPlayed);
+    private BotResponse handleGuess(Player player, boolean guessHigh) {
+        int roundNumber = player.getTide().getTideRoundIndex() + 1; // 1-based, до инкремента
+        int hitsBefore  = player.getTide().getTideHits();
+
+        // Бросаем настоящий кубик через Telegram
+        int diceValue = sendDice(player.getTelegramId());
+
+        boolean correct = guessHigh ? (diceValue > 3) : (diceValue <= 3);
+
+        if (correct) {
+            tideService.resolveCorrectRound(player);
+            return buildSuccessScreen(player, diceValue, roundNumber);
+        } else {
+            tideService.failGame(player);
+            return buildFailureScreen(diceValue, roundNumber, hitsBefore);
+        }
     }
 
     private BotResponse handleTake(Player player, Island island) {
-        // Give consolation shells if 0 hits
         TideReward reward = tideService.finishGame(player);
         if (!reward.hasItems() && reward.consolationShells() > 0) {
             island.setShells(island.getShells() + reward.consolationShells());
             islandRepository.save(island);
         }
-        // Set screen back to shore
         player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
         playerRepository.save(player);
-        return buildRewardScreen(player, reward);
+        return buildRewardScreen(reward);
     }
 
     private BotResponse goBack(Player player, Island island) {
@@ -180,49 +235,101 @@ public class TideGameHandler implements GameHandler {
 
     private BotResponse buildDefaultScreen(Player player) {
         if (tideService.isCompleted(player)) {
-            // All 3 rounds done — show "take reward" prompt
             int hits = player.getTide().getTideHits();
             RichText rt = new RichText();
-            rt.add("Три броска сделано! ")
-              .add(hitsLine(hits, 3))
-              .add("\n\nЗабирай, что выбросило море.");
+            rt.beginBold().add("Три броска сделано!").endBold()
+              .add("  ").add(hitsDots(hits, 3))
+              .add("\n\nЗабирай, что принёс прилив.");
             return rt.build(KeyboardBuilder.builder()
                     .row(btn(BTN_TAKE, true))
                     .row(new KeyboardButton(BTN_BACK))
                     .build());
         }
-        int roundIndex = player.getTide().getTideRoundIndex();
-        if (roundIndex == 0) {
+        if (player.getTide().getTideRoundIndex() == 0) {
             return buildEntryScreen(player, tideService);
         }
         return buildGuessScreen(player);
     }
 
-    // ── Static helpers ─────────────────────────────────────────────────────
+    // ── Telegram dice ──────────────────────────────────────────────────────
 
-    private static String hitsLine(int hits, int roundsDone) {
+    /**
+     * Отправляет анимированный кубик в чат игрока и возвращает выпавшее значение (1–6).
+     * При ошибке возвращает случайное значение-заглушку.
+     */
+    private int sendDice(Long chatId) {
+        try {
+            Message msg = telegramClient.execute(
+                    SendDice.builder().chatId(String.valueOf(chatId)).emoji("🎲").build()
+            );
+            return msg.getDice().getValue();
+        } catch (TelegramApiException e) {
+            log.warn("Не удалось отправить кубик игроку {}, используем fallback", chatId, e);
+            return ThreadLocalRandom.current().nextInt(6) + 1;
+        }
+    }
+
+    // ── Text helpers ───────────────────────────────────────────────────────
+
+    private static String roundPrompt(int round) {
+        return switch (round) {
+            case 1 -> "Слышишь, как плещется? Первый замок ждёт.\nЧто выпадет на кубике?";
+            case 2 -> "Второй замок. Испытай удачу ещё раз.\nЧто выпадет на кубике?";
+            case 3 -> "Последний. Не торопись.\nЧто выпадет на кубике?";
+            default -> "Что выпадет на кубике?";
+        };
+    }
+
+    private static String roundSuccessText(int round) {
+        return switch (round) {
+            case 1 -> "Первый замок поддался.";
+            case 2 -> "Второй замок открылся.";
+            case 3 -> "Последний замок снят. Ящик твой!";
+            default -> "Попадание!";
+        };
+    }
+
+    private static String failureText(int round, int hitsBefore) {
+        if (hitsBefore == 0) {
+            return switch (round) {
+                case 1 -> "Замок не поддался.\nВолна подхватила ящик и унесла в море.\nНичего не осталось.";
+                case 2 -> "Второй замок устоял.\nПрибой смыл всё. Зря рисковал.";
+                case 3 -> "Последний замок не дался.\nЯщик ушёл под воду вместе с содержимым.";
+                default -> "Промах. Море забрало своё.";
+            };
+        }
+        // hits > 0 but still lost on this round — already had some wins but lost them all
+        return switch (round) {
+            case 2 -> "Второй замок устоял.\nВолна подхватила ящик и унесла в море. Всё, что было — пропало.";
+            case 3 -> "Последний замок не поддался.\nЯщик смыло волной. Так близко...";
+            default -> "Промах. Море забрало всё.";
+        };
+    }
+
+    private static String hitsDots(int hits, int roundsDone) {
         if (roundsDone == 0) return "";
-        StringBuilder sb = new StringBuilder("Попадания: ");
+        StringBuilder sb = new StringBuilder();
         for (int i = 0; i < roundsDone; i++) {
             sb.append(i < hits ? "✅" : "❌");
         }
         return sb.toString();
     }
 
-    private static KeyboardButton btn(String text, boolean success) {
-        KeyboardButton b = new KeyboardButton(text);
-        if (success) b.setStyle("success");
-        return b;
-    }
+    // ── Keyboard helpers ───────────────────────────────────────────────────
 
-    private static ReplyKeyboard guessKeyboard(boolean firstRound) {
+    private static ReplyKeyboard guessKeyboard(int hits) {
         KeyboardBuilder kb = KeyboardBuilder.builder()
                 .row(new KeyboardButton(BTN_HIGH), new KeyboardButton(BTN_LOW));
-        if (!firstRound) {
-            // allow taking reward mid-game
+        if (hits > 0) {
             kb.row(btn(BTN_TAKE, false));
         }
         kb.row(new KeyboardButton(BTN_BACK));
         return kb.build();
+    }
+
+    private static KeyboardButton btn(String text, boolean success) {
+        KeyboardButton b = new KeyboardButton(text);
+        if (success) b.setStyle("success");
+        return b;
     }
 }

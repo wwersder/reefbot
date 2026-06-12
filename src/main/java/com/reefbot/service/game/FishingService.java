@@ -69,6 +69,12 @@ public class FishingService {
             player.getFishing().setEffectSpeedCast(false);
         }
 
+        // 🫙 Tide vial pre-applied: instant completion
+        if (Boolean.TRUE.equals(player.getFishing().getEffectInstantNext())) {
+            duration = 0;
+            player.getFishing().setEffectInstantNext(false);
+        }
+
         player.getFishing().setFishingSpot(spot);
         player.getFishing().setFishingFinishAt(LocalDateTime.now().plusMinutes(duration));
         player.getFishing().setFishingNotified(false);

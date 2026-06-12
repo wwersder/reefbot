@@ -32,9 +32,11 @@ public class FishingMenuHandler implements GameHandler {
     public static final String BTN_LEVELS            = "Уровни";
     public static final String BTN_CAST              = "✅ Закинуть удочку";
     public static final String BTN_BONUSES           = "✨ Бонусы";
+    public static final String BTN_INVENTORY         = "🎒 Рюкзак";
 
     private final FishingService fishingService;
     private final PlayerRepository playerRepository;
+    private final FishingInventoryHandler fishingInventoryHandler;
 
     @Override
     public PlayerScreen getScreen() {
@@ -48,9 +50,10 @@ public class FishingMenuHandler implements GameHandler {
             case BTN_REEF                                    -> spotDetail(FishingSpot.REEF, player);
             case BTN_OPEN_SEA_LOCKED, BTN_OPEN_SEA_UNLOCKED -> handleOpenSea(player);
             case BTN_BACK                                    -> goBack(player, island);
-            case BTN_CAST                                    -> castLine(player);
+            case BTN_CAST                                    -> castLine(player, island);
             case BTN_BONUSES                                 -> showBonuses(player);
             case BTN_LEVELS                                  -> LevelsCallbackHandler.buildInitialMessage(player);
+            case BTN_INVENTORY                               -> openInventory(player);
             default                                          -> buildFishingMenu(player);
         };
     }
@@ -73,11 +76,19 @@ public class FishingMenuHandler implements GameHandler {
         return spotDetail(FishingSpot.OPEN_SEA, player);
     }
 
-    private BotResponse castLine(Player player) {
+    private BotResponse castLine(Player player, Island island) {
         FishingSpot spot = player.getFishing().getFishingSpot();
         if (spot == null) return buildFishingMenu(player);
 
         fishingService.startFishing(player, spot);
+
+        // 🫙 Tide vial instant: fishing done immediately — skip active screen
+        if (fishingService.isReady(player)) {
+            player.getState().setCurrentScreen(PlayerScreen.FISHING_RESULT);
+            playerRepository.save(player);
+            return FishingResultHandler.buildResultScreen(player, island, fishingService);
+        }
+
         player.getState().setCurrentScreen(PlayerScreen.FISHING_ACTIVE);
         playerRepository.save(player);
 
@@ -92,6 +103,12 @@ public class FishingMenuHandler implements GameHandler {
 
     private BotResponse showBonuses(Player player) {
         return FishingBonusesHandler.buildBonusesScreen(player);
+    }
+
+    private BotResponse openInventory(Player player) {
+        player.getState().setCurrentScreen(PlayerScreen.FISHING_INVENTORY);
+        playerRepository.save(player);
+        return fishingInventoryHandler.buildScreen(player);
     }
 
     private BotResponse goBack(Player player, Island island) {
@@ -114,10 +131,27 @@ public class FishingMenuHandler implements GameHandler {
         rt.emoji(ReefEmoji.FISHING).add(" ").bold("Рыбалка")
           .add("\n")
           .add(FishingService.levelName(level) + " · Ур. " + level + " · ")
-          .emoji(ReefEmoji.STAR).add(" " + player.getFishing().getFishingXp() + " XP")
-          .add("\n\nКуда забросить удочку?");
+          .emoji(ReefEmoji.STAR).add(" " + player.getFishing().getFishingXp() + " XP");
+
+        String effects = activeEffectsLine(player);
+        if (!effects.isEmpty()) {
+            rt.add("\n⚡ Активно: ").add(effects);
+        }
+
+        rt.add("\n\nКуда забросить удочку?");
 
         return rt.build(buildFishingKeyboard(player));
+    }
+
+    /** Строка активных эффектов для отображения в меню, напр. "📜 🪱 🪝". */
+    public static String activeEffectsLine(Player player) {
+        var f = player.getFishing();
+        StringBuilder sb = new StringBuilder();
+        if (Boolean.TRUE.equals(f.getEffectSpeedCast()))   sb.append("📜 ");
+        if (Boolean.TRUE.equals(f.getEffectYieldBonus()))  sb.append("🪱 ");
+        if (Boolean.TRUE.equals(f.getEffectXpBonus()))     sb.append("🪝 ");
+        if (Boolean.TRUE.equals(f.getEffectInstantNext())) sb.append("🫙 ");
+        return sb.toString().trim();
     }
 
     private static org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard buildFishingKeyboard(Player player) {
@@ -132,6 +166,7 @@ public class FishingMenuHandler implements GameHandler {
                 )
                 .row(
                     KeyboardBuilder.btn(BTN_LEVELS, ReefEmoji.LEVELS.id()),
+                    new org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton(BTN_INVENTORY),
                     new org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton(BTN_BACK)
                 )
                 .build();
