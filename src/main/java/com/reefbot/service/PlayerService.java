@@ -90,9 +90,10 @@ public class PlayerService {
     public boolean deletePlayer(Long playerId) {
         return playerRepository.findById(playerId).map(player -> {
             if (player.getIsland() != null) {
+                // island_buildings удалятся через ON DELETE CASCADE (V17)
                 islandRepository.delete(player.getIsland());
             }
-            // state, fishing, inventory deleted via cascade + orphanRemoval
+            // state, fishing, tide, inventory — cascade + orphanRemoval на Player
             playerRepository.delete(player);
             return true;
         }).orElse(false);
