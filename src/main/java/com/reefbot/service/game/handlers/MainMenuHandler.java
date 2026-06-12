@@ -7,6 +7,7 @@ import com.reefbot.enums.PlayerScreen;
 import com.reefbot.enums.ZoneType;
 import com.reefbot.repository.PlayerRepository;
 import com.reefbot.service.game.GameHandler;
+import com.reefbot.service.game.TideService;
 import com.reefbot.util.EmojiUtil;
 import com.reefbot.util.KeyboardBuilder;
 import com.reefbot.util.RichText;
@@ -35,6 +36,7 @@ public class MainMenuHandler implements GameHandler {
     private static final EmojiUtil.Def STAGE_BLOOM  = EmojiUtil.e("🍀", "5807669483619226764");
 
     private final PlayerRepository playerRepository;
+    private final TideService tideService;
 
     @Override
     public PlayerScreen getScreen() {
@@ -59,7 +61,7 @@ public class MainMenuHandler implements GameHandler {
         player.getState().setCurrentScreen(screenFor(zone));
         playerRepository.save(player);
         return switch (zone) {
-            case SHORE      -> ShoreZoneHandler.buildZoneScreen(player);
+            case SHORE      -> ShoreZoneHandler.buildZoneScreen(player, tideService);
             case FOREST     -> ForestZoneHandler.buildZoneScreen(player);
             case SETTLEMENT -> SettlementZoneHandler.buildZoneScreen(player);
             case HILLS      -> HillsZoneHandler.buildZoneScreen(player);

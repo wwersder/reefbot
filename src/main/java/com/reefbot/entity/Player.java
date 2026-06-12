@@ -42,6 +42,10 @@ public class Player {
               fetch = FetchType.EAGER, orphanRemoval = true)
     private PlayerFishing fishing;
 
+    @OneToOne(mappedBy = "player", cascade = CascadeType.ALL,
+              fetch = FetchType.EAGER, orphanRemoval = true)
+    private PlayerTide tide;
+
     @OneToMany(mappedBy = "player", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<InventoryItem> inventory = new ArrayList<>();

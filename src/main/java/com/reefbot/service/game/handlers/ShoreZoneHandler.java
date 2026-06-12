@@ -10,6 +10,7 @@ import com.reefbot.util.ReefEmoji;
 import com.reefbot.repository.PlayerRepository;
 import com.reefbot.service.game.FishingService;
 import com.reefbot.service.game.GameHandler;
+import com.reefbot.service.game.TideService;
 import com.reefbot.util.KeyboardBuilder;
 import com.reefbot.util.RichText;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class ShoreZoneHandler implements GameHandler {
 
     public static final String BTN_FISHING = "Рыбалка";
+    public static final String BTN_TIDE    = "🌊 Прилив!";
     public static final String BTN_BACK    = "◀️ На остров";
 
     private static final List<String> FLAVOR = List.of(
@@ -45,6 +47,7 @@ public class ShoreZoneHandler implements GameHandler {
     );
 
     private final FishingService fishingService;
+    private final TideService tideService;
     private final PlayerRepository playerRepository;
 
     @Override
@@ -56,8 +59,9 @@ public class ShoreZoneHandler implements GameHandler {
     public BotResponse handle(Player player, Island island, String text) {
         return switch (text) {
             case BTN_FISHING -> routeFishing(player, island);
+            case BTN_TIDE    -> routeTide(player, island);
             case BTN_BACK    -> goBack(player, island);
-            default          -> buildZoneScreen(player);
+            default          -> buildZoneScreen(player, tideService);
         };
     }
 
@@ -79,6 +83,12 @@ public class ShoreZoneHandler implements GameHandler {
         return FishingMenuHandler.buildFishingMenu(player);
     }
 
+    private BotResponse routeTide(Player player, Island island) {
+        player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE_TIDE);
+        playerRepository.save(player);
+        return TideGameHandler.buildEntryScreen(player, tideService);
+    }
+
     private BotResponse goBack(Player player, Island island) {
         player.getState().setCurrentScreen(PlayerScreen.MAIN);
         playerRepository.save(player);
@@ -87,8 +97,13 @@ public class ShoreZoneHandler implements GameHandler {
 
     // ── Static helpers (другие handlers «приземляют» игрока сюда) ───────────
 
-    /** Экран зоны: флейвор + статусы. Вызывающий сам ставит currentScreen = ZONE_SHORE. */
+    /** Экран зоны без TideService (транзитные вызовы из рыбалки). */
     public static BotResponse buildZoneScreen(Player player) {
+        return buildZoneScreen(player, null);
+    }
+
+    /** Полный экран зоны с приливом (если tideService != null). */
+    public static BotResponse buildZoneScreen(Player player, TideService tideService) {
         String flavor = FLAVOR.get(ThreadLocalRandom.current().nextInt(FLAVOR.size()));
 
         RichText rt = new RichText();
@@ -98,7 +113,12 @@ public class ShoreZoneHandler implements GameHandler {
           .add("\n\n");
         appendFishingStatus(rt, player);
 
-        return rt.build(ZoneType.SHORE.getBannerPath(), keyboard(player));
+        if (tideService != null) {
+            rt.add("\n");
+            appendTideStatus(rt, player, tideService);
+        }
+
+        return rt.build(ZoneType.SHORE.getBannerPath(), keyboard(player, tideService));
     }
 
     private static void appendFishingStatus(RichText rt, Player player) {
@@ -117,6 +137,15 @@ public class ShoreZoneHandler implements GameHandler {
         }
     }
 
+    private static void appendTideStatus(RichText rt, Player player, TideService tideService) {
+        rt.add("🌊 ").bold("Прилив:").add(" ");
+        if (tideService.isActive(player)) {
+            rt.add("идёт! Открыто 40 минут.");
+        } else {
+            rt.add("тихо");
+        }
+    }
+
     private static String remainingText(LocalDateTime finishAt) {
         long totalSeconds = Math.max(0, Duration.between(LocalDateTime.now(), finishAt).getSeconds());
         long minutes = totalSeconds / 60;
@@ -125,15 +154,22 @@ public class ShoreZoneHandler implements GameHandler {
         return seconds + " сек";
     }
 
-    private static ReplyKeyboard keyboard(Player player) {
+    private static ReplyKeyboard keyboard(Player player, TideService tideService) {
         KeyboardButton fishingBtn = KeyboardBuilder.btn(BTN_FISHING, ReefEmoji.FISHING.id());
         LocalDateTime finishAt = player.getFishing().getFishingFinishAt();
         if (finishAt != null && !LocalDateTime.now().isBefore(finishAt)) {
             fishingBtn.setStyle("success");
         }
-        return KeyboardBuilder.builder()
-                .row(fishingBtn)
-                .row(new KeyboardButton(BTN_BACK))
-                .build();
+
+        KeyboardBuilder kb = KeyboardBuilder.builder().row(fishingBtn);
+
+        if (tideService != null && tideService.isActive(player)) {
+            KeyboardButton tideBtn = new KeyboardButton(BTN_TIDE);
+            tideBtn.setStyle("success");
+            kb.row(tideBtn);
+        }
+
+        kb.row(new KeyboardButton(BTN_BACK));
+        return kb.build();
     }
 }

@@ -61,8 +61,16 @@ public class FishingService {
     }
 
     public void startFishing(Player player, FishingSpot spot) {
+        long duration = spot.getDurationMinutes();
+
+        // 📜 Speed scroll: -50% cast time
+        if (Boolean.TRUE.equals(player.getFishing().getEffectSpeedCast())) {
+            duration = Math.max(1, duration / 2);
+            player.getFishing().setEffectSpeedCast(false);
+        }
+
         player.getFishing().setFishingSpot(spot);
-        player.getFishing().setFishingFinishAt(LocalDateTime.now().plusMinutes(spot.getDurationMinutes()));
+        player.getFishing().setFishingFinishAt(LocalDateTime.now().plusMinutes(duration));
         player.getFishing().setFishingNotified(false);
         playerRepository.save(player);
     }
@@ -78,8 +86,20 @@ public class FishingService {
         int effectiveMax = spot.getMaxFish() + maxFishBonus;
         int fish = effectiveMin + random.nextInt(effectiveMax - effectiveMin + 1);
 
+        // 🪱 Bait: +50% fish
+        if (Boolean.TRUE.equals(player.getFishing().getEffectYieldBonus())) {
+            fish = (int) Math.round(fish * 1.5);
+            player.getFishing().setEffectYieldBonus(false);
+        }
+
         int xpMultiplierPct = oldLevel >= 7 ? 130 : (oldLevel >= 4 ? 110 : 100);
         int xpEarned = (int) Math.round(spot.getXpReward() * xpMultiplierPct / 100.0);
+
+        // 🪝 Hook: +40 XP
+        if (Boolean.TRUE.equals(player.getFishing().getEffectXpBonus())) {
+            xpEarned += 40;
+            player.getFishing().setEffectXpBonus(false);
+        }
 
         int effectiveBonusChance = spot.getBonusChance() + (oldLevel >= 5 ? 20 : 0);
         ResourceType bonusType = null;
@@ -105,6 +125,7 @@ public class FishingService {
         player.getFishing().setFishingFinishAt(null);
         player.getFishing().setFishingSpot(null);
         player.getState().setHasCompletedFirstFish(true);
+        // effectInstantNext is handled in startFishing (via TIDE_VIAL logic in handler)
         playerRepository.save(player);
 
         return new FishingResult(spot, fish, bonusType, bonusAmount, xpEarned, totalXp, oldLevel, newLevel, wasFirst);

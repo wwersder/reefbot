@@ -36,4 +36,22 @@ public class PlayerFishing {
 
     @Builder.Default
     private Boolean fishingNotified = false;
+
+    // ── Active item effects (applied from inventory consumables) ──────────
+
+    /** 📜 Speed scroll applied — next cast -50% duration. */
+    @Builder.Default
+    private Boolean effectSpeedCast = false;
+
+    /** 🪱 Bait applied — next catch +50% fish. */
+    @Builder.Default
+    private Boolean effectYieldBonus = false;
+
+    /** 🪝 Hook applied — next catch +40 XP. */
+    @Builder.Default
+    private Boolean effectXpBonus = false;
+
+    /** 🫙 Vial applied to idle state — next cast completes instantly. */
+    @Builder.Default
+    private Boolean effectInstantNext = false;
 }
