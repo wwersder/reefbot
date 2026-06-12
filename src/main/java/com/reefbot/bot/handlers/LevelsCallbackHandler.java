@@ -111,7 +111,12 @@ public class LevelsCallbackHandler implements CallbackHandler {
         if (level == playerLevel && xpNext >= 0) {
             int remaining = xpNext - playerXp;
             sb.append("\n📊 Ваш XP: ").append(playerXp).append(" / ").append(xpNext);
-            sb.append("  (осталось: ").append(remaining).append(")");
+            if (remaining <= 0) {
+                // XP уже за порогом — следующий уровень получится при ближайшем сборе улова
+                sb.append("  ✅ готово к повышению!");
+            } else {
+                sb.append("  (осталось: ").append(remaining).append(")");
+            }
         } else if (level > playerLevel) {
             int remaining = xpRequired - playerXp;
             if (remaining > 0) {

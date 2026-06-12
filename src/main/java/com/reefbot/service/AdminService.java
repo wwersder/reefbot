@@ -7,6 +7,7 @@ import com.reefbot.entity.Player;
 import com.reefbot.repository.IslandBuildingRepository;
 import com.reefbot.repository.IslandRepository;
 import com.reefbot.repository.PlayerRepository;
+import com.reefbot.service.game.FishingService;
 import com.reefbot.service.game.TideService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,7 @@ public class AdminService {
     private static final int SPEEDUP_SECONDS = 10;
 
     private final PlayerService playerService;
+    private final FishingService fishingService;
     private final TideService tideService;
     private final PlayerRepository playerRepository;
     private final IslandRepository islandRepository;
@@ -141,15 +143,21 @@ public class AdminService {
 
         Player player = playerOpt.get();
 
-        // XP — на игроке, не на острове
+        // XP — на игроке, не на острове; уровень пересчитывается автоматически
         if (resource.equals("xp")) {
-            int before = player.getFishing().getFishingXp();
-            int after  = before + amount;
+            int before    = player.getFishing().getFishingXp();
+            int levelWas  = player.getFishing().getFishingLevel();
+            int after     = before + amount;
+            int levelNow  = fishingService.levelForXp(Math.max(0, after));
             player.getFishing().setFishingXp(after);
+            player.getFishing().setFishingLevel(levelNow);
             playerRepository.save(player);
+            String levelInfo = levelNow != levelWas
+                ? " | уровень: " + levelWas + " → " + levelNow
+                : "";
             return new BotResponse(String.format(
-                "✅ xp: %+d → было %d, стало %d (игрок #%d)",
-                amount, before, after, playerId
+                "✅ xp: %+d → было %d, стало %d (игрок #%d)%s",
+                amount, before, after, playerId, levelInfo
             ));
         }
 

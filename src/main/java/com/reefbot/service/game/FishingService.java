@@ -168,7 +168,7 @@ public class FishingService {
         };
     }
 
-    private int levelForXp(int xp) {
+    public int levelForXp(int xp) {
         int level = 1;
         for (int i = 1; i < XP_THRESHOLDS.length; i++) {
             if (xp >= XP_THRESHOLDS[i]) level = i + 1;
