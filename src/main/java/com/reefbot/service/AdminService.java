@@ -144,11 +144,12 @@ public class AdminService {
         // XP — на игроке, не на острове
         if (resource.equals("xp")) {
             int before = player.getFishing().getFishingXp();
-            player.getFishing().setFishingXp(Math.max(0, before + amount));
+            int after  = before + amount;
+            player.getFishing().setFishingXp(after);
             playerRepository.save(player);
             return new BotResponse(String.format(
                 "✅ xp: %+d → было %d, стало %d (игрок #%d)",
-                amount, before, player.getFishing().getFishingXp(), playerId
+                amount, before, after, playerId
             ));
         }
 
@@ -163,33 +164,33 @@ public class AdminService {
         switch (resource) {
             case "fish" -> {
                 before = island.getFish();
-                island.setFish(Math.max(0, before + amount));
-                after = island.getFish();
+                after  = before + amount;
+                island.setFish(after);
             }
             case "shells" -> {
                 before = island.getShells();
-                island.setShells(Math.max(0, before + amount));
-                after = island.getShells();
+                after  = before + amount;
+                island.setShells(after);
             }
             case "wood" -> {
                 before = island.getWood();
-                island.setWood(Math.max(0, before + amount));
-                after = island.getWood();
+                after  = before + amount;
+                island.setWood(after);
             }
             case "stone" -> {
                 before = island.getStone();
-                island.setStone(Math.max(0, before + amount));
-                after = island.getStone();
+                after  = before + amount;
+                island.setStone(after);
             }
             case "coral" -> {
                 before = island.getCoral();
-                island.setCoral(Math.max(0, before + amount));
-                after = island.getCoral();
+                after  = before + amount;
+                island.setCoral(after);
             }
             case "devpoints", "dp" -> {
                 before = island.getDevPoints();
-                island.setDevPoints(Math.max(0, before + amount));
-                after = island.getDevPoints();
+                after  = before + amount;
+                island.setDevPoints(after);
             }
             default -> {
                 return new BotResponse(
