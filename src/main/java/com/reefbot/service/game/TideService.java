@@ -1,5 +1,6 @@
 package com.reefbot.service.game;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reefbot.entity.InventoryItem;
 import com.reefbot.entity.Player;
@@ -65,9 +66,10 @@ public class TideService {
         "Обломок шлюпки с ящиком под сиденьем."
     };
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private final PlayerRepository playerRepository;
     private final InventoryRepository inventoryRepository;
-    private final ObjectMapper objectMapper;
 
     // ── State queries ─────────────────────────────────────────────────────
 
@@ -255,7 +257,7 @@ public class TideService {
 
     private TideRollsData parseJson(String json) {
         try {
-            return objectMapper.readValue(json, TideRollsData.class);
+            return MAPPER.readValue(json, TideRollsData.class);
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse tide rolls JSON", e);
         }
@@ -263,7 +265,7 @@ public class TideService {
 
     private String toJson(TideRollsData data) {
         try {
-            return objectMapper.writeValueAsString(data);
+            return MAPPER.writeValueAsString(data);
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize tide rolls", e);
         }
@@ -271,7 +273,11 @@ public class TideService {
 
     // ── Inner records ─────────────────────────────────────────────────────
 
-    public record TideRollsData(List<Integer> rolls, int rewardIndex, int narrativeIndex) {}
+    public record TideRollsData(
+            @JsonProperty("rolls") List<Integer> rolls,
+            @JsonProperty("rewardIndex") int rewardIndex,
+            @JsonProperty("narrativeIndex") int narrativeIndex
+    ) {}
 
     public record RoundResult(boolean correct, int roll) {}
 
