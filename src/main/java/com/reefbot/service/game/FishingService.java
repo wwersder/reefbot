@@ -83,6 +83,11 @@ public class FishingService {
 
     public FishingResult collectFish(Player player, Island island) {
         FishingSpot spot = player.getFishing().getFishingSpot();
+        // Защита: spot не должен быть null при сборе улова, но если навигационный баг
+        // всё же очистил его — используем SHORE как безопасный фолбэк вместо NPE.
+        if (spot == null) {
+            spot = FishingSpot.SHORE;
+        }
         int oldLevel = player.getFishing().getFishingLevel();
 
         // Apply level bonuses

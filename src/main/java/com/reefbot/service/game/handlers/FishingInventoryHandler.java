@@ -54,7 +54,7 @@ public class FishingInventoryHandler implements GameHandler {
             case BTN_USE_BAIT   -> apply(player, island, ConsumableItem.BAIT);
             case BTN_USE_HOOK   -> apply(player, island, ConsumableItem.FISHING_HOOK);
             case BTN_USE_VIAL   -> applyVial(player, island);
-            case BTN_BACK       -> goBack(player);
+            case BTN_BACK       -> goBack(player, island);
             default             -> buildScreen(player);
         };
     }
@@ -96,7 +96,24 @@ public class FishingInventoryHandler implements GameHandler {
         }
     }
 
-    private BotResponse goBack(Player player) {
+    /**
+     * Назад из рюкзака — экран назначения зависит от состояния рыбалки:
+     *  • ещё идёт  → FISHING_ACTIVE (не ломаем активную сессию)
+     *  • готова    → FISHING_RESULT (не пропускаем улов)
+     *  • свободна  → FISHING_MENU
+     */
+    private BotResponse goBack(Player player, Island island) {
+        if (fishingService.isActive(player)) {
+            player.getState().setCurrentScreen(PlayerScreen.FISHING_ACTIVE);
+            playerRepository.save(player);
+            return FishingActiveHandler.buildStatusScreen(player, fishingService,
+                    FishingActiveHandler.activeKeyboard());
+        }
+        if (fishingService.isReady(player)) {
+            player.getState().setCurrentScreen(PlayerScreen.FISHING_RESULT);
+            playerRepository.save(player);
+            return FishingResultHandler.buildResultScreen(player, island, fishingService);
+        }
         player.getState().setCurrentScreen(PlayerScreen.FISHING_MENU);
         playerRepository.save(player);
         return FishingMenuHandler.buildFishingMenu(player);

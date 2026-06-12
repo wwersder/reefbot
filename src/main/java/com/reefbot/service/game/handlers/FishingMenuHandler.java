@@ -45,6 +45,20 @@ public class FishingMenuHandler implements GameHandler {
 
     @Override
     public BotResponse handle(Player player, Island island, String text) {
+        // Защита: если рыбалка активна/готова, а игрок оказался в меню выбора —
+        // перенаправляем. Это предотвращает абуз через нестандартную навигацию.
+        if (fishingService.isActive(player)) {
+            player.getState().setCurrentScreen(PlayerScreen.FISHING_ACTIVE);
+            playerRepository.save(player);
+            return FishingActiveHandler.buildStatusScreen(player, fishingService,
+                    FishingActiveHandler.activeKeyboard());
+        }
+        if (fishingService.isReady(player)) {
+            player.getState().setCurrentScreen(PlayerScreen.FISHING_RESULT);
+            playerRepository.save(player);
+            return FishingResultHandler.buildResultScreen(player, island, fishingService);
+        }
+
         return switch (text) {
             case BTN_SHORE                                   -> spotDetail(FishingSpot.SHORE, player);
             case BTN_REEF                                    -> spotDetail(FishingSpot.REEF, player);
@@ -112,6 +126,14 @@ public class FishingMenuHandler implements GameHandler {
     }
 
     private BotResponse goBack(Player player, Island island) {
+        // Если рыбалка идёт — нельзя трогать spot, просто уходим на берег.
+        // Spot будет очищен только в collectFish() после получения улова.
+        if (fishingService.isActive(player) || fishingService.isReady(player)) {
+            player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
+            playerRepository.save(player);
+            return ShoreZoneHandler.buildZoneScreen(player);
+        }
+        // Spot выбран, но удочка ещё не заброшена — вернуть к выбору места
         if (player.getFishing().getFishingSpot() != null) {
             player.getFishing().setFishingSpot(null);
             playerRepository.save(player);
