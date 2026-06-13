@@ -4,7 +4,10 @@ import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
 import com.reefbot.enums.PlayerScreen;
+import com.reefbot.entity.IslandBuilding;
+import com.reefbot.enums.BuildingType;
 import com.reefbot.repository.PlayerRepository;
+import com.reefbot.service.game.BuildingService;
 import com.reefbot.service.game.FishingResult;
 import com.reefbot.service.game.FishingService;
 import com.reefbot.service.game.GameHandler;
@@ -23,6 +26,7 @@ public class FishingResultHandler implements GameHandler {
     private final FishingService fishingService;
     private final PlayerRepository playerRepository;
     private final com.reefbot.service.game.TideService tideService;
+    private final BuildingService buildingService;
 
     @Override
     public PlayerScreen getScreen() {
@@ -73,7 +77,8 @@ public class FishingResultHandler implements GameHandler {
         }
 
         BotResponse catchMessage = rt.build();
-        BotResponse zoneScreen = ShoreZoneHandler.buildZoneScreen(player, tideService);
+        IslandBuilding pier = buildingService.find(island, BuildingType.FISHING_PIER).orElse(null);
+        BotResponse zoneScreen = ShoreZoneHandler.buildZoneScreen(player, tideService, pier);
 
         if (result.leveledUp()) {
             BotResponse levelUpMessage = buildLevelUpMessage(result.newLevel());

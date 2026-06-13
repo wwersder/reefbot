@@ -144,7 +144,8 @@ public class ShoreZoneHandler implements GameHandler {
 
     private BotResponse scanBeach(Player player, Island island) {
         if (!tideService.isBeachReady(player)) {
-            return buildZoneScreen(player, tideService);
+            IslandBuilding pier = buildingService.find(island, BuildingType.FISHING_PIER).orElse(null);
+            return buildZoneScreen(player, tideService, pier);
         }
         TideService.BeachResult result = tideService.scanBeach(player, island);
 

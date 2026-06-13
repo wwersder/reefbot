@@ -5,6 +5,9 @@ import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
 import com.reefbot.enums.ConsumableItem;
 import com.reefbot.enums.PlayerScreen;
+import com.reefbot.entity.IslandBuilding;
+import com.reefbot.enums.BuildingType;
+import com.reefbot.service.game.BuildingService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.service.game.TideService;
 import com.reefbot.service.game.TideService.TideReward;
@@ -52,6 +55,7 @@ public class TideGameHandler implements GameHandler {
     private final TelegramClient telegramClient;
     private final PlayerRepository playerRepository;
     private final IslandRepository islandRepository;
+    private final BuildingService buildingService;
 
     @Override
     public PlayerScreen getScreen() {
@@ -263,7 +267,8 @@ public class TideGameHandler implements GameHandler {
     private BotResponse goBack(Player player, Island island) {
         player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
         playerRepository.save(player);
-        return ShoreZoneHandler.buildZoneScreen(player, tideService);
+        IslandBuilding pier = buildingService.find(island, BuildingType.FISHING_PIER).orElse(null);
+        return ShoreZoneHandler.buildZoneScreen(player, tideService, pier);
     }
 
     private BotResponse buildDefaultScreen(Player player) {

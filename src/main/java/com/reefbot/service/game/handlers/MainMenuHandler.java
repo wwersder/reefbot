@@ -5,7 +5,10 @@ import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
 import com.reefbot.enums.PlayerScreen;
 import com.reefbot.enums.ZoneType;
+import com.reefbot.entity.IslandBuilding;
+import com.reefbot.enums.BuildingType;
 import com.reefbot.repository.PlayerRepository;
+import com.reefbot.service.game.BuildingService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.service.game.TideService;
 import com.reefbot.util.EmojiUtil;
@@ -37,6 +40,7 @@ public class MainMenuHandler implements GameHandler {
 
     private final PlayerRepository playerRepository;
     private final TideService tideService;
+    private final BuildingService buildingService;
 
     @Override
     public PlayerScreen getScreen() {
@@ -61,7 +65,10 @@ public class MainMenuHandler implements GameHandler {
         player.getState().setCurrentScreen(screenFor(zone));
         playerRepository.save(player);
         return switch (zone) {
-            case SHORE      -> ShoreZoneHandler.buildZoneScreen(player, tideService);
+            case SHORE      -> {
+                IslandBuilding pier = buildingService.find(island, BuildingType.FISHING_PIER).orElse(null);
+                yield ShoreZoneHandler.buildZoneScreen(player, tideService, pier);
+            }
             case FOREST     -> ForestZoneHandler.buildZoneScreen(player);
             case SETTLEMENT -> SettlementZoneHandler.buildZoneScreen(player);
             case HILLS      -> HillsZoneHandler.buildZoneScreen(player);

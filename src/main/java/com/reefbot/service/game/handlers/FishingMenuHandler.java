@@ -6,7 +6,10 @@ import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
 import com.reefbot.enums.FishingSpot;
 import com.reefbot.enums.PlayerScreen;
+import com.reefbot.entity.IslandBuilding;
+import com.reefbot.enums.BuildingType;
 import com.reefbot.repository.PlayerRepository;
+import com.reefbot.service.game.BuildingService;
 import com.reefbot.service.game.FishingService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.util.EmojiUtil;
@@ -38,6 +41,7 @@ public class FishingMenuHandler implements GameHandler {
     private final PlayerRepository playerRepository;
     private final FishingInventoryHandler fishingInventoryHandler;
     private final com.reefbot.service.game.TideService tideService;
+    private final BuildingService buildingService;
 
     @Override
     public PlayerScreen getScreen() {
@@ -132,7 +136,8 @@ public class FishingMenuHandler implements GameHandler {
         if (fishingService.isActive(player) || fishingService.isReady(player)) {
             player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
             playerRepository.save(player);
-            return ShoreZoneHandler.buildZoneScreen(player, tideService);
+            IslandBuilding pier = buildingService.find(island, BuildingType.FISHING_PIER).orElse(null);
+            return ShoreZoneHandler.buildZoneScreen(player, tideService, pier);
         }
         // Spot выбран, но удочка ещё не заброшена — вернуть к выбору места
         if (player.getFishing().getFishingSpot() != null) {
@@ -142,7 +147,8 @@ public class FishingMenuHandler implements GameHandler {
         }
         player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
         playerRepository.save(player);
-        return ShoreZoneHandler.buildZoneScreen(player, tideService);
+        IslandBuilding pier = buildingService.find(island, BuildingType.FISHING_PIER).orElse(null);
+        return ShoreZoneHandler.buildZoneScreen(player, tideService, pier);
     }
 
     // ── Static helpers ───────────────────────────────────────────────────────
