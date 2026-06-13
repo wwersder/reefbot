@@ -206,16 +206,30 @@ public class TideGameHandler implements GameHandler {
         int roundNumber = player.getTide().getTideRoundIndex() + 1; // 1-based, до инкремента
         int hitsBefore  = player.getTide().getTideHits();
 
-        // Бросаем настоящий кубик через Telegram
+        // Бросаем настоящий кубик через Telegram (внутри — Thread.sleep 4с)
         int diceValue = sendDice(player.getTelegramId());
+
+        // После 4-секундного ожидания перезагружаем игрока из БД —
+        // за это время конкурентный поток мог обработать «Забрать улов»
+        // и завершить игру. Без этой проверки результат кубика прилетает
+        // поверх уже закрытого прилива (баг: «Выпало X — ❌ Не угадал» после награды).
+        Player fresh = playerRepository.findByTelegramId(player.getTelegramId())
+                .orElse(player);
+
+        if (fresh.getState().getCurrentScreen() != PlayerScreen.ZONE_SHORE_TIDE
+                || !tideService.isActive(fresh)) {
+            log.warn("Tide dice orphaned for player {} (value={}) — game already ended concurrently",
+                    player.getId(), diceValue);
+            return null; // игра уже завершена другим потоком, ответ не нужен
+        }
 
         boolean correct = guessHigh ? (diceValue > 3) : (diceValue <= 3);
 
         if (correct) {
-            tideService.resolveCorrectRound(player);
-            return buildSuccessScreen(player, diceValue, roundNumber);
+            tideService.resolveCorrectRound(fresh);
+            return buildSuccessScreen(fresh, diceValue, roundNumber);
         } else {
-            tideService.failGame(player);
+            tideService.failGame(fresh);
             return buildFailureScreen(diceValue, roundNumber, hitsBefore);
         }
     }
