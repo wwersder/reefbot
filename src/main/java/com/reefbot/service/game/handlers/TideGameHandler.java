@@ -203,28 +203,39 @@ public class TideGameHandler implements GameHandler {
     // ── Action handlers ────────────────────────────────────────────────────
 
     private BotResponse handleGuess(Player player, boolean guessHigh) {
+        // Защита от двойного нажатия: если кубик уже в воздухе — игнорируем
+        if (Boolean.TRUE.equals(player.getTide().getRollPending())) {
+            log.warn("Duplicate guess ignored for player {} — roll already pending", player.getId());
+            return null;
+        }
+
         int roundNumber = player.getTide().getTideRoundIndex() + 1; // 1-based, до инкремента
         int hitsBefore  = player.getTide().getTideHits();
+
+        // Выставляем флаг ДО броска — блокирует «Забрать улов» и повторные нажатия
+        player.getTide().setRollPending(true);
+        playerRepository.save(player);
 
         // Бросаем настоящий кубик через Telegram (внутри — Thread.sleep 4с)
         int diceValue = sendDice(player.getTelegramId());
 
         // После 4-секундного ожидания перезагружаем игрока из БД —
-        // за это время конкурентный поток мог обработать «Забрать улов»
-        // и завершить игру. Без этой проверки результат кубика прилетает
-        // поверх уже закрытого прилива (баг: «Выпало X — ❌ Не угадал» после награды).
+        // за это время конкурентный поток мог изменить состояние игры
         Player fresh = playerRepository.findByTelegramId(player.getTelegramId())
                 .orElse(player);
 
         if (fresh.getState().getCurrentScreen() != PlayerScreen.ZONE_SHORE_TIDE
                 || !tideService.isActive(fresh)) {
+            // Игра уже завершена другим потоком — снимаем флаг и молчим
+            fresh.getTide().setRollPending(false);
+            playerRepository.save(fresh);
             log.warn("Tide dice orphaned for player {} (value={}) — game already ended concurrently",
                     player.getId(), diceValue);
-            return null; // игра уже завершена другим потоком, ответ не нужен
+            return null;
         }
 
+        // Флаг снимается внутри resolveCorrectRound / failGame
         boolean correct = guessHigh ? (diceValue > 3) : (diceValue <= 3);
-
         if (correct) {
             tideService.resolveCorrectRound(fresh);
             return buildSuccessScreen(fresh, diceValue, roundNumber);
@@ -235,8 +246,11 @@ public class TideGameHandler implements GameHandler {
     }
 
     private BotResponse handleTake(Player player, Island island) {
+        // Кубик в воздухе — нельзя забирать
+        if (Boolean.TRUE.equals(player.getTide().getRollPending())) {
+            return new BotResponse("⏳ Подожди — кубик ещё в воздухе!");
+        }
         TideReward reward = tideService.finishGame(player);
-        // Ракушки теперь всегда: при победе — бонус, при поражении — утешение
         if (reward.shells() > 0) {
             island.setShells(island.getShells() + reward.shells());
             islandRepository.save(island);

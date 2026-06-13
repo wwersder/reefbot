@@ -157,12 +157,14 @@ public class TideService {
         PlayerTide tide = player.getTide();
         tide.setTideRoundIndex(tide.getTideRoundIndex() + 1);
         tide.setTideHits(tide.getTideHits() + 1);
+        tide.setRollPending(false);
         playerRepository.save(player);
     }
 
     /** Called when the player guessed wrong — resets tide, schedules the next one. */
     @Transactional
     public void failGame(Player player) {
+        player.getTide().setRollPending(false);
         scheduleNextTide(player);
         playerRepository.save(player);
     }
@@ -181,6 +183,7 @@ public class TideService {
             giveItem(player, entry.getKey(), entry.getValue());
         }
 
+        player.getTide().setRollPending(false);
         scheduleNextTide(player);
         playerRepository.save(player);
         return reward;

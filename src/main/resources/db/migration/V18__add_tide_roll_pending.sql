@@ -1,0 +1,1 @@
+ALTER TABLE player_tide ADD COLUMN roll_pending TINYINT(1) NOT NULL DEFAULT 0;
