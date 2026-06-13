@@ -22,20 +22,18 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
- * Экран «Здания — Берег»: строительство и сбор пассивного производства.
+ * Хаб строительства — показывает что можно построить и что строится.
  * Скрин: ZONE_SHORE_BUILDINGS.
  *
- * <p>Статический метод {@link #buildBuildingsScreen(Island, IslandBuilding)} используется
- * ShoreZoneHandler и другими обработчиками для отображения экрана.
+ * <p>Управление готовыми зданиями (сбор, апгрейд) — в отдельных
+ * хэндлерах: {@link ShorePierHandler} и будущих аналогах.
  */
 @Component
 @RequiredArgsConstructor
 public class ShoreBuildingsHandler implements GameHandler {
 
-    public static final String BTN_BUILD   = "🔨 Построить";
-    public static final String BTN_UPGRADE = "⬆️ Улучшить";
-    public static final String BTN_COLLECT = "📦 Собрать рыбу";
-    public static final String BTN_BACK    = "◀️ На берег";
+    public static final String BTN_BUILD = "🔨 Начать строительство";
+    public static final String BTN_BACK  = "◀️ На берег";
 
     private final BuildingService buildingService;
     private final TideService tideService;
@@ -48,126 +46,86 @@ public class ShoreBuildingsHandler implements GameHandler {
 
     @Override
     public BotResponse handle(Player player, Island island, String text) {
-        // Автофинализация при открытии экрана
         Optional<IslandBuilding> pierOpt = buildingService.find(island, BuildingType.FISHING_PIER);
-        if (pierOpt.isPresent() && buildingService.isConstructionReady(pierOpt.get())) {
-            pierOpt = Optional.of(buildingService.finalize(pierOpt.get()));
-        }
         IslandBuilding pier = pierOpt.orElse(null);
 
+        // Если помост уже построен и работает — сюда не зайти через UI,
+        // но на всякий случай редиректим в экран помоста
+        if (pier != null && pier.getLevel() > 0 && pier.getBuildFinishAt() == null) {
+            player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE_PIER);
+            playerRepository.save(player);
+            return ShorePierHandler.buildPierScreen(island, pier);
+        }
+
         return switch (text) {
-            case BTN_BUILD, BTN_UPGRADE -> tryBuild(player, island, pier);
-            case BTN_COLLECT            -> tryCollect(player, island, pier);
-            case BTN_BACK               -> goBack(player, island);
-            default                     -> buildBuildingsScreen(island, pier);
+            case BTN_BUILD -> tryBuild(player, island, pier);
+            case BTN_BACK  -> goBack(player, island, pier);
+            default        -> buildConstructionScreen(island, pier);
         };
     }
 
     // ── Actions ────────────────────────────────────────────────────────────
 
     private BotResponse tryBuild(Player player, Island island, IslandBuilding pier) {
-        if (pier != null && buildingService.isUnderConstruction(pier)) {
-            return buildBuildingsScreen(island, pier);
+        if (pier != null && (buildingService.isUnderConstruction(pier) || pier.getLevel() > 0)) {
+            return buildConstructionScreen(island, pier);
         }
 
-        int currentLevel = (pier == null) ? 0 : pier.getLevel();
-        int targetLevel  = currentLevel + 1;
-
-        if (!buildingService.canAfford(island, BuildingType.FISHING_PIER, targetLevel)) {
+        if (!buildingService.canAfford(island, BuildingType.FISHING_PIER, 1)) {
             RichText rt = new RichText();
             rt.bold("❌ Не хватает ресурсов").add("\n\n")
-              .add("Нужно: ").bold(costsText(BuildingType.FISHING_PIER, targetLevel))
-              .add("\nЕсть: ").bold(island.getFish() + " 🐟  "
+              .add("Нужно: ").bold(ShorePierHandler.costsText(BuildingType.FISHING_PIER, 1)).add("\n")
+              .add("Есть:  ").bold(island.getFish() + " 🐟  "
                   + island.getShells() + " 🐚  "
                   + island.getWood() + " 🪵");
-            return rt.build().withFollowUp(buildBuildingsScreen(island, pier));
+            return rt.build().withFollowUp(buildConstructionScreen(island, pier));
         }
 
         IslandBuilding updated = buildingService.startBuild(island, BuildingType.FISHING_PIER);
-        return buildBuildingsScreen(island, updated);
+        return buildConstructionScreen(island, updated);
     }
 
-    private BotResponse tryCollect(Player player, Island island, IslandBuilding pier) {
-        if (pier == null || !buildingService.isOperational(pier)) {
-            return buildBuildingsScreen(island, pier);
-        }
-        int fish = buildingService.collectFish(island, pier);
-        if (fish <= 0) {
-            return buildBuildingsScreen(island, pier);
-        }
-
-        // Обновляем pier из БД после сбора (productionCollectedAt обновился)
-        IslandBuilding refreshed = buildingService.find(island, BuildingType.FISHING_PIER).orElse(pier);
-
-        RichText rt = new RichText();
-        rt.bold("📦 Собрано с помоста").add("\n\n")
-          .add("+").bold(fish + " 🐟").add("\n")
-          .add("Всего рыбы: ").bold(String.valueOf(island.getFish())); // island mutated in-place by service
-        return rt.build().withFollowUp(buildBuildingsScreen(island, refreshed));
-    }
-
-    private BotResponse goBack(Player player, Island island) {
+    private BotResponse goBack(Player player, Island island, IslandBuilding pier) {
         player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
         playerRepository.save(player);
-        return ShoreZoneHandler.buildZoneScreen(player, tideService);
+        return ShoreZoneHandler.buildZoneScreen(player, tideService, pier);
     }
 
-    // ── Static screen builder (вызывается из ShoreZoneHandler тоже) ────────
+    // ── Static screen builder ──────────────────────────────────────────────
 
-    public static BotResponse buildBuildingsScreen(Island island, IslandBuilding pier) {
+    public static BotResponse buildConstructionScreen(Island island, IslandBuilding pier) {
         RichText rt = new RichText();
-        rt.bold("🏗 Здания — Берег").add("\n\n");
-        appendPierBlock(rt, island, pier);
+        rt.bold("🏗 Стройка — Берег").add("\n\n");
+
+        appendPierEntry(rt, island, pier);
+
         return rt.build(keyboard(island, pier));
     }
 
-    private static void appendPierBlock(RichText rt, Island island, IslandBuilding pier) {
+    private static void appendPierEntry(RichText rt, Island island, IslandBuilding pier) {
         if (pier == null) {
-            // Не построен
-            rt.bold("🎣 " + BuildingType.FISHING_PIER.nameAt(1)).add(" — не построен\n")
-              .add("Пассивный доход рыбы.\n\n")
-              .add("Стоимость: ").bold(costsText(BuildingType.FISHING_PIER, 1)).add("\n")
-              .add("Время: ").bold(minutesToText(BuildingType.FISHING_PIER.buildMinutesFor(1))).add("\n")
-              .add("Производство: ").bold("+" + BuildingType.FISHING_PIER.productionPerHourAt(1)
-                  + " 🐟/ч").add(" (потолок " + BuildingType.CAP_HOURS + " ч)");
+            // Не начато
+            rt.bold("🎣 Рыбацкий помост").add("\n")
+              .add("Пассивный доход рыбы прямо с воды.\n\n")
+              .add("Уровень 1  ·  +5 🐟/ч  ·  потолок 8 ч\n")
+              .add("Стоимость: ").bold(ShorePierHandler.costsText(BuildingType.FISHING_PIER, 1)).add("\n")
+              .add("Время: ").bold(ShorePierHandler.minutesToText(BuildingType.FISHING_PIER.buildMinutesFor(1)));
 
-        } else if (buildingService_isUnderConstruction(pier)) {
-            // В процессе строительства / апгрейда
-            int targetLevel = pier.getLevel() + 1;
-            String action = pier.getLevel() == 0
-                ? "Строится..."
-                : "Улучшается до ур." + targetLevel + "...";
-            rt.bold("🎣 " + BuildingType.FISHING_PIER.nameAt(Math.max(1, targetLevel))).add("\n")
-              .add("⏳ " + action + "\n")
-              .add("Готово через: ").bold(remainingText(pier.getBuildFinishAt()));
+        } else if (pier.getLevel() == 0) {
+            // Строится (ещё не достиг уровня 1)
+            boolean ready = pier.getBuildFinishAt() == null
+                    || !LocalDateTime.now().isBefore(pier.getBuildFinishAt());
 
-            if (pier.getLevel() > 0) {
-                int acc = calcAccumulated(pier);
-                int cap = BuildingType.FISHING_PIER.capAt(pier.getLevel());
-                rt.add("\n\nТекущий ур." + pier.getLevel() + " работает: ")
-                  .bold(acc + " / " + cap + " 🐟 накоплено");
+            if (ready) {
+                rt.bold("🎣 Рыбацкий помост").add("\n")
+                  .add("✅ Строительство завершено — открой помост, чтобы начать работу.");
+            } else {
+                rt.bold("🎣 Рыбацкий помост").add("\n")
+                  .add("⏳ Строится...\n")
+                  .add("Готово через: ").bold(remainingText(pier.getBuildFinishAt()));
             }
-
-        } else {
-            // Работает
-            int lvl = pier.getLevel();
-            int acc  = calcAccumulated(pier);
-            int cap  = BuildingType.FISHING_PIER.capAt(lvl);
-            int prod = BuildingType.FISHING_PIER.productionPerHourAt(lvl);
-
-            rt.bold("🎣 " + BuildingType.FISHING_PIER.nameAt(lvl)).add(" (ур. " + lvl + ")\n")
-              .add("+" + prod + " 🐟/ч  |  потолок " + BuildingType.CAP_HOURS + " ч\n\n")
-              .bold("Накоплено: " + acc + " / " + cap + " 🐟");
-
-            // Инфо про апгрейд
-            int nextLvl = lvl + 1;
-            rt.add("\n\n")
-              .bold("Апгрейд → " + BuildingType.FISHING_PIER.nameAt(nextLvl))
-                .add(" (ур." + nextLvl + ")\n")
-              .add("Стоимость: ").bold(costsText(BuildingType.FISHING_PIER, nextLvl)).add("\n")
-              .add("Время: ").bold(minutesToText(BuildingType.FISHING_PIER.buildMinutesFor(nextLvl))).add("\n")
-              .add("Производство: ").bold("+" + BuildingType.FISHING_PIER.productionPerHourAt(nextLvl) + " 🐟/ч");
         }
+        // pier.level > 0 handled by redirect in handle(), won't reach here
     }
 
     // ── Keyboard ───────────────────────────────────────────────────────────
@@ -175,74 +133,25 @@ public class ShoreBuildingsHandler implements GameHandler {
     private static ReplyKeyboard keyboard(Island island, IslandBuilding pier) {
         KeyboardBuilder kb = KeyboardBuilder.builder();
 
-        if (pier == null) {
-            // Не построен
+        boolean canBuild = pier == null;
+        boolean isBuilding = pier != null && pier.getLevel() == 0
+                && pier.getBuildFinishAt() != null
+                && LocalDateTime.now().isBefore(pier.getBuildFinishAt());
+
+        if (canBuild) {
             KeyboardButton buildBtn = new KeyboardButton(BTN_BUILD);
-            if (canAffordStatic(island, BuildingType.FISHING_PIER, 1)) buildBtn.setStyle("success");
+            boolean canAfford = island.getFish()   >= BuildingType.FISHING_PIER.fishCostFor(1)
+                             && island.getShells() >= BuildingType.FISHING_PIER.shellsCostFor(1);
+            if (canAfford) buildBtn.setStyle("success");
             kb.row(buildBtn);
-
-        } else if (buildingService_isUnderConstruction(pier)) {
-            // Строится — если уже работает на предыдущем уровне, показываем сбор
-            if (pier.getLevel() > 0 && calcAccumulated(pier) > 0) {
-                KeyboardButton collectBtn = new KeyboardButton(BTN_COLLECT);
-                collectBtn.setStyle("success");
-                kb.row(collectBtn);
-            }
-
-        } else {
-            // Работает
-            if (calcAccumulated(pier) > 0) {
-                KeyboardButton collectBtn = new KeyboardButton(BTN_COLLECT);
-                collectBtn.setStyle("success");
-                kb.row(collectBtn);
-            }
-            int nextLvl = pier.getLevel() + 1;
-            KeyboardButton upgradeBtn = new KeyboardButton(BTN_UPGRADE);
-            if (canAffordStatic(island, BuildingType.FISHING_PIER, nextLvl)) upgradeBtn.setStyle("success");
-            kb.row(upgradeBtn);
         }
+        // Если строится — кнопки нет, только текст + назад
 
         kb.row(new KeyboardButton(BTN_BACK));
         return kb.build();
     }
 
-    // ── Pure-static helpers ────────────────────────────────────────────────
-
-    /** Дублирует BuildingService.isUnderConstruction() для static-контекста. */
-    private static boolean buildingService_isUnderConstruction(IslandBuilding b) {
-        return b.getBuildFinishAt() != null && LocalDateTime.now().isBefore(b.getBuildFinishAt());
-    }
-
-    /** Дублирует BuildingService.canAfford() для static-контекста. */
-    private static boolean canAffordStatic(Island island, BuildingType type, int targetLevel) {
-        return island.getFish()   >= type.fishCostFor(targetLevel)
-            && island.getShells() >= type.shellsCostFor(targetLevel)
-            && island.getWood()   >= type.woodCostFor(targetLevel);
-    }
-
-    /** Дублирует BuildingService.getAccumulatedFish() для static-контекста. */
-    static int calcAccumulated(IslandBuilding b) {
-        if (b.getBuildFinishAt() != null || b.getLevel() == 0) return 0;
-        LocalDateTime from = b.getProductionCollectedAt();
-        if (from == null) from = LocalDateTime.now().minusHours(BuildingType.CAP_HOURS);
-        double elapsedHours = Duration.between(from, LocalDateTime.now()).toMinutes() / 60.0;
-        int produced = (int)(b.getBuildingType().productionPerHourAt(b.getLevel()) * elapsedHours);
-        return Math.min(produced, b.getBuildingType().capAt(b.getLevel()));
-    }
-
-    private static String costsText(BuildingType type, int level) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(type.fishCostFor(level)).append(" 🐟");
-        if (type.shellsCostFor(level) > 0) sb.append("  ").append(type.shellsCostFor(level)).append(" 🐚");
-        if (type.woodCostFor(level)   > 0) sb.append("  ").append(type.woodCostFor(level)).append(" 🪵");
-        return sb.toString();
-    }
-
-    static String minutesToText(int minutes) {
-        if (minutes < 60) return minutes + " мин";
-        int h = minutes / 60, m = minutes % 60;
-        return m == 0 ? h + " ч" : h + " ч " + m + " мин";
-    }
+    // ── Static helpers ─────────────────────────────────────────────────────
 
     private static String remainingText(LocalDateTime finishAt) {
         long totalSec = Math.max(0, Duration.between(LocalDateTime.now(), finishAt).getSeconds());
