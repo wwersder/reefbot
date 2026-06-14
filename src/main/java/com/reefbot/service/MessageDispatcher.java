@@ -5,6 +5,7 @@ import com.reefbot.entity.Player;
 import com.reefbot.enums.PlayerStatus;
 import com.reefbot.service.game.GameService;
 import com.reefbot.service.registration.OnboardingService;
+import com.reefbot.service.support.SupportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -31,11 +32,12 @@ public class MessageDispatcher {
     private final AdminService adminService;
     private final OnboardingService onboardingService;
     private final GameService gameService;
+    private final SupportService supportService;
 
-    public BotResponse dispatch(Long telegramId, String username, String text, boolean isPrivate) {
+    public BotResponse dispatch(Long telegramId, String username, String text, boolean isPrivate, Long chatId) {
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
-                return doDispatch(telegramId, username, text, isPrivate);
+                return doDispatch(telegramId, username, text, isPrivate, chatId);
             } catch (ObjectOptimisticLockingFailureException e) {
                 if (attempt == MAX_RETRIES) {
                     log.error("Optimistic lock conflict for player {} after {} attempts, giving up",
@@ -53,9 +55,9 @@ public class MessageDispatcher {
         return null; // unreachable
     }
 
-    private BotResponse doDispatch(Long telegramId, String username, String text, boolean isPrivate) {
+    private BotResponse doDispatch(Long telegramId, String username, String text, boolean isPrivate, Long chatId) {
         if (ADMIN_TELEGRAM_ID.equals(telegramId)) {
-            BotResponse adminResponse = adminService.handle(text);
+            BotResponse adminResponse = adminService.handle(text, chatId);
             if (adminResponse != null) {
                 return adminResponse;
             }
@@ -64,6 +66,13 @@ public class MessageDispatcher {
         if (isPrivate) {
             Player player = playerService.getOrCreatePlayer(telegramId, username);
             PlayerStatus status = player.getStatus() != null ? player.getStatus() : PlayerStatus.ONBOARDING;
+
+            // Support commands available from any screen and any status.
+            // /support <text> also acts as a follow-up relay when a ticket is already open.
+            if (isSupportCommand(text)) {
+                return supportService.handlePlayerCommand(player, text);
+            }
+
             return switch (status) {
                 case ONBOARDING -> onboardingService.process(player, text);
                 case ACTIVE     -> gameService.handle(player, text);
@@ -84,5 +93,11 @@ public class MessageDispatcher {
         }
 
         return null;
+    }
+
+    private boolean isSupportCommand(String text) {
+        return text.startsWith("/support")
+            || "/myticket".equals(text)
+            || "/closeticket".equals(text);
     }
 }

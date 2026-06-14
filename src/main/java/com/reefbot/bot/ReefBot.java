@@ -120,7 +120,7 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
             }
 
             String text = message.getText();
-            BotResponse response = dispatcher.dispatch(telegramId, username, text, isPrivate);
+            BotResponse response = dispatcher.dispatch(telegramId, username, text, isPrivate, chatId);
 
             if (response != null) {
                 sendResponse(chatId, response);
