@@ -1,49 +1,50 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
-<head th:replace="~{admin/layout :: head('Персонал')}">
-    <title>Персонал</title>
-</head>
+<head th:replace="~{admin/layout :: head('Персонал')}"><title>Персонал</title></head>
 <body>
 <th:block th:replace="~{admin/layout :: sidebar('staff')}"/>
 <div class="main">
     <h1>👷 Персонал поддержки</h1>
 
+    <div class="card" style="margin-bottom:16px;font-size:13px;color:#6b7280;line-height:1.8">
+        Управление через бота в группе поддержки:<br>
+        <code>/grantsupport</code> (реплай) — выдать SUPPORT<br>
+        <code>/supersupport</code> (реплай) — выдать SUPER_ADMIN<br>
+        <code>/revokesupport @username</code> — отозвать роль
+    </div>
+
     <div class="card">
-        <div style="margin-bottom:16px;font-size:13px;color:#718096">
-            Управление ролями — через бота:<br>
-            <code>/grantsupport</code> (реплай) — выдать SUPPORT<br>
-            <code>/supersupport</code> (реплай) — выдать SUPER_ADMIN<br>
-            <code>/revokesupport @username</code> — отозвать роль
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Имя</th>
+                        <th>@username</th>
+                        <th>Telegram ID</th>
+                        <th>Роль</th>
+                        <th>Выдал (ID)</th>
+                        <th>Дата</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="s : ${staff}">
+                        <td th:text="${s.firstName != null ? s.firstName : '—'}">—</td>
+                        <td th:text="${s.username != null ? '@' + s.username : '—'}">—</td>
+                        <td><code th:text="${s.telegramId}">0</code></td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${s.role.name() == 'SUPER_ADMIN' ? 'badge-progress' : 'badge-open'}"
+                                  th:text="${s.role.name()}">SUPPORT</span>
+                        </td>
+                        <td th:text="${s.grantedBy}">0</td>
+                        <td th:text="${#temporals.format(s.grantedAt, 'd MMM yyyy')}">—</td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(staff)}">
+                        <td colspan="6" style="text-align:center;color:#6b7280;padding:24px">Персонал не добавлен</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Имя</th>
-                    <th>@username</th>
-                    <th>Telegram ID</th>
-                    <th>Роль</th>
-                    <th>Выдал</th>
-                    <th>Дата</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="s : ${staff}">
-                    <td th:text="${s.firstName != null ? s.firstName : '—'}">—</td>
-                    <td th:text="${s.username != null ? '@' + s.username : '—'}">—</td>
-                    <td th:text="${s.telegramId}">0</td>
-                    <td>
-                        <span class="badge"
-                              th:classappend="${s.role.name() == 'SUPER_ADMIN' ? 'badge-progress' : 'badge-open'}"
-                              th:text="${s.role.name()}">SUPPORT</span>
-                    </td>
-                    <td th:text="${s.grantedBy}">0</td>
-                    <td th:text="${#temporals.format(s.grantedAt, 'd MMM yyyy')}">—</td>
-                </tr>
-                <tr th:if="${#lists.isEmpty(staff)}">
-                    <td colspan="6" style="text-align:center;color:#718096;padding:20px">Персонал не добавлен</td>
-                </tr>
-            </tbody>
-        </table>
     </div>
 </div>
 </body>

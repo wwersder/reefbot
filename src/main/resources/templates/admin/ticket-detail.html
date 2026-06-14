@@ -1,56 +1,50 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
-<head th:replace="~{admin/layout :: head('Тикет')}">
-    <title>Тикет</title>
-</head>
+<head th:replace="~{admin/layout :: head('Тикет')}"><title>Тикет</title></head>
 <body>
 <th:block th:replace="~{admin/layout :: sidebar('tickets')}"/>
 <div class="main">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
-        <a th:href="@{/admin/tickets}" style="color:#718096;font-size:13px">← Обращения</a>
-    </div>
+    <a th:href="@{/admin/tickets}" class="back-link">← Обращения</a>
 
-    <!-- Ticket header -->
     <div class="card" style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
             <div>
-                <h1 style="margin-bottom:8px">
+                <h1 style="margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                     🎫 Тикет #<span th:text="${ticket.id}">1</span>
-                    &nbsp;
                     <span class="badge"
                           th:classappend="${ticket.status.name() == 'OPEN' ? 'badge-open' :
                                            ticket.status.name() == 'IN_PROGRESS' ? 'badge-progress' :
                                            ticket.status.name() == 'RESOLVED' ? 'badge-resolved' : 'badge-closed'}"
                           th:text="${ticket.status.emoji() + ' ' + ticket.status.displayName()}">🟡 Открыт</span>
                 </h1>
-                <div style="font-size:13px;color:#718096">
+                <div style="font-size:12px;color:#6b7280">
                     Создан: <span th:text="${#temporals.format(ticket.createdAt, 'd MMM yyyy, HH:mm')}">—</span>
                     <span th:if="${ticket.resolvedAt != null}">
                         · Закрыт: <span th:text="${#temporals.format(ticket.resolvedAt, 'd MMM yyyy, HH:mm')}">—</span>
                     </span>
                 </div>
             </div>
-            <div style="font-size:13px;color:#4a5568;text-align:right">
+            <div style="font-size:13px;color:#374151">
                 <div>
                     👤 <a th:href="@{/admin/players/{tgId}/tickets(tgId=${ticket.player.telegramId})}"
                            th:text="${ticket.player.username != null ? '@' + ticket.player.username : 'ID ' + ticket.player.telegramId}">@user</a>
-                    · ID: <span th:text="${ticket.player.telegramId}">0</span>
+                    <span style="color:#9ca3af"> · </span>
+                    <span style="color:#6b7280;font-size:12px" th:text="'ID: ' + ${ticket.player.telegramId}">0</span>
                 </div>
-                <div th:if="${ticket.player.island != null}">
+                <div th:if="${ticket.player.island != null}" style="margin-top:4px">
                     🏝 <span th:text="${ticket.player.island.name}">Island</span>
                     · <span th:text="${ticket.player.island.devPoints}">0</span> ОР
                 </div>
-                <div th:if="${ticket.claimedBy != null}">
+                <div th:if="${ticket.claimedBy != null}" style="margin-top:4px">
                     👷 <span th:text="${ticket.claimedBy.username != null ? '@' + ticket.claimedBy.username : ticket.claimedBy.firstName}">staff</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Message history -->
     <div class="card">
         <h2>💬 История переписки</h2>
-        <div style="display:flex;flex-direction:column;gap:6px;margin-top:12px">
+        <div class="msg-list">
             <div th:each="msg : ${messages}"
                  th:class="${msg.direction.name() == 'FROM_PLAYER' ? 'msg-bubble msg-from-player' : 'msg-bubble msg-from-support'}">
                 <div class="msg-meta">
@@ -60,12 +54,9 @@
                 <div class="msg-text" th:if="${msg.text != null}" th:text="${msg.text}"></div>
                 <div class="badge-attach" th:if="${msg.attachmentType != null}"
                      th:text="${'📎 ' + msg.attachmentType.name().toLowerCase()}">📎 photo</div>
-                <div style="font-size:11px;color:#a0aec0;margin-top:4px"
-                     th:if="${msg.attachmentFileId != null}"
-                     th:text="${'file_id: ' + msg.attachmentFileId}"></div>
             </div>
             <div th:if="${#lists.isEmpty(messages)}"
-                 style="text-align:center;color:#718096;padding:20px">Сообщений нет</div>
+                 style="text-align:center;color:#6b7280;padding:24px">Сообщений нет</div>
         </div>
     </div>
 </div>
