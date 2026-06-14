@@ -110,8 +110,9 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
             if (!isPrivate) return;
             String username = message.getFrom().getUserName();
 
-            // Handle media messages: relay to support group if player has open ticket
-            if (!message.hasText()) {
+            // Relay media OR forwarded messages to support group if player has open ticket
+            boolean isForwarded = message.getForwardFrom() != null || message.getForwardFromChat() != null;
+            if (!message.hasText() || isForwarded) {
                 Optional<Player> playerOpt = playerService.findByTelegramId(telegramId);
                 if (playerOpt.isPresent()) {
                     supportService.relayPlayerMedia(playerOpt.get(), message);

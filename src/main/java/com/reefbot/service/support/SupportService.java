@@ -63,8 +63,10 @@ public class SupportService {
         // If ticket already open and text provided, relay it as a follow-up
         if (existing.isPresent()) {
             if (!messageText.isEmpty()) {
-                relayPlayerText(player, messageText, null);
-                return null; // silently relayed
+                boolean sent = relayPlayerText(player, messageText, null);
+                return sent
+                    ? new BotResponse("📨 Сообщение передано в поддержку.")
+                    : new BotResponse("⚠️ Не удалось отправить сообщение. Попробуй позже.");
             }
             SupportTicket t = existing.get();
             return BotResponse.html(
