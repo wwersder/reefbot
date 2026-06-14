@@ -27,3 +27,11 @@ spring:
     scheduling:
       pool:
         size: 5
+
+reefbot:
+  support:
+    group-chat-id: -5447465069
+    admin-url: https://reefbot.online/admin
+  admin:
+    username: admin
+    password: admin

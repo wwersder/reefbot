@@ -48,7 +48,7 @@ public class AdminCallbackHandler implements CallbackHandler {
             case "buildings" -> textBuildings();
             case "speedup"   -> textSpeedup();
             case "produce"   -> textProduce();
-            default          -> textMenu(chatId);
+            default          -> textMenu();
         };
 
         InlineKeyboardMarkup kb = payload.equals("menu")
@@ -70,7 +70,7 @@ public class AdminCallbackHandler implements CallbackHandler {
 
     // ── Тексты ────────────────────────────────────────────────────────────
 
-    public static String textMenu(Long chatId) {
+    public static String textMenu() {
         return """
                 🛠 <b>Админ-панель ReefBot</b>
 
@@ -80,9 +80,7 @@ public class AdminCallbackHandler implements CallbackHandler {
                 🌊  <b>Прилив</b> — принудительно активировать
                 🏗  <b>Здания</b> — статус, ускорение, производство
 
-                Все ID — внутренние (БД), не Telegram.
-
-                Chat ID: <code>""" + chatId + "</code>";
+                Все ID — внутренние (БД), не Telegram.""";
     }
 
     private static String textGive() {

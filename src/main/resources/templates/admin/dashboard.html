@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head th:replace="~{admin/layout :: head('Dashboard')}">
+    <title>Dashboard</title>
+</head>
+<body>
+<th:block th:replace="~{admin/layout :: sidebar('dashboard')}"/>
+<div class="main">
+    <h1>📊 Dashboard</h1>
+
+    <div class="stats">
+        <div class="stat">
+            <div class="val" th:text="${openCount}">0</div>
+            <div class="lbl">🟡 Открытых</div>
+        </div>
+        <div class="stat">
+            <div class="val" th:text="${inProgressCount}">0</div>
+            <div class="lbl">🔵 В работе</div>
+        </div>
+        <div class="stat">
+            <div class="val" th:text="${resolvedToday}">0</div>
+            <div class="lbl">✅ Решено сегодня</div>
+        </div>
+        <div class="stat">
+            <div class="val" th:text="${avgResponse}">—</div>
+            <div class="lbl">⏱ Ср. время ответа</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Последние обращения</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Игрок</th>
+                    <th>Статус</th>
+                    <th>Взял</th>
+                    <th>Создан</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="t : ${recentTickets}">
+                    <td><a th:href="@{/admin/tickets/{id}(id=${t.id})}" th:text="'#' + ${t.id}">#1</a></td>
+                    <td>
+                        <a th:href="@{/admin/players/{tgId}/tickets(tgId=${t.player.telegramId})}"
+                           th:text="${t.player.username != null ? '@' + t.player.username : 'ID: ' + t.player.telegramId}">@user</a>
+                    </td>
+                    <td>
+                        <span class="badge"
+                              th:classappend="${t.status.name() == 'OPEN' ? 'badge-open' :
+                                               t.status.name() == 'IN_PROGRESS' ? 'badge-progress' :
+                                               t.status.name() == 'RESOLVED' ? 'badge-resolved' : 'badge-closed'}"
+                              th:text="${t.status.emoji() + ' ' + t.status.displayName()}">🟡 Открыт</span>
+                    </td>
+                    <td th:text="${t.claimedBy != null ? (t.claimedBy.username != null ? '@' + t.claimedBy.username : t.claimedBy.firstName) : '—'}">—</td>
+                    <td th:text="${#temporals.format(t.createdAt, 'd MMM, HH:mm')}">01 Jan, 12:00</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(recentTickets)}">
+                    <td colspan="5" style="text-align:center;color:#718096;padding:20px">Обращений пока нет</td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="margin-top:12px">
+            <a th:href="@{/admin/tickets}">Все обращения →</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>

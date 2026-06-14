@@ -55,7 +55,7 @@ public class AdminService {
     private final InventoryRepository inventoryRepository;
 
     @Transactional
-    public BotResponse handle(String text, Long chatId) {
+    public BotResponse handle(String text) {
 
         if (text.startsWith("/del ")) {
             return handleDel(text.substring(5).trim());
@@ -82,7 +82,7 @@ public class AdminService {
         }
 
         if (text.equals("/admin") || text.equals("/admin help")) {
-            return handleAdminHelp(chatId);
+            return handleAdminHelp();
         }
 
         return null;
@@ -90,8 +90,8 @@ public class AdminService {
 
     // ── /admin — справка ──────────────────────────────────────────────────
 
-    private BotResponse handleAdminHelp(Long chatId) {
-        return BotResponse.html(AdminCallbackHandler.textMenu(chatId), AdminCallbackHandler.menuKeyboard());
+    private BotResponse handleAdminHelp() {
+        return BotResponse.html(AdminCallbackHandler.textMenu(), AdminCallbackHandler.menuKeyboard());
     }
 
     // ── /del <playerId> ───────────────────────────────────────────────────

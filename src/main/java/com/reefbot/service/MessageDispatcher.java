@@ -34,10 +34,10 @@ public class MessageDispatcher {
     private final GameService gameService;
     private final SupportService supportService;
 
-    public BotResponse dispatch(Long telegramId, String username, String text, boolean isPrivate, Long chatId) {
+    public BotResponse dispatch(Long telegramId, String username, String text, boolean isPrivate) {
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
-                return doDispatch(telegramId, username, text, isPrivate, chatId);
+                return doDispatch(telegramId, username, text, isPrivate);
             } catch (ObjectOptimisticLockingFailureException e) {
                 if (attempt == MAX_RETRIES) {
                     log.error("Optimistic lock conflict for player {} after {} attempts, giving up",
@@ -55,9 +55,9 @@ public class MessageDispatcher {
         return null; // unreachable
     }
 
-    private BotResponse doDispatch(Long telegramId, String username, String text, boolean isPrivate, Long chatId) {
+    private BotResponse doDispatch(Long telegramId, String username, String text, boolean isPrivate) {
         if (ADMIN_TELEGRAM_ID.equals(telegramId)) {
-            BotResponse adminResponse = adminService.handle(text, chatId);
+            BotResponse adminResponse = adminService.handle(text);
             if (adminResponse != null) {
                 return adminResponse;
             }

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head th:replace="~{admin/layout :: head('Тикеты')}">
+    <title>Тикеты</title>
+</head>
+<body>
+<th:block th:replace="~{admin/layout :: sidebar('tickets')}"/>
+<div class="main">
+    <h1>🎫 Обращения</h1>
+
+    <div class="filter-bar">
+        <a th:href="@{/admin/tickets}"
+           th:class="${selectedStatus == null ? 'filter-btn active' : 'filter-btn'}">Все</a>
+        <a th:each="s : ${allStatuses}"
+           th:href="@{/admin/tickets(status=${s.name().toLowerCase()})}"
+           th:class="${selectedStatus != null && selectedStatus.equalsIgnoreCase(s.name()) ? 'filter-btn active' : 'filter-btn'}"
+           th:text="${s.emoji() + ' ' + s.displayName()}">Статус</a>
+    </div>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Игрок</th>
+                    <th>Статус</th>
+                    <th>Взял</th>
+                    <th>Создан</th>
+                    <th>Обновлён</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="t : ${tickets}">
+                    <td><a th:href="@{/admin/tickets/{id}(id=${t.id})}" th:text="'#' + ${t.id}">#1</a></td>
+                    <td>
+                        <div th:text="${t.player.username != null ? '@' + t.player.username : t.player.telegramId}">@user</div>
+                        <a th:href="@{/admin/players/{tgId}/tickets(tgId=${t.player.telegramId})}"
+                           style="font-size:11px;color:#718096">История игрока</a>
+                    </td>
+                    <td>
+                        <span class="badge"
+                              th:classappend="${t.status.name() == 'OPEN' ? 'badge-open' :
+                                               t.status.name() == 'IN_PROGRESS' ? 'badge-progress' :
+                                               t.status.name() == 'RESOLVED' ? 'badge-resolved' : 'badge-closed'}"
+                              th:text="${t.status.emoji() + ' ' + t.status.displayName()}">🟡 Открыт</span>
+                    </td>
+                    <td th:text="${t.claimedBy != null ? (t.claimedBy.username != null ? '@' + t.claimedBy.username : t.claimedBy.firstName) : '—'}">—</td>
+                    <td th:text="${#temporals.format(t.createdAt, 'd MMM, HH:mm')}">—</td>
+                    <td th:text="${#temporals.format(t.updatedAt, 'd MMM, HH:mm')}">—</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(tickets)}">
+                    <td colspan="6" style="text-align:center;color:#718096;padding:24px">Обращений нет</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>
