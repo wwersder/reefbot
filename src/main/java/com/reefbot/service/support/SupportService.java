@@ -227,14 +227,15 @@ public class SupportService {
      * Relays a media message from a player to the support group via copyMessage.
      */
     @Transactional
-    public boolean relayPlayerMedia(Player player, Message message) {
+    public BotResponse relayPlayerMedia(Player player, Message message) {
         log.info("relayPlayerMedia: player={} tg={}", player.getId(), player.getTelegramId());
         Optional<SupportTicket> opt = ticketRepository.findByPlayerAndStatusIn(
                 player, List.of(TicketStatus.OPEN, TicketStatus.IN_PROGRESS));
 
         SupportTicket ticket;
-        if (opt.isEmpty()) {
-            // Auto-create ticket for media without an existing ticket
+        boolean isNewTicket = opt.isEmpty();
+
+        if (isNewTicket) {
             log.info("relayPlayerMedia: no open ticket for player tg={}, auto-creating", player.getTelegramId());
             LocalDateTime now = LocalDateTime.now();
             SupportTicket newTicket = SupportTicket.builder()
@@ -244,7 +245,7 @@ public class SupportService {
                     .updatedAt(now)
                     .build();
             ticket = ticketRepository.save(newTicket);
-            // Post ticket card to group so staff sees the new request
+            // Post ticket card — staff sees new request with player info
             String caption = message.getCaption() != null ? message.getCaption() : "[медиафайл]";
             Long rootMsgId = postTicketToGroup(ticket, player, caption);
             if (rootMsgId != null) {
@@ -254,30 +255,21 @@ public class SupportService {
         } else {
             ticket = opt.get();
         }
+
         log.info("relayPlayerMedia: ticket={} groupChatId={}", ticket.getId(), props.getGroupChatId());
-        if (props.getGroupChatId() == null || props.getGroupChatId() == 0) return false;
+        if (props.getGroupChatId() == null || props.getGroupChatId() == 0) return null;
 
         try {
-            // Header message first
-            SendMessage.SendMessageBuilder<?, ?> headerBuilder = SendMessage.builder()
-                    .chatId(props.getGroupChatId())
-                    .text("💬 <b>" + escapeHtml(displayName(player)) + "</b>")
-                    .parseMode("HTML");
-            if (ticket.getRootGroupMsgId() != null) {
-                headerBuilder.replyToMessageId(ticket.getRootGroupMsgId().intValue());
-            }
-            org.telegram.telegrambots.meta.api.objects.message.Message headerMsg =
-                    telegramClient.execute(headerBuilder.build());
-
-            // Forward the media via copyMessage
-            CopyMessage copy = CopyMessage.builder()
+            // Copy media directly as reply to ticket card — no separate header
+            CopyMessage.CopyMessageBuilder<?, ?> copyBuilder = CopyMessage.builder()
                     .fromChatId(message.getChatId())
                     .chatId(props.getGroupChatId())
-                    .messageId(message.getMessageId())
-                    .replyToMessageId(headerMsg.getMessageId())
-                    .build();
+                    .messageId(message.getMessageId());
+            if (ticket.getRootGroupMsgId() != null) {
+                copyBuilder.replyToMessageId(ticket.getRootGroupMsgId().intValue());
+            }
             org.telegram.telegrambots.meta.api.objects.MessageId copied =
-                    telegramClient.execute(copy);
+                    telegramClient.execute(copyBuilder.build());
 
             AttachmentType attachType = detectAttachmentType(message);
             String fileId = extractFileId(message);
@@ -298,11 +290,17 @@ public class SupportService {
 
             ticket.setUpdatedAt(LocalDateTime.now());
             ticketRepository.save(ticket);
-            return true;
+
+            if (isNewTicket) {
+                return BotResponse.html(
+                    "✅ <b>Обращение #" + ticket.getId() + " принято</b> — скоро ответим!\n\n"
+                    + "Статус: /myticket");
+            }
+            return new BotResponse("📨 Файл передан в поддержку.");
 
         } catch (TelegramApiException e) {
             log.error("Failed to relay player media to group for ticket #{}", ticket.getId(), e);
-            return false;
+            return null;
         }
     }
 

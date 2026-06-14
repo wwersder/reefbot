@@ -118,8 +118,8 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
                 Optional<Player> playerOpt = playerService.findByTelegramId(telegramId);
                 log.info("handleUpdate: media/fwd path, playerFound={}", playerOpt.isPresent());
                 if (playerOpt.isPresent()) {
-                    boolean sent = supportService.relayPlayerMedia(playerOpt.get(), message);
-                    if (sent) sendResponse(chatId, new BotResponse("📨 Файл передан в поддержку."));
+                    BotResponse mediaResp = supportService.relayPlayerMedia(playerOpt.get(), message);
+                    if (mediaResp != null) sendResponse(chatId, mediaResp);
                 }
                 return;
             }
