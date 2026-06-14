@@ -299,7 +299,10 @@ public class SupportService {
         try {
             SendMessage send = SendMessage.builder()
                     .chatId(playerTgId)
-                    .text("💬 <b>Поддержка</b>\n\n" + escapeHtml(text))
+                    .text("🎫 <b>Обращение #" + ticket.getId() + "</b>\n"
+                        + "━━━━━━━━━━━━━━━━\n"
+                        + "💬 " + escapeHtml(text) + "\n\n"
+                        + "<i>Ответить: /support &lt;текст&gt;</i>")
                     .parseMode("HTML")
                     .build();
             org.telegram.telegrambots.meta.api.objects.message.Message sent =
@@ -319,6 +322,17 @@ public class SupportService {
 
             ticket.setUpdatedAt(LocalDateTime.now());
             ticketRepository.save(ticket);
+
+            // Confirm delivery to staff in the group
+            if (groupMsgId != null && props.getGroupChatId() != null) {
+                try {
+                    telegramClient.execute(SendMessage.builder()
+                            .chatId(props.getGroupChatId())
+                            .replyToMessageId(groupMsgId.intValue())
+                            .text("✅ Доставлено игроку")
+                            .build());
+                } catch (TelegramApiException ignored) {}
+            }
 
         } catch (TelegramApiException e) {
             log.error("Failed to relay staff text to player for ticket #{}", ticket.getId(), e);
@@ -471,6 +485,26 @@ public class SupportService {
     }
 
     // ── /history summary ──────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public String buildActiveTicketsList() {
+        List<SupportTicket> tickets = ticketRepository.findAllByStatusInOrderByCreatedAtDesc(
+                List.of(TicketStatus.OPEN, TicketStatus.IN_PROGRESS),
+                org.springframework.data.domain.PageRequest.of(0, 20));
+
+        if (tickets.isEmpty()) return "✅ Активных обращений нет.";
+
+        StringBuilder sb = new StringBuilder("🎫 <b>Активные обращения</b> (" + tickets.size() + ")\n\n");
+        for (SupportTicket t : tickets) {
+            sb.append(t.getStatus().emoji()).append(" <b>#").append(t.getId()).append("</b>  ")
+              .append(escapeHtml(displayName(t.getPlayer())));
+            if (t.getClaimedBy() != null) {
+                sb.append("  👷 ").append(escapeHtml(staffDisplayName(t.getClaimedBy())));
+            }
+            sb.append("\n");
+        }
+        return sb.toString().trim();
+    }
 
     @Transactional(readOnly = true)
     public String buildHistorySummary(Long ticketId) {

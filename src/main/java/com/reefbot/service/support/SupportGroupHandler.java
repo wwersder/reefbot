@@ -126,9 +126,7 @@ public class SupportGroupHandler {
     // ── /tickets @username ────────────────────────────────────────────────
 
     private String handleTickets(Long chatId, String args) {
-        // For now just link to admin panel — full implementation via web
-        if (args.isEmpty()) return "Использование: /tickets @username";
-        return "Обращения игрока <b>" + args + "</b> — смотри на сайте поддержки.";
+        return supportService.buildActiveTicketsList();
     }
 
     // ── /grantsupport / /supersupport ────────────────────────────────────
