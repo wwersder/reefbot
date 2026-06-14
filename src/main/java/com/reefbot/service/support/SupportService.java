@@ -426,8 +426,9 @@ public class SupportService {
     @Transactional
     public String grantSupport(Long grantedByTgId, String username, String firstName, Long targetTgId, SupportRole role) {
         SupportStaff granter = staffRepository.findByTelegramIdAndActiveTrue(grantedByTgId).orElse(null);
-        // Only SUPER_ADMIN can grant
-        if (granter == null || granter.getRole() != SupportRole.SUPER_ADMIN) {
+        // Only SUPER_ADMIN can grant (or the hardcoded owner)
+        if (!OWNER_TELEGRAM_ID.equals(grantedByTgId)
+                && (granter == null || granter.getRole() != SupportRole.SUPER_ADMIN)) {
             return "❌ Только SUPER_ADMIN может выдавать роли.";
         }
 
@@ -511,6 +512,8 @@ public class SupportService {
         return messageRepository.findByGroupMsgId(groupMsgId)
                 .flatMap(msg -> ticketRepository.findById(msg.getTicket().getId()));
     }
+
+    private static final Long OWNER_TELEGRAM_ID = 920215477L;
 
     public Optional<SupportStaff> findStaff(Long telegramId) {
         return staffRepository.findByTelegramIdAndActiveTrue(telegramId);
