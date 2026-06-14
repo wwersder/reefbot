@@ -110,15 +110,11 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
      * Responds to /chatid in any group chat, but only for Telegram chat admins.
      * Use this to discover chat IDs for SUPPORT_GROUP_CHAT_ID config.
      */
-    private void handleChatIdCommand(Message message, Long chatId) {
-        try {
-            ChatMember member = telegramClient.execute(GetChatMember.builder()
-                    .chatId(chatId)
-                    .userId(message.getFrom().getId())
-                    .build());
-            String status = member.getStatus();
-            if (!"administrator".equals(status) && !"creator".equals(status)) return;
+    private static final Long ADMIN_TELEGRAM_ID = 920215477L;
 
+    private void handleChatIdCommand(Message message, Long chatId) {
+        if (!ADMIN_TELEGRAM_ID.equals(message.getFrom().getId())) return;
+        try {
             telegramClient.execute(SendMessage.builder()
                     .chatId(chatId)
                     .text("Chat ID: <code>" + chatId + "</code>")
