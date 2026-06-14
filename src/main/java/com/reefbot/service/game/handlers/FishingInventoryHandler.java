@@ -95,6 +95,8 @@ public class FishingInventoryHandler implements GameHandler {
             if (tideService.getItemCount(player, ConsumableItem.TIDE_VIAL) <= 0) return buildScreen(player);
             tideService.consumeItem(player, ConsumableItem.TIDE_VIAL);
             player.getFishing().setFishingFinishAt(LocalDateTime.now().minusSeconds(1));
+            // Clear queued flag in case it was set before fishing started
+            player.getFishing().setEffectInstantNext(false);
             player.getState().setCurrentScreen(PlayerScreen.FISHING_RESULT);
             playerRepository.save(player);
             return FishingResultHandler.buildResultScreen(player, island, fishingService);

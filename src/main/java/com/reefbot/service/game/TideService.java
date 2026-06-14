@@ -79,7 +79,8 @@ public class TideService {
 
     public boolean isActive(Player player) {
         PlayerTide tide = player.getTide();
-        if (tide == null || tide.getTideAvailableAt() == null) return false;
+        // Guard against null tideExpiresAt — possible for players created before tide init
+        if (tide == null || tide.getTideAvailableAt() == null || tide.getTideExpiresAt() == null) return false;
         LocalDateTime now = LocalDateTime.now();
         return !now.isBefore(tide.getTideAvailableAt()) && now.isBefore(tide.getTideExpiresAt());
     }

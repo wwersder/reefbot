@@ -121,6 +121,8 @@ public class FishingMenuHandler implements GameHandler {
     }
 
     private BotResponse showBonuses(Player player) {
+        player.getState().setCurrentScreen(PlayerScreen.FISHING_BONUSES);
+        playerRepository.save(player);
         return FishingBonusesHandler.buildBonusesScreen(player);
     }
 

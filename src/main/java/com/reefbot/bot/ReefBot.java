@@ -172,7 +172,8 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
 
         } catch (TelegramApiException e) {
             log.error("Failed to send response to chat {}: {}", chatId, e.getMessage());
-            // Не бросаем — ошибка отправки не должна ронять поток
+            // Don't send followUp if primary message failed — it would be out of context
+            return;
         }
 
         if (response.followUp() != null) {

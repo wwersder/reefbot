@@ -124,8 +124,22 @@ public class ShoreBuildingsHandler implements GameHandler {
                   .add("⏳ Строится...\n")
                   .add("Готово через: ").bold(remainingText(pier.getBuildFinishAt()));
             }
+
+        } else {
+            // pier.level > 0 with buildFinishAt set — upgrade in progress (redirect in handle() only
+            // fires when buildFinishAt is null, so this branch is reachable during active upgrade)
+            int nextLevel = pier.getLevel() + 1;
+            boolean ready = pier.getBuildFinishAt() == null
+                    || !LocalDateTime.now().isBefore(pier.getBuildFinishAt());
+            if (ready) {
+                rt.bold("🎣 " + BuildingType.FISHING_PIER.nameAt(pier.getLevel())).add("\n")
+                  .add("✅ Улучшение завершено — зайди на помост, чтобы применить.");
+            } else {
+                rt.bold("🎣 " + BuildingType.FISHING_PIER.nameAt(nextLevel)).add("\n")
+                  .add("⏳ Улучшается до уровня " + nextLevel + "...\n")
+                  .add("Готово через: ").bold(remainingText(pier.getBuildFinishAt()));
+            }
         }
-        // pier.level > 0 handled by redirect in handle(), won't reach here
     }
 
     // ── Keyboard ───────────────────────────────────────────────────────────
@@ -140,8 +154,10 @@ public class ShoreBuildingsHandler implements GameHandler {
 
         if (canBuild) {
             KeyboardButton buildBtn = new KeyboardButton(BTN_BUILD);
+            // Include wood in canAfford check — level 3+ requires wood
             boolean canAfford = island.getFish()   >= BuildingType.FISHING_PIER.fishCostFor(1)
-                             && island.getShells() >= BuildingType.FISHING_PIER.shellsCostFor(1);
+                             && island.getShells() >= BuildingType.FISHING_PIER.shellsCostFor(1)
+                             && island.getWood()   >= BuildingType.FISHING_PIER.woodCostFor(1);
             if (canAfford) buildBtn.setStyle("success");
             kb.row(buildBtn);
         }

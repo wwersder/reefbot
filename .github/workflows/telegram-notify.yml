@@ -1,0 +1,57 @@
+name: Telegram Notify
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (shallow, for diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Build and send Telegram message
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_NOTIFY_TOKEN }}
+          TG_CHAT_ID: "-1004405301190"
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+
+          # Collect changed files (up to 10 lines)
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | head -10)
+          FILE_COUNT=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | wc -l | tr -d ' ')
+
+          if [ -z "$CHANGED" ]; then
+            FILES_SECTION="no file diff available"
+          elif [ "$FILE_COUNT" -gt 10 ]; then
+            FILES_SECTION="$(echo "$CHANGED" | sed 's/^/  • /')
+  ... and $((FILE_COUNT - 10)) more"
+          else
+            FILES_SECTION="$(echo "$CHANGED" | sed 's/^/  • /')"
+          fi
+
+          # Branch label with custom emoji (dev/main get custom, others get plain)
+          case "$BRANCH" in
+            main) BRANCH_LABEL='<tg-emoji emoji-id="5341715473882955310">🔧</tg-emoji> <b>main</b>' ;;
+            dev)  BRANCH_LABEL='<tg-emoji emoji-id="5341715473882955310">🔧</tg-emoji> <b>dev</b>' ;;
+            *)    BRANCH_LABEL="🌿 <b>${BRANCH}</b>" ;;
+          esac
+
+          MESSAGE="${BRANCH_LABEL} — <code>${SHORT_SHA}</code>
+<tg-emoji emoji-id="5443038326535759644">💬</tg-emoji> ${COMMIT_MSG}
+
+<tg-emoji emoji-id="5431721976769027887">📂</tg-emoji> Changed files (${FILE_COUNT}):
+<pre>${FILES_SECTION}</pre>"
+
+          curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TG_CHAT_ID}" \
+            -d parse_mode="HTML" \
+            -d disable_web_page_preview="true" \
+            --data-urlencode "text=${MESSAGE}"

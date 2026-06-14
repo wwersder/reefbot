@@ -46,7 +46,6 @@ public class FishingBonusesHandler implements GameHandler {
         StringBuilder sb = new StringBuilder();
         sb.append("✨ <b>Бонусы рыбака</b>\n\n");
 
-        // Level bonuses
         sb.append("🎣 <b>За уровень рыбака</b>\n\n");
 
         boolean anyBonus = false;
@@ -60,6 +59,7 @@ public class FishingBonusesHandler implements GameHandler {
             sb.append("Пока нет — достигни уровня 2\n");
         }
 
-        return BotResponse.html(sb.toString());
+        return BotResponse.html(sb.toString(),
+                KeyboardBuilder.builder().row(BTN_BACK).build());
     }
 }

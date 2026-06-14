@@ -145,7 +145,7 @@ public class ShoreZoneHandler implements GameHandler {
     private BotResponse goBack(Player player, Island island) {
         player.getState().setCurrentScreen(PlayerScreen.MAIN);
         playerRepository.save(player);
-        return MainMenuHandler.showMainMenu(player, island);
+        return MainMenuHandler.showMainMenu(player, island, tideService);
     }
 
     // ── Static helpers (другие handlers «приземляют» игрока сюда) ───────────

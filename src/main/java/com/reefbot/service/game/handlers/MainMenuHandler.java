@@ -57,7 +57,7 @@ public class MainMenuHandler implements GameHandler {
         return switch (text) {
             case BTN_ISLAND -> enterMyIsland(player, island);
             case BTN_INV    -> new BotResponse("⚙️ Инвентарь — скоро!", null, keyboard(player, island));
-            default         -> showMainMenu(player, island);
+            default         -> showMainMenu(player, island, tideService);
         };
     }
 
@@ -85,7 +85,13 @@ public class MainMenuHandler implements GameHandler {
 
     // ── Static helpers (called from other handlers on back-navigation) ────────
 
+    /** Упрощённый вариант без TideService — для хэндлеров без доступа к сервису. */
     public static BotResponse showMainMenu(Player player, Island island) {
+        return showMainMenu(player, island, null);
+    }
+
+    /** Полный вариант — передавай TideService когда он доступен. */
+    public static BotResponse showMainMenu(Player player, Island island, TideService tideService) {
         int dp = island.getDevPoints();
         RichText rt = new RichText()
                 .bold("🏝 Остров «" + island.getName() + "»")
@@ -93,7 +99,7 @@ public class MainMenuHandler implements GameHandler {
                 .emoji(stageEmojiFor(dp)).add(" " + stageNameFor(dp))
                 .add(" · " + dp + " ОР");
 
-        List<String> digest = buildDigest(player);
+        List<String> digest = buildDigest(player, tideService);
         rt.add("\n");
         if (digest.isEmpty()) {
             rt.add("\n" + randomAtmosphere());
@@ -106,17 +112,21 @@ public class MainMenuHandler implements GameHandler {
             rt.add("\n" + tease);
         }
 
-        return rt.build(keyboard(player, island));
+        return rt.build(keyboard(player, island, tideService));
     }
 
     public static ReplyKeyboard keyboard(Player player, Island island) {
+        return keyboard(player, island, null);
+    }
+
+    public static ReplyKeyboard keyboard(Player player, Island island, TideService tideService) {
         int dp = island.getDevPoints();
         KeyboardBuilder kb = KeyboardBuilder.builder();
 
         // Row 1: always-open zones
         kb.row(
                 new KeyboardButton(ZoneType.FOREST.getDisplayName()),
-                shoreButton(player),
+                shoreButton(player, tideService),
                 new KeyboardButton(ZoneType.SETTLEMENT.getDisplayName())
         );
 
@@ -137,20 +147,28 @@ public class MainMenuHandler implements GameHandler {
         return kb.build();
     }
 
-    /** Shore-zone button зеленеет если есть готовый улов. */
-    private static KeyboardButton shoreButton(Player player) {
+    /**
+     * Shore button turns green when any of the following is true:
+     * — fishing catch is ready to collect
+     * — tide is currently active
+     * — beach is ready to scan (cooldown elapsed)
+     */
+    private static KeyboardButton shoreButton(Player player, TideService tideService) {
         KeyboardButton btn = new KeyboardButton(ZoneType.SHORE.getDisplayName());
         LocalDateTime finishAt = player.getFishing().getFishingFinishAt();
-        if (finishAt != null && !LocalDateTime.now().isBefore(finishAt)) {
+        boolean fishingReady = finishAt != null && !LocalDateTime.now().isBefore(finishAt);
+        boolean beachAlert   = tideService != null
+                && (tideService.isActive(player) || tideService.isBeachReady(player));
+        if (fishingReady || beachAlert) {
             btn.setStyle("success");
         }
         return btn;
     }
 
     /** Дайджест: активности, которые требуют внимания. Макс. 4 строки. */
-    private static List<String> buildDigest(Player player) {
+    private static List<String> buildDigest(Player player, TideService tideService) {
         List<String> lines = new ArrayList<>();
-        // Shore: fishing (единственная реализованная зона)
+        // Shore: fishing
         LocalDateTime finishAt = player.getFishing().getFishingFinishAt();
         if (finishAt != null) {
             if (!LocalDateTime.now().isBefore(finishAt)) {
@@ -159,6 +177,14 @@ public class MainMenuHandler implements GameHandler {
                 long mins = Math.max(1,
                         (Duration.between(LocalDateTime.now(), finishAt).getSeconds() + 59) / 60);
                 lines.add("🏖 Удочка заброшена — ещё ~" + mins + " мин");
+            }
+        }
+        // Shore: tide / beach
+        if (tideService != null) {
+            if (tideService.isActive(player)) {
+                lines.add("🌊 Прилив идёт — не упусти!");
+            } else if (tideService.isBeachReady(player)) {
+                lines.add("🏖 Пляж: есть что подобрать");
             }
         }
         // TODO: ZoneStatusProvider per zone when more activities are implemented
