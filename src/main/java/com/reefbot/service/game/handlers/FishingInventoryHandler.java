@@ -16,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 
-import java.time.LocalDateTime;
 
 /**
  * Экран «🎒 Рюкзак» — просмотр и применение расходников из прилива.
@@ -32,11 +31,16 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class FishingInventoryHandler implements GameHandler {
 
-    public static final String BTN_USE_SCROLL = "📜 Применить свиток";
-    public static final String BTN_USE_BAIT   = "🪱 Применить наживку";
-    public static final String BTN_USE_HOOK   = "🪝 Применить крюк";
-    public static final String BTN_USE_VIAL   = "🫙 Применить склянку";
-    public static final String BTN_BACK       = "◀️ Назад";
+    public static final String BTN_USE_SCROLL        = "📜 Свиток ускорения";
+    public static final String BTN_USE_BAIT           = "🪱 Морская наживка";
+    public static final String BTN_USE_HOOK           = "🪝 Старый крюк";
+    public static final String BTN_USE_VIAL           = "🫙 Склянка прилива";
+    // Кнопки с ✅ — показываются когда эффект выбран; повторное нажатие снимает выбор
+    public static final String BTN_USE_SCROLL_ACTIVE  = "✅ 📜 Свиток ускорения";
+    public static final String BTN_USE_BAIT_ACTIVE    = "✅ 🪱 Морская наживка";
+    public static final String BTN_USE_HOOK_ACTIVE    = "✅ 🪝 Старый крюк";
+    public static final String BTN_USE_VIAL_ACTIVE    = "✅ 🫙 Склянка прилива";
+    public static final String BTN_BACK               = "◀️ Назад";
 
     private final TideService tideService;
     private final FishingService fishingService;
@@ -50,50 +54,51 @@ public class FishingInventoryHandler implements GameHandler {
     @Override
     public BotResponse handle(Player player, Island island, String text) {
         return switch (text) {
-            case BTN_USE_SCROLL -> apply(player, island, ConsumableItem.SPEED_SCROLL);
-            case BTN_USE_BAIT   -> apply(player, island, ConsumableItem.BAIT);
-            case BTN_USE_HOOK   -> apply(player, island, ConsumableItem.FISHING_HOOK);
-            case BTN_USE_VIAL   -> applyVial(player, island);
-            case BTN_BACK       -> goBack(player, island);
-            default             -> buildScreen(player);
+            case BTN_USE_SCROLL, BTN_USE_SCROLL_ACTIVE -> toggle(player, ConsumableItem.SPEED_SCROLL);
+            case BTN_USE_BAIT,   BTN_USE_BAIT_ACTIVE   -> toggle(player, ConsumableItem.BAIT);
+            case BTN_USE_HOOK,   BTN_USE_HOOK_ACTIVE   -> toggle(player, ConsumableItem.FISHING_HOOK);
+            case BTN_USE_VIAL,   BTN_USE_VIAL_ACTIVE   -> toggleVial(player, island);
+            case BTN_BACK                              -> goBack(player, island);
+            default                                    -> buildScreen(player);
         };
     }
 
     // ── Action handlers ────────────────────────────────────────────────────
 
-    private BotResponse apply(Player player, Island island, ConsumableItem item) {
-        if (tideService.getItemCount(player, item) <= 0 || isEffectActive(player, item)) {
-            return buildScreen(player);
+    /**
+     * Тогл эффекта: выбрать → кнопка становится ✅; повторно → снять выбор.
+     * Предмет НЕ списывается здесь — он списывается в момент заброса/сбора улова.
+     */
+    private BotResponse toggle(Player player, ConsumableItem item) {
+        if (isEffectActive(player, item)) {
+            // Снимаем выбор
+            setEffect(player, item, false);
+        } else {
+            // Выбираем только если предмет есть в наличии
+            if (tideService.getItemCount(player, item) <= 0) return buildScreen(player);
+            setEffect(player, item, true);
         }
-        tideService.consumeItem(player, item);
-        setEffect(player, item, true);
         playerRepository.save(player);
         return buildScreen(player);
     }
 
     /**
-     * Склянка прилива — особый предмет:
-     *  • если рыбалка активна → немедленно завершить её
-     *  • иначе → поставить в очередь (следующий бросок будет мгновенным)
+     * Склянка прилива:
+     *  • если рыбалка уже идёт → списать немедленно и завершить
+     *  • иначе → тогл (предмет спишется при следующем забросе)
      */
-    private BotResponse applyVial(Player player, Island island) {
-        if (tideService.getItemCount(player, ConsumableItem.TIDE_VIAL) <= 0) {
-            return buildScreen(player);
-        }
-        tideService.consumeItem(player, ConsumableItem.TIDE_VIAL);
-
+    private BotResponse toggleVial(Player player, Island island) {
         if (fishingService.isActive(player)) {
-            // Instantly finish current fishing
+            // Используем немедленно — списываем сразу
+            if (tideService.getItemCount(player, ConsumableItem.TIDE_VIAL) <= 0) return buildScreen(player);
+            tideService.consumeItem(player, ConsumableItem.TIDE_VIAL);
             player.getFishing().setFishingFinishAt(LocalDateTime.now().minusSeconds(1));
             player.getState().setCurrentScreen(PlayerScreen.FISHING_RESULT);
             playerRepository.save(player);
             return FishingResultHandler.buildResultScreen(player, island, fishingService);
-        } else {
-            // Queue for next cast — startFishing will set duration=0
-            player.getFishing().setEffectInstantNext(true);
-            playerRepository.save(player);
-            return buildScreen(player);
         }
+        // Не рыбачим — тогл в очередь (списание при забросе)
+        return toggle(player, ConsumableItem.TIDE_VIAL);
     }
 
     /**
@@ -169,12 +174,41 @@ public class FishingInventoryHandler implements GameHandler {
         }
 
         // ── Keyboard ──────────────────────────────────────────────────
+        // Активный эффект → ✅-кнопка (повторный клик снимает выбор)
+        // Предмет есть, но не выбран → обычная кнопка
         KeyboardBuilder kb = KeyboardBuilder.builder();
 
-        if (scrollCount > 0 && !scrollActive) kb.row(new KeyboardButton(BTN_USE_SCROLL));
-        if (baitCount   > 0 && !baitActive)   kb.row(new KeyboardButton(BTN_USE_BAIT));
-        if (hookCount   > 0 && !hookActive)   kb.row(new KeyboardButton(BTN_USE_HOOK));
-        if (vialCount   > 0 && !vialQueued)   kb.row(new KeyboardButton(BTN_USE_VIAL));
+        if (scrollActive) {
+            KeyboardButton b = new KeyboardButton(BTN_USE_SCROLL_ACTIVE);
+            b.setStyle("success");
+            kb.row(b);
+        } else if (scrollCount > 0) {
+            kb.row(new KeyboardButton(BTN_USE_SCROLL));
+        }
+
+        if (baitActive) {
+            KeyboardButton b = new KeyboardButton(BTN_USE_BAIT_ACTIVE);
+            b.setStyle("success");
+            kb.row(b);
+        } else if (baitCount > 0) {
+            kb.row(new KeyboardButton(BTN_USE_BAIT));
+        }
+
+        if (hookActive) {
+            KeyboardButton b = new KeyboardButton(BTN_USE_HOOK_ACTIVE);
+            b.setStyle("success");
+            kb.row(b);
+        } else if (hookCount > 0) {
+            kb.row(new KeyboardButton(BTN_USE_HOOK));
+        }
+
+        if (vialQueued) {
+            KeyboardButton b = new KeyboardButton(BTN_USE_VIAL_ACTIVE);
+            b.setStyle("success");
+            kb.row(b);
+        } else if (vialCount > 0) {
+            kb.row(new KeyboardButton(BTN_USE_VIAL));
+        }
 
         kb.row(new KeyboardButton(BTN_BACK));
 

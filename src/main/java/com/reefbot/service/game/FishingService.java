@@ -1,9 +1,12 @@
 package com.reefbot.service.game;
 
+import com.reefbot.entity.InventoryItem;
 import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
+import com.reefbot.enums.ConsumableItem;
 import com.reefbot.enums.FishingSpot;
 import com.reefbot.enums.ResourceType;
+import com.reefbot.repository.InventoryRepository;
 import com.reefbot.repository.IslandRepository;
 import com.reefbot.repository.PlayerRepository;
 import com.reefbot.service.ResourceService;
@@ -37,6 +40,7 @@ public class FishingService {
     private final ResourceService resourceService;
     private final IslandRepository islandRepository;
     private final PlayerRepository playerRepository;
+    private final InventoryRepository inventoryRepository;
     private final Random random = new Random();
 
     public boolean isActive(Player player) {
@@ -63,15 +67,19 @@ public class FishingService {
     public void startFishing(Player player, FishingSpot spot) {
         long duration = spot.getDurationMinutes();
 
-        // 📜 Speed scroll: -50% cast time
+        // 📜 Speed scroll: -50% cast time — списываем в момент заброса
         if (Boolean.TRUE.equals(player.getFishing().getEffectSpeedCast())) {
-            duration = Math.max(1, duration / 2);
+            if (consumeItem(player, ConsumableItem.SPEED_SCROLL)) {
+                duration = Math.max(1, duration / 2);
+            }
             player.getFishing().setEffectSpeedCast(false);
         }
 
-        // 🫙 Tide vial pre-applied: instant completion
+        // 🫙 Tide vial pre-applied: instant completion — списываем в момент заброса
         if (Boolean.TRUE.equals(player.getFishing().getEffectInstantNext())) {
-            duration = 0;
+            if (consumeItem(player, ConsumableItem.TIDE_VIAL)) {
+                duration = 0;
+            }
             player.getFishing().setEffectInstantNext(false);
         }
 
@@ -97,18 +105,22 @@ public class FishingService {
         int effectiveMax = spot.getMaxFish() + maxFishBonus;
         int fish = effectiveMin + random.nextInt(effectiveMax - effectiveMin + 1);
 
-        // 🪱 Bait: +50% fish
+        // 🪱 Bait: +50% fish — списываем при сборе улова
         if (Boolean.TRUE.equals(player.getFishing().getEffectYieldBonus())) {
-            fish = (int) Math.round(fish * 1.5);
+            if (consumeItem(player, ConsumableItem.BAIT)) {
+                fish = (int) Math.round(fish * 1.5);
+            }
             player.getFishing().setEffectYieldBonus(false);
         }
 
         int xpMultiplierPct = oldLevel >= 7 ? 130 : (oldLevel >= 4 ? 110 : 100);
         int xpEarned = (int) Math.round(spot.getXpReward() * xpMultiplierPct / 100.0);
 
-        // 🪝 Hook: +40 XP
+        // 🪝 Hook: +40 XP — списываем при сборе улова
         if (Boolean.TRUE.equals(player.getFishing().getEffectXpBonus())) {
-            xpEarned += 40;
+            if (consumeItem(player, ConsumableItem.FISHING_HOOK)) {
+                xpEarned += 40;
+            }
             player.getFishing().setEffectXpBonus(false);
         }
 
@@ -175,5 +187,28 @@ public class FishingService {
             else break;
         }
         return level;
+    }
+
+    // ── Item helpers ───────────────────────────────────────────────────────
+
+    /**
+     * Списывает 1 штуку предмета из инвентаря игрока.
+     * Возвращает true если предмет был и списан, false если инвентарь пуст
+     * (в этом случае эффект не применяется).
+     */
+    private boolean consumeItem(Player player, ConsumableItem item) {
+        var existing = inventoryRepository.findByPlayerAndItemTypeAndItemKey(
+                player, ConsumableItem.ITEM_TYPE, item.name());
+        if (existing.isEmpty() || existing.get().getQuantity() <= 0) return false;
+
+        InventoryItem inv = existing.get();
+        int newQty = inv.getQuantity() - 1;
+        if (newQty == 0) {
+            inventoryRepository.delete(inv);
+        } else {
+            inv.setQuantity(newQty);
+            inventoryRepository.save(inv);
+        }
+        return true;
     }
 }
