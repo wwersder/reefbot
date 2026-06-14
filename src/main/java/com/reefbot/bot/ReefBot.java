@@ -77,6 +77,18 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
                 return;
             }
 
+            // /chatid — available in any group chat for Telegram admins
+            if (!isPrivate && message.hasText()) {
+                String cmd = message.getText().split("@")[0];
+                if ("/chatid".equals(cmd)) {
+                    handleChatIdCommand(message, chatId);
+                    return;
+                }
+            }
+
+            // Private-only from here
+            if (!isPrivate) return;
+
             Long telegramId = update.getMessage().getFrom().getId();
             Long chatId     = update.getMessage().getChatId();
             String username = update.getMessage().getFrom().getUserName();
@@ -91,6 +103,29 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
 
         } catch (Exception e) {
             log.error("Unhandled error processing update {}", update.getUpdateId(), e);
+        }
+    }
+
+    /**
+     * Responds to /chatid in any group chat, but only for Telegram chat admins.
+     * Use this to discover chat IDs for SUPPORT_GROUP_CHAT_ID config.
+     */
+    private void handleChatIdCommand(Message message, Long chatId) {
+        try {
+            ChatMember member = telegramClient.execute(GetChatMember.builder()
+                    .chatId(chatId)
+                    .userId(message.getFrom().getId())
+                    .build());
+            String status = member.getStatus();
+            if (!"administrator".equals(status) && !"creator".equals(status)) return;
+
+            telegramClient.execute(SendMessage.builder()
+                    .chatId(chatId)
+                    .text("Chat ID: <code>" + chatId + "</code>")
+                    .parseMode("HTML")
+                    .build());
+        } catch (TelegramApiException e) {
+            log.error("Failed to handle /chatid in chat {}", chatId, e);
         }
     }
 
