@@ -1,7 +1,12 @@
 package com.reefbot.bot;
 
+import com.reefbot.config.SupportProperties;
 import com.reefbot.dto.BotResponse;
+import com.reefbot.entity.Player;
 import com.reefbot.service.MessageDispatcher;
+import com.reefbot.service.PlayerService;
+import com.reefbot.service.support.SupportGroupHandler;
+import com.reefbot.service.support.SupportService;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,11 +18,13 @@ import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +59,10 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
     private final MessageDispatcher dispatcher;
     private final CallbackDispatcher callbackDispatcher;
     private final TelegramClient telegramClient;
+    private final SupportGroupHandler supportGroupHandler;
+    private final SupportService supportService;
+    private final SupportProperties supportProperties;
+    private final PlayerService playerService;
 
     // ── Consume ───────────────────────────────────────────────────────────
 
@@ -79,26 +90,16 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
             Long chatId       = message.getChatId();
             boolean isPrivate = "private".equals(message.getChat().getType());
 
-            // Debug: log all group messages
-            if (!isPrivate) {
-                log.info("[GROUP] chatId={} type={} hasText={} text={}",
-                        chatId, message.getChat().getType(), message.hasText(),
-                        message.hasText() ? message.getText() : "");
-            }
-
-            // /chatid — available in any group chat for Telegram admins
-            if (!isPrivate && message.hasText()) {
-                String cmd = message.getText().split("@")[0];
-                if ("/chatid".equals(cmd)) {
-                    handleChatIdCommand(message, chatId);
-                    return;
-                }
+            // Route support group messages (all types) to SupportGroupHandler
+            if (!isPrivate && isSupportGroup(chatId)) {
+                supportGroupHandler.handle(update);
+                return;
             }
 
             Long telegramId = message.getFrom() != null ? message.getFrom().getId() : null;
 
             // /chatid — для главного админа в любом чате
-            if (!isPrivate && message.hasText() && ADMIN_TELEGRAM_ID.equals(telegramId)) {
+            if (message.hasText() && ADMIN_TELEGRAM_ID.equals(telegramId)) {
                 if ("/chatid".equals(message.getText().split("@")[0])) {
                     sendResponse(chatId, BotResponse.html("Chat ID: <code>" + chatId + "</code>"));
                     return;
@@ -107,13 +108,18 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
 
             // Private-only from here
             if (!isPrivate) return;
+            String username = message.getFrom().getUserName();
 
-            Long telegramId = update.getMessage().getFrom().getId();
-            Long chatId     = update.getMessage().getChatId();
-            String username = update.getMessage().getFrom().getUserName();
-            String text     = update.getMessage().getText();
-            boolean isPrivate = "private".equals(update.getMessage().getChat().getType());
+            // Handle media messages: relay to support group if player has open ticket
+            if (!message.hasText()) {
+                Optional<Player> playerOpt = playerService.findByTelegramId(telegramId);
+                if (playerOpt.isPresent()) {
+                    supportService.relayPlayerMedia(playerOpt.get(), message);
+                }
+                return;
+            }
 
+            String text = message.getText();
             BotResponse response = dispatcher.dispatch(telegramId, username, text, isPrivate);
 
             if (response != null) {
@@ -125,24 +131,7 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
         }
     }
 
-    /**
-     * Responds to /chatid in any group chat, but only for Telegram chat admins.
-     * Use this to discover chat IDs for SUPPORT_GROUP_CHAT_ID config.
-     */
     private static final Long ADMIN_TELEGRAM_ID = 920215477L;
-
-    private void handleChatIdCommand(Message message, Long chatId) {
-        if (!ADMIN_TELEGRAM_ID.equals(message.getFrom().getId())) return;
-        try {
-            telegramClient.execute(SendMessage.builder()
-                    .chatId(chatId)
-                    .text("Chat ID: <code>" + chatId + "</code>")
-                    .parseMode("HTML")
-                    .build());
-        } catch (TelegramApiException e) {
-            log.error("Failed to handle /chatid in chat {}", chatId, e);
-        }
-    }
 
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
@@ -238,5 +227,10 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
         }
         String fileName = photoPath.substring(photoPath.lastIndexOf('/') + 1);
         return new InputFile(stream, fileName);
+    }
+
+    private boolean isSupportGroup(Long chatId) {
+        Long groupId = supportProperties.getGroupChatId();
+        return groupId != null && groupId != 0 && groupId.equals(chatId);
     }
 }
