@@ -1,5 +1,6 @@
 package com.reefbot.service;
 
+import com.reefbot.bot.handlers.AdminCallbackHandler;
 import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.InventoryItem;
 import com.reefbot.entity.Island;
@@ -90,45 +91,7 @@ public class AdminService {
     // ── /admin — справка ──────────────────────────────────────────────────
 
     private BotResponse handleAdminHelp() {
-        String text = """
-                🛠 <b>Админ-команды ReefBot</b>
-
-                ━━━━━━━━━━━━━━━━━━━━
-                👤 <b>Игроки</b>
-
-                <code>/del &lt;id&gt;</code>
-                Удалить игрока и все его данные.
-
-                <code>/give &lt;id&gt; &lt;ресурс&gt; &lt;кол&gt;</code>
-                Выдать или списать ресурс/предмет.
-                  Ресурсы: <code>fish shells wood stone coral dp xp</code>
-                  Предметы: <code>scroll bait hook vial</code>
-                  Кол-во может быть отрицательным.
-
-                ━━━━━━━━━━━━━━━━━━━━
-                🌊 <b>Прилив</b>
-
-                <code>/tide &lt;id&gt;</code>
-                Активировать прилив прямо сейчас.
-
-                ━━━━━━━━━━━━━━━━━━━━
-                🏗 <b>Здания</b>
-
-                <code>/buildings &lt;id&gt;</code>
-                Показать все постройки игрока и их статус.
-
-                <code>/speedup &lt;id&gt; [BUILDING_TYPE]</code>
-                Ускорить стройку: переводит финиш на +10 сек от сейчас.
-                Без типа — ускоряет все активные стройки.
-                  Типы: <code>FISHING_PIER</code>
-
-                <code>/produce &lt;id&gt; &lt;BUILDING_TYPE&gt; &lt;кол&gt;</code>
-                Накинуть N единиц в копилку здания (как будто оно произвело).
-
-                ━━━━━━━━━━━━━━━━━━━━
-                ℹ️ <b>Все id — внутренние (БД), не Telegram.</b>
-                """;
-        return BotResponse.html(text);
+        return BotResponse.html(AdminCallbackHandler.textMenu(), AdminCallbackHandler.menuKeyboard());
     }
 
     // ── /del <playerId> ───────────────────────────────────────────────────
