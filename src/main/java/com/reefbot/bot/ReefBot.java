@@ -73,8 +73,17 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
                 return;
             }
 
-            if (!update.hasMessage() || !update.getMessage().hasText()) {
-                return;
+            if (!update.hasMessage()) return;
+
+            Message message   = update.getMessage();
+            Long chatId       = message.getChatId();
+            boolean isPrivate = "private".equals(message.getChat().getType());
+
+            // Debug: log all group messages
+            if (!isPrivate) {
+                log.info("[GROUP] chatId={} type={} hasText={} text={}",
+                        chatId, message.getChat().getType(), message.hasText(),
+                        message.hasText() ? message.getText() : "");
             }
 
             // /chatid — available in any group chat for Telegram admins
