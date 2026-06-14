@@ -231,12 +231,29 @@ public class SupportService {
         log.info("relayPlayerMedia: player={} tg={}", player.getId(), player.getTelegramId());
         Optional<SupportTicket> opt = ticketRepository.findByPlayerAndStatusIn(
                 player, List.of(TicketStatus.OPEN, TicketStatus.IN_PROGRESS));
-        if (opt.isEmpty()) {
-            log.info("relayPlayerMedia: no open ticket for player tg={}", player.getTelegramId());
-            return false;
-        }
 
-        SupportTicket ticket = opt.get();
+        SupportTicket ticket;
+        if (opt.isEmpty()) {
+            // Auto-create ticket for media without an existing ticket
+            log.info("relayPlayerMedia: no open ticket for player tg={}, auto-creating", player.getTelegramId());
+            LocalDateTime now = LocalDateTime.now();
+            SupportTicket newTicket = SupportTicket.builder()
+                    .player(player)
+                    .status(TicketStatus.OPEN)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
+            ticket = ticketRepository.save(newTicket);
+            // Post ticket card to group so staff sees the new request
+            String caption = message.getCaption() != null ? message.getCaption() : "[медиафайл]";
+            Long rootMsgId = postTicketToGroup(ticket, player, caption);
+            if (rootMsgId != null) {
+                ticket.setRootGroupMsgId(rootMsgId);
+                ticket = ticketRepository.save(ticket);
+            }
+        } else {
+            ticket = opt.get();
+        }
         log.info("relayPlayerMedia: ticket={} groupChatId={}", ticket.getId(), props.getGroupChatId());
         if (props.getGroupChatId() == null || props.getGroupChatId() == 0) return false;
 
