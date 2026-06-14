@@ -28,13 +28,16 @@ import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Экран зоны «Берег»: флейвор + статусы активностей + вход в рыбалку.
- * Навигация: MAIN → ZONE_SHORE → FISHING_* / ZONE_SHORE_TIDE / ZONE_SHORE_PIER / ZONE_SHORE_BUILDINGS.
+ * Экран зоны «Берег» — навигационный хаб.
+ * Игрок "попадает" на берег и выбирает, куда идти:
+ * рыбачить, на пляж или к постройкам.
  *
- * <p>Кнопки зданий меняются по состоянию:
+ * <p>Кнопки (максимум 3 + назад):
  * <ul>
- *   <li>Помост не построен / строится → {@link #BTN_CONSTRUCTION} (🏗 Стройка)</li>
- *   <li>Помост готов (ур.1+) → {@link #BTN_PIER} (⚓ Рыбацкий помост), зелёная если есть рыба</li>
+ *   <li>🎣 Рыбалка — зелёная если улов готов</li>
+ *   <li>🏖 Пляж — зелёная если пляж готов или прилив активен</li>
+ *   <li>⚓ Рыбацкий помост (зелёная если рыба накоплена) / 🏗 Стройка</li>
+ *   <li>◀️ На остров</li>
  * </ul>
  */
 @Component
@@ -42,8 +45,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class ShoreZoneHandler implements GameHandler {
 
     public static final String BTN_FISHING      = "Рыбалка";
-    public static final String BTN_TIDE         = "🌊 Прилив!";
-    public static final String BTN_BEACH        = "🌊 Прочесать пляж";
+    public static final String BTN_BEACH        = "🏖 Пляж";
     public static final String BTN_CONSTRUCTION = "🏗 Стройка";
     public static final String BTN_PIER         = "⚓ Рыбацкий помост";
     public static final String BTN_BACK         = "◀️ На остров";
@@ -73,8 +75,7 @@ public class ShoreZoneHandler implements GameHandler {
     public BotResponse handle(Player player, Island island, String text) {
         return switch (text) {
             case BTN_FISHING      -> routeFishing(player, island);
-            case BTN_TIDE         -> routeTide(player, island);
-            case BTN_BEACH        -> scanBeach(player, island);
+            case BTN_BEACH        -> routeBeach(player, island);
             case BTN_CONSTRUCTION -> routeConstruction(player, island);
             case BTN_PIER         -> routePier(player, island);
             case BTN_BACK         -> goBack(player, island);
@@ -104,10 +105,10 @@ public class ShoreZoneHandler implements GameHandler {
         return FishingMenuHandler.buildFishingMenu(player);
     }
 
-    private BotResponse routeTide(Player player, Island island) {
-        player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE_TIDE);
+    private BotResponse routeBeach(Player player, Island island) {
+        player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE_BEACH);
         playerRepository.save(player);
-        return TideGameHandler.buildEntryScreen(player, tideService);
+        return ShoreBeachHandler.buildBeachScreen(player, tideService);
     }
 
     /** 🏗 Стройка — хаб для постройки новых зданий (помост ещё не готов). */
@@ -130,7 +131,6 @@ public class ShoreZoneHandler implements GameHandler {
         }
         IslandBuilding pier = pierOpt.orElse(null);
         if (pier == null || pier.getLevel() == 0) {
-            // Помост не готов — в стройку
             return routeConstruction(player, island);
         }
         return routePierDirect(player, island, pier);
@@ -140,32 +140,6 @@ public class ShoreZoneHandler implements GameHandler {
         player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE_PIER);
         playerRepository.save(player);
         return ShorePierHandler.buildPierScreen(island, pier);
-    }
-
-    private BotResponse scanBeach(Player player, Island island) {
-        if (!tideService.isBeachReady(player)) {
-            IslandBuilding pier = buildingService.find(island, BuildingType.FISHING_PIER).orElse(null);
-            return buildZoneScreen(player, tideService, pier);
-        }
-        TideService.BeachResult result = tideService.scanBeach(player, island);
-
-        RichText rt = new RichText();
-        rt.beginBold().add("🌊 Прочёсан пляж").endBold()
-          .add("\n\n")
-          .add(result.flavorText())
-          .add("\n\n");
-
-        if (result.rare()) {
-            rt.beginBold().add("+").add(String.valueOf(result.shells())).add(" 🐚").endBold()
-              .add(" — редкая находка!");
-        } else {
-            rt.add("+").beginBold().add(String.valueOf(result.shells())).add(" 🐚").endBold();
-        }
-
-        rt.add("\n\nСледующий раз через 4 часа.");
-
-        IslandBuilding pier = buildingService.find(island, BuildingType.FISHING_PIER).orElse(null);
-        return rt.build().withFollowUp(buildZoneScreen(player, tideService, pier));
     }
 
     private BotResponse goBack(Player player, Island island) {
@@ -187,7 +161,7 @@ public class ShoreZoneHandler implements GameHandler {
     }
 
     /**
-     * Полный экран зоны.
+     * Полный экран зоны — навигационный хаб.
      * Всегда используй эту перегрузку если pier известен — иначе он не покажет статус в дайджесте.
      */
     public static BotResponse buildZoneScreen(Player player, TideService tideService, IslandBuilding pier) {
@@ -198,17 +172,17 @@ public class ShoreZoneHandler implements GameHandler {
           .add("\n\n")
           .add(flavor)
           .add("\n\n");
+
+        // Компактный дайджест по трём направлениям
         appendFishingStatus(rt, player);
+        rt.add("\n");
 
         if (tideService != null) {
-            rt.add("\n");
-            appendTideStatus(rt, player, tideService);
-            rt.add("\n");
             appendBeachStatus(rt, player, tideService);
+            rt.add("\n");
         }
 
         if (pier != null && pier.getLevel() > 0) {
-            rt.add("\n");
             appendPierStatus(rt, pier);
         }
 
@@ -233,19 +207,21 @@ public class ShoreZoneHandler implements GameHandler {
         }
     }
 
-    private static void appendTideStatus(RichText rt, Player player, TideService tideService) {
-        rt.add("🌊 ").bold("Прилив:").add(" ");
-        if (tideService.isActive(player)) {
-            rt.add("идёт! Открыто 40 минут.");
-        } else {
-            rt.add("тихо");
-        }
-    }
-
+    /**
+     * Одна строка, объединяющая пляж и прилив — оба живут на экране Пляжа.
+     */
     private static void appendBeachStatus(RichText rt, Player player, TideService tideService) {
         rt.add("🏖 ").bold("Пляж:").add(" ");
-        if (tideService.isBeachReady(player)) {
-            rt.add("можно прочесать!");
+
+        boolean tideActive = tideService.isActive(player);
+        boolean beachReady = tideService.isBeachReady(player);
+
+        if (tideActive && beachReady) {
+            rt.add("прилив идёт + пляж готов к прочёсыванию!");
+        } else if (tideActive) {
+            rt.add("прилив идёт!");
+        } else if (beachReady) {
+            rt.add("есть что подобрать");
         } else {
             rt.add(tideService.beachCooldownText(player));
         }
@@ -254,11 +230,9 @@ public class ShoreZoneHandler implements GameHandler {
     private static void appendPierStatus(RichText rt, IslandBuilding pier) {
         rt.add("⚓ ").bold("Помост:").add(" ");
         if (pier.getBuildFinishAt() != null && LocalDateTime.now().isBefore(pier.getBuildFinishAt())) {
-            // Апгрейд в процессе
             long mins = Math.max(1, Duration.between(LocalDateTime.now(), pier.getBuildFinishAt()).toMinutes());
             rt.add("ур." + pier.getLevel() + " — ⏳ улучшается (" + mins + " мин)");
         } else {
-            // Работает нормально
             int acc = ShorePierHandler.calcAccumulated(pier);
             int cap = BuildingType.FISHING_PIER.capAt(pier.getLevel());
             if (acc >= cap) {
@@ -280,30 +254,26 @@ public class ShoreZoneHandler implements GameHandler {
     }
 
     private static ReplyKeyboard keyboard(Player player, TideService tideService, IslandBuilding pier) {
-        // Рыбалка
+        KeyboardBuilder kb = KeyboardBuilder.builder();
+
+        // 🎣 Рыбалка — зелёная если улов готов
         KeyboardButton fishingBtn = KeyboardBuilder.btn(BTN_FISHING, ReefEmoji.FISHING.id());
         LocalDateTime finishAt = player.getFishing().getFishingFinishAt();
         if (finishAt != null && !LocalDateTime.now().isBefore(finishAt)) {
             fishingBtn.setStyle("success");
         }
-        KeyboardBuilder kb = KeyboardBuilder.builder().row(fishingBtn);
+        kb.row(fishingBtn);
 
-        // Прилив
+        // 🏖 Пляж — зелёная если пляж готов или прилив активен
         if (tideService != null) {
-            if (tideService.isActive(player)) {
-                KeyboardButton tideBtn = new KeyboardButton(BTN_TIDE);
-                tideBtn.setStyle("success");
-                kb.row(tideBtn);
-            }
-
-            // Прочесать пляж — всегда, зелёная когда готово
             KeyboardButton beachBtn = new KeyboardButton(BTN_BEACH);
-            if (tideService.isBeachReady(player)) beachBtn.setStyle("success");
+            if (tideService.isBeachReady(player) || tideService.isActive(player)) {
+                beachBtn.setStyle("success");
+            }
             kb.row(beachBtn);
         }
 
-        // Здания: если помост работает (level > 0) — кнопка помоста,
-        // иначе — кнопка «Стройка» для начала строительства
+        // Здания: помост или стройка
         boolean pierReady = pier != null && pier.getLevel() > 0;
         if (pierReady) {
             KeyboardButton pierBtn = new KeyboardButton(BTN_PIER);
@@ -311,9 +281,7 @@ public class ShoreZoneHandler implements GameHandler {
             if (acc > 0) pierBtn.setStyle("success");
             kb.row(pierBtn);
         } else {
-            // Показываем кнопку стройки пока помост не достиг уровня 1
-            KeyboardButton constructionBtn = new KeyboardButton(BTN_CONSTRUCTION);
-            kb.row(constructionBtn);
+            kb.row(new KeyboardButton(BTN_CONSTRUCTION));
         }
 
         kb.row(new KeyboardButton(BTN_BACK));
