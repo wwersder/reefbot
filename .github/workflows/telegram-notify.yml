@@ -1,9 +1,11 @@
 name: Telegram Notify
 
+# Dev and main branches notify via their own deploy workflows
 on:
   push:
-    branches:
-      - '**'
+    branches-ignore:
+      - dev
+      - main
 
 jobs:
   notify:
@@ -15,18 +17,33 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Build and send Telegram message
+      - name: Send Telegram message
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_NOTIFY_TOKEN }}
           TG_CHAT_ID: "-1004405301190"
         run: |
+          # Files to exclude from the changed-files list
+          IGNORE_FILES=(
+            "landing/stats.json"
+          )
+
           BRANCH="${GITHUB_REF_NAME}"
           SHORT_SHA="${GITHUB_SHA:0:7}"
           COMMIT_MSG="${{ github.event.head_commit.message }}"
 
-          # Collect changed files
-          FILE_COUNT=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | wc -l | tr -d ' ')
-          FILES_SECTION=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | head -10 | sed 's/^/  • /')
+          # Build grep filter args from ignore list
+          FILTER_ARGS=()
+          for f in "${IGNORE_FILES[@]}"; do FILTER_ARGS+=(-e "$f"); done
+
+          RAW_DIFF=$(git diff --name-only HEAD~1 HEAD 2>/dev/null)
+          if [ ${#FILTER_ARGS[@]} -gt 0 ]; then
+            FILTERED=$(echo "$RAW_DIFF" | grep -vF "${FILTER_ARGS[@]}" || true)
+          else
+            FILTERED="$RAW_DIFF"
+          fi
+
+          FILE_COUNT=$(echo "$FILTERED" | grep -c . || true)
+          FILES_SECTION=$(echo "$FILTERED" | head -10 | sed 's/^/  • /')
 
           if [ -z "$FILES_SECTION" ]; then
             FILES_SECTION="no file diff available"
@@ -36,14 +53,7 @@ jobs:
           ... and ${EXTRA} more"
           fi
 
-          # Branch label with custom emoji
-          case "$BRANCH" in
-            main) BRANCH_LABEL='<tg-emoji emoji-id="5341715473882955310">🔧</tg-emoji> <b>main</b>' ;;
-            dev)  BRANCH_LABEL='<tg-emoji emoji-id="5341715473882955310">🔧</tg-emoji> <b>dev</b>' ;;
-            *)    BRANCH_LABEL="🌿 <b>${BRANCH}</b>" ;;
-          esac
-
-          MESSAGE="${BRANCH_LABEL} — <code>${SHORT_SHA}</code>
+          MESSAGE="🌿 <b>${BRANCH}</b> — <code>${SHORT_SHA}</code>
           <tg-emoji emoji-id=\"5443038326535759644\">💬</tg-emoji> ${COMMIT_MSG}
 
           <tg-emoji emoji-id=\"5431721976769027887\">📂</tg-emoji> Changed files (${FILE_COUNT}):
