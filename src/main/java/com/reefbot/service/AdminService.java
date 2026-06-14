@@ -1,9 +1,12 @@
 package com.reefbot.service;
 
 import com.reefbot.dto.BotResponse;
+import com.reefbot.entity.InventoryItem;
 import com.reefbot.entity.Island;
 import com.reefbot.entity.IslandBuilding;
 import com.reefbot.entity.Player;
+import com.reefbot.enums.ConsumableItem;
+import com.reefbot.repository.InventoryRepository;
 import com.reefbot.repository.IslandBuildingRepository;
 import com.reefbot.repository.IslandRepository;
 import com.reefbot.repository.PlayerRepository;
@@ -48,6 +51,7 @@ public class AdminService {
     private final PlayerRepository playerRepository;
     private final IslandRepository islandRepository;
     private final IslandBuildingRepository buildingRepository;
+    private final InventoryRepository inventoryRepository;
 
     @Transactional
     public BotResponse handle(String text) {
@@ -76,7 +80,55 @@ public class AdminService {
             return handleProduce(text.substring(9).trim());
         }
 
+        if (text.equals("/admin") || text.equals("/admin help")) {
+            return handleAdminHelp();
+        }
+
         return null;
+    }
+
+    // ── /admin — справка ──────────────────────────────────────────────────
+
+    private BotResponse handleAdminHelp() {
+        String text = """
+                🛠 <b>Админ-команды ReefBot</b>
+
+                ━━━━━━━━━━━━━━━━━━━━
+                👤 <b>Игроки</b>
+
+                <code>/del &lt;id&gt;</code>
+                Удалить игрока и все его данные.
+
+                <code>/give &lt;id&gt; &lt;ресурс&gt; &lt;кол&gt;</code>
+                Выдать или списать ресурс/предмет.
+                  Ресурсы: <code>fish shells wood stone coral dp xp</code>
+                  Предметы: <code>scroll bait hook vial</code>
+                  Кол-во может быть отрицательным.
+
+                ━━━━━━━━━━━━━━━━━━━━
+                🌊 <b>Прилив</b>
+
+                <code>/tide &lt;id&gt;</code>
+                Активировать прилив прямо сейчас.
+
+                ━━━━━━━━━━━━━━━━━━━━
+                🏗 <b>Здания</b>
+
+                <code>/buildings &lt;id&gt;</code>
+                Показать все постройки игрока и их статус.
+
+                <code>/speedup &lt;id&gt; [BUILDING_TYPE]</code>
+                Ускорить стройку: переводит финиш на +10 сек от сейчас.
+                Без типа — ускоряет все активные стройки.
+                  Типы: <code>FISHING_PIER</code>
+
+                <code>/produce &lt;id&gt; &lt;BUILDING_TYPE&gt; &lt;кол&gt;</code>
+                Накинуть N единиц в копилку здания (как будто оно произвело).
+
+                ━━━━━━━━━━━━━━━━━━━━
+                ℹ️ <b>Все id — внутренние (БД), не Telegram.</b>
+                """;
+        return BotResponse.html(text);
     }
 
     // ── /del <playerId> ───────────────────────────────────────────────────
@@ -121,7 +173,8 @@ public class AdminService {
         if (parts.length != 3) {
             return new BotResponse(
                 "Неверный формат. Используй:\n/give <playerId> <ресурс> <количество>\n\n"
-                + "Ресурсы: fish, shells, wood, stone, coral, devpoints (dp), xp"
+                + "Ресурсы: fish, shells, wood, stone, coral, devpoints (dp), xp\n"
+                + "Предметы: scroll, bait, hook, vial"
             );
         }
 
@@ -159,6 +212,18 @@ public class AdminService {
                 "✅ xp: %+d → было %d, стало %d (игрок #%d)%s",
                 amount, before, after, playerId, levelInfo
             ));
+        }
+
+        // Предметы инвентаря — scroll, bait, hook, vial
+        ConsumableItem consumable = switch (resource) {
+            case "scroll" -> ConsumableItem.SPEED_SCROLL;
+            case "bait"   -> ConsumableItem.BAIT;
+            case "hook"   -> ConsumableItem.FISHING_HOOK;
+            case "vial"   -> ConsumableItem.TIDE_VIAL;
+            default       -> null;
+        };
+        if (consumable != null) {
+            return giveItem(player, consumable, amount);
         }
 
         // Всё остальное — на острове
@@ -203,7 +268,8 @@ public class AdminService {
             default -> {
                 return new BotResponse(
                     "Неизвестный ресурс: " + resource + "\n"
-                    + "Доступные: fish, shells, wood, stone, coral, devpoints (dp), xp"
+                    + "Доступные: fish, shells, wood, stone, coral, devpoints (dp), xp\n"
+                    + "Предметы: scroll, bait, hook, vial"
                 );
             }
         }
@@ -453,6 +519,38 @@ public class AdminService {
             buildingType.nameAt(lvl), playerId, amount,
             buildingType == com.reefbot.enums.BuildingType.FISHING_PIER ? "🐟" : "ед.",
             capWarning
+        ));
+    }
+
+    // ── Inventory item give/take ───────────────────────────────────────────
+
+    private BotResponse giveItem(Player player, ConsumableItem item, int amount) {
+        var existing = inventoryRepository.findByPlayerAndItemTypeAndItemKey(
+                player, ConsumableItem.ITEM_TYPE, item.name());
+
+        int before = existing.map(InventoryItem::getQuantity).orElse(0);
+        int after  = before + amount;
+
+        if (after <= 0) {
+            // Удаляем запись если количество <= 0
+            existing.ifPresent(inventoryRepository::delete);
+            after = 0;
+        } else if (existing.isPresent()) {
+            existing.get().setQuantity(after);
+            inventoryRepository.save(existing.get());
+        } else {
+            inventoryRepository.save(InventoryItem.builder()
+                    .player(player)
+                    .itemType(ConsumableItem.ITEM_TYPE)
+                    .itemKey(item.name())
+                    .quantity(after)
+                    .build());
+        }
+
+        log.info("Admin give item: player#{} {} {:+d} ({} → {})", player.getId(), item.name(), amount, before, after);
+        return new BotResponse(String.format(
+            "✅ %s: %+d → было %d, стало %d (игрок #%d)",
+            item.name().toLowerCase(), amount, before, after, player.getId()
         ));
     }
 }
