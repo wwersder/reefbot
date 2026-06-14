@@ -227,7 +227,7 @@ public class SupportService {
      * Relays a media message from a player to the support group via copyMessage.
      */
     @Transactional
-    public BotResponse relayPlayerMedia(Player player, Message message) {
+    public BotResponse relayPlayerMedia(Player player, Message message, boolean isForwarded) {
         log.info("relayPlayerMedia: player={} tg={}", player.getId(), player.getTelegramId());
         Optional<SupportTicket> opt = ticketRepository.findByPlayerAndStatusIn(
                 player, List.of(TicketStatus.OPEN, TicketStatus.IN_PROGRESS));
@@ -236,22 +236,19 @@ public class SupportService {
         boolean isNewTicket = opt.isEmpty();
 
         if (isNewTicket) {
+            if (isForwarded) {
+                // Forwarded messages attach to an existing ticket only
+                return new BotResponse(
+                    "⚠️ Нет открытого обращения. Сначала напиши /support текст — потом пересылай сообщения.");
+            }
             log.info("relayPlayerMedia: no open ticket for player tg={}, auto-creating", player.getTelegramId());
             LocalDateTime now = LocalDateTime.now();
-            SupportTicket newTicket = SupportTicket.builder()
+            ticket = ticketRepository.save(SupportTicket.builder()
                     .player(player)
                     .status(TicketStatus.OPEN)
                     .createdAt(now)
                     .updatedAt(now)
-                    .build();
-            ticket = ticketRepository.save(newTicket);
-            // Post ticket card — staff sees new request with player info
-            String caption = message.getCaption() != null ? message.getCaption() : "[медиафайл]";
-            Long rootMsgId = postTicketToGroup(ticket, player, caption);
-            if (rootMsgId != null) {
-                ticket.setRootGroupMsgId(rootMsgId);
-                ticket = ticketRepository.save(ticket);
-            }
+                    .build());
         } else {
             ticket = opt.get();
         }
@@ -260,33 +257,53 @@ public class SupportService {
         if (props.getGroupChatId() == null || props.getGroupChatId() == 0) return null;
 
         try {
-            // Copy media directly as reply to ticket card — no separate header
+            // Strip /support prefix from caption if player wrote it there
+            String rawCaption = message.getCaption();
+            if (rawCaption != null && rawCaption.toLowerCase().startsWith("/support")) {
+                rawCaption = rawCaption.substring(8).trim();
+            }
+
             CopyMessage.CopyMessageBuilder<?, ?> copyBuilder = CopyMessage.builder()
                     .fromChatId(message.getChatId())
                     .chatId(props.getGroupChatId())
                     .messageId(message.getMessageId());
-            if (ticket.getRootGroupMsgId() != null) {
-                copyBuilder.replyToMessageId(ticket.getRootGroupMsgId().intValue());
+
+            if (isNewTicket) {
+                // New ticket: embed full ticket card as photo caption — 1 message total
+                copyBuilder
+                        .caption(buildMediaTicketCaption(ticket, player, rawCaption))
+                        .parseMode("HTML")
+                        .replyMarkup(buildTicketKeyboard(ticket));
+            } else {
+                // Follow-up: reply to existing ticket card, preserve original caption
+                if (ticket.getRootGroupMsgId() != null) {
+                    copyBuilder.replyToMessageId(ticket.getRootGroupMsgId().intValue());
+                }
             }
+
             org.telegram.telegrambots.meta.api.objects.MessageId copied =
                     telegramClient.execute(copyBuilder.build());
+
+            if (isNewTicket) {
+                ticket.setRootGroupMsgId((long) copied.getMessageId());
+                ticket = ticketRepository.save(ticket);
+            }
 
             AttachmentType attachType = detectAttachmentType(message);
             String fileId = extractFileId(message);
 
-            SupportMessage msg = SupportMessage.builder()
+            messageRepository.save(SupportMessage.builder()
                     .ticket(ticket)
                     .direction(MessageDirection.FROM_PLAYER)
                     .senderTgId(player.getTelegramId())
                     .senderName(displayName(player))
-                    .text(message.getCaption())
+                    .text(rawCaption)
                     .attachmentType(attachType)
                     .attachmentFileId(fileId)
                     .groupMsgId((long) copied.getMessageId())
                     .playerMsgId((long) message.getMessageId())
                     .sentAt(LocalDateTime.now())
-                    .build();
-            messageRepository.save(msg);
+                    .build());
 
             ticket.setUpdatedAt(LocalDateTime.now());
             ticketRepository.save(ticket);
@@ -302,6 +319,38 @@ public class SupportService {
             log.error("Failed to relay player media to group for ticket #{}", ticket.getId(), e);
             return null;
         }
+    }
+
+    private String buildMediaTicketCaption(SupportTicket ticket, Player player, String messageText) {
+        Island island = player.getIsland();
+        String devPoints = island != null
+                ? String.valueOf(island.getDevPoints() != null ? island.getDevPoints() : 0) : "—";
+        String islandName = island != null ? island.getName() : "—";
+
+        return "━━━━━━━━━━━━━━━━\n"
+            + "🎫 <b>Тикет #" + ticket.getId() + "</b>  ·  🟡 OPEN\n\n"
+            + "👤 " + escapeHtml(displayName(player))
+            + (player.getUsername() != null ? "  @" + player.getUsername() : "")
+            + "  ·  ID: " + player.getTelegramId() + "\n"
+            + "🏝 " + escapeHtml(islandName) + "  ·  " + devPoints + " ОР\n\n"
+            + (messageText != null && !messageText.isEmpty() ? "💬 " + escapeHtml(messageText) + "\n\n" : "")
+            + "🕐 " + ticket.getCreatedAt().format(DATE_FMT) + "\n"
+            + "━━━━━━━━━━━━━━━━";
+    }
+
+    private InlineKeyboardMarkup buildTicketKeyboard(SupportTicket ticket) {
+        return InlineKeyboardMarkup.builder()
+                .keyboardRow(new InlineKeyboardRow(List.of(
+                        InlineKeyboardButton.builder()
+                                .text("📋 История на сайте")
+                                .url(props.getAdminUrl() + "/tickets/" + ticket.getId())
+                                .build(),
+                        InlineKeyboardButton.builder()
+                                .text("✅ Закрыть")
+                                .callbackData("support:resolve:" + ticket.getId())
+                                .build()
+                )))
+                .build();
     }
 
     // ── Relay: staff → player ─────────────────────────────────────────────
