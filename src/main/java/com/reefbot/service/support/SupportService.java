@@ -228,11 +228,16 @@ public class SupportService {
      */
     @Transactional
     public boolean relayPlayerMedia(Player player, Message message) {
+        log.info("relayPlayerMedia: player={} tg={}", player.getId(), player.getTelegramId());
         Optional<SupportTicket> opt = ticketRepository.findByPlayerAndStatusIn(
                 player, List.of(TicketStatus.OPEN, TicketStatus.IN_PROGRESS));
-        if (opt.isEmpty()) return false;
+        if (opt.isEmpty()) {
+            log.info("relayPlayerMedia: no open ticket for player tg={}", player.getTelegramId());
+            return false;
+        }
 
         SupportTicket ticket = opt.get();
+        log.info("relayPlayerMedia: ticket={} groupChatId={}", ticket.getId(), props.getGroupChatId());
         if (props.getGroupChatId() == null || props.getGroupChatId() == 0) return false;
 
         try {
