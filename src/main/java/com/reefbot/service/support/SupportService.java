@@ -227,25 +227,25 @@ public class SupportService {
      * Relays a media message from a player to the support group via copyMessage.
      */
     @Transactional
-    public void relayPlayerMedia(Player player, Message message) {
+    public boolean relayPlayerMedia(Player player, Message message) {
         Optional<SupportTicket> opt = ticketRepository.findByPlayerAndStatusIn(
                 player, List.of(TicketStatus.OPEN, TicketStatus.IN_PROGRESS));
-        if (opt.isEmpty()) return;
+        if (opt.isEmpty()) return false;
 
         SupportTicket ticket = opt.get();
-        if (props.getGroupChatId() == null || props.getGroupChatId() == 0) return;
+        if (props.getGroupChatId() == null || props.getGroupChatId() == 0) return false;
 
         try {
             // Header message first
-            SendMessage header = SendMessage.builder()
+            SendMessage.SendMessageBuilder<?, ?> headerBuilder = SendMessage.builder()
                     .chatId(props.getGroupChatId())
                     .text("💬 <b>" + escapeHtml(displayName(player)) + "</b>")
-                    .parseMode("HTML")
-                    .replyToMessageId(ticket.getRootGroupMsgId() != null
-                            ? ticket.getRootGroupMsgId().intValue() : null)
-                    .build();
+                    .parseMode("HTML");
+            if (ticket.getRootGroupMsgId() != null) {
+                headerBuilder.replyToMessageId(ticket.getRootGroupMsgId().intValue());
+            }
             org.telegram.telegrambots.meta.api.objects.message.Message headerMsg =
-                    telegramClient.execute(header);
+                    telegramClient.execute(headerBuilder.build());
 
             // Forward the media via copyMessage
             CopyMessage copy = CopyMessage.builder()
@@ -276,9 +276,11 @@ public class SupportService {
 
             ticket.setUpdatedAt(LocalDateTime.now());
             ticketRepository.save(ticket);
+            return true;
 
         } catch (TelegramApiException e) {
             log.error("Failed to relay player media to group for ticket #{}", ticket.getId(), e);
+            return false;
         }
     }
 
