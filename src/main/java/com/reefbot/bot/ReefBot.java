@@ -95,6 +95,16 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
                 }
             }
 
+            Long telegramId = message.getFrom() != null ? message.getFrom().getId() : null;
+
+            // /chatid — для главного админа в любом чате
+            if (!isPrivate && message.hasText() && ADMIN_TELEGRAM_ID.equals(telegramId)) {
+                if ("/chatid".equals(message.getText().split("@")[0])) {
+                    sendResponse(chatId, BotResponse.html("Chat ID: <code>" + chatId + "</code>"));
+                    return;
+                }
+            }
+
             // Private-only from here
             if (!isPrivate) return;
 
