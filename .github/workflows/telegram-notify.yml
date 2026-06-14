@@ -22,16 +22,12 @@ jobs:
           TG_BOT_TOKEN: ${{ secrets.TG_NOTIFY_TOKEN }}
           TG_CHAT_ID: "-1004405301190"
         run: |
-          # Files to exclude from the changed-files list
-          IGNORE_FILES=(
-            "landing/stats.json"
-          )
+          IGNORE_FILES=("landing/stats.json")
 
           BRANCH="${GITHUB_REF_NAME}"
           SHORT_SHA="${GITHUB_SHA:0:7}"
           COMMIT_MSG="${{ github.event.head_commit.message }}"
 
-          # Build grep filter args from ignore list
           FILTER_ARGS=()
           for f in "${IGNORE_FILES[@]}"; do FILTER_ARGS+=(-e "$f"); done
 
@@ -42,25 +38,24 @@ jobs:
             FILTERED="$RAW_DIFF"
           fi
 
-          FILE_COUNT=$(echo "$FILTERED" | grep -c . || true)
+          FILE_COUNT=$(echo "$FILTERED" | grep -c . || echo 0)
           FILES_SECTION=$(echo "$FILTERED" | head -10 | sed 's/^/  • /')
-
-          if [ -z "$FILES_SECTION" ]; then
-            FILES_SECTION="no file diff available"
+          if [ -z "$(echo "$FILES_SECTION" | tr -d '[:space:]')" ]; then
+            FILES_SECTION="  no changes"
           elif [ "$FILE_COUNT" -gt 10 ]; then
             EXTRA=$((FILE_COUNT - 10))
-            FILES_SECTION="${FILES_SECTION}
-          ... and ${EXTRA} more"
+            FILES_SECTION="${FILES_SECTION}"$'\n'"  ... and ${EXTRA} more"
           fi
 
-          MESSAGE="🌿 <b>${BRANCH}</b> — <code>${SHORT_SHA}</code>
-          <tg-emoji emoji-id=\"5443038326535759644\">💬</tg-emoji> ${COMMIT_MSG}
+          N=$'\n'
 
-          <tg-emoji emoji-id=\"5431721976769027887\">📂</tg-emoji> Changed files (${FILE_COUNT}):
-          <pre>${FILES_SECTION}</pre>"
+          MSG="🌿 <b>${BRANCH}</b>  ·  <code>${SHORT_SHA}</code>${N}${N}"
+          MSG+='<tg-emoji emoji-id="5443038326535759644">💬</tg-emoji>  '"${COMMIT_MSG}${N}${N}"
+          MSG+='<tg-emoji emoji-id="5431721976769027887">📂</tg-emoji>  <b>'"${FILE_COUNT}"' files changed</b>'"${N}"
+          MSG+="<pre>${FILES_SECTION}</pre>"
 
           curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
             -d chat_id="${TG_CHAT_ID}" \
             -d parse_mode="HTML" \
             -d disable_web_page_preview="true" \
-            --data-urlencode "text=${MESSAGE}"
+            --data-urlencode "text=${MSG}"
