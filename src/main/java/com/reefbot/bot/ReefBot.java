@@ -112,8 +112,11 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
 
             // Relay media OR forwarded messages to support group if player has open ticket
             boolean isForwarded = message.getForwardFrom() != null || message.getForwardFromChat() != null;
+            log.info("handleUpdate: hasText={} hasPhoto={} isForwarded={} tg={}",
+                    message.hasText(), message.hasPhoto(), isForwarded, telegramId);
             if (!message.hasText() || isForwarded) {
                 Optional<Player> playerOpt = playerService.findByTelegramId(telegramId);
+                log.info("handleUpdate: media/fwd path, playerFound={}", playerOpt.isPresent());
                 if (playerOpt.isPresent()) {
                     boolean sent = supportService.relayPlayerMedia(playerOpt.get(), message);
                     if (sent) sendResponse(chatId, new BotResponse("📨 Файл передан в поддержку."));
