@@ -15,4 +15,6 @@ public interface PlayerRepository extends JpaRepository<Player, Long> {
      */
     @EntityGraph(attributePaths = {"state", "fishing", "tide"})
     Optional<Player> findByTelegramId(Long telegramId);
+
+    Optional<Player> findByUsernameIgnoreCase(String username);
 }

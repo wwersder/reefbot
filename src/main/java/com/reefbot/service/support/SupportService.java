@@ -36,6 +36,7 @@ public class SupportService {
     private final SupportTicketRepository ticketRepository;
     private final SupportMessageRepository messageRepository;
     private final SupportStaffRepository staffRepository;
+    private final PlayerRepository playerRepository;
     private final SupportProperties props;
     private final TelegramClient telegramClient;
 
@@ -535,6 +536,18 @@ public class SupportService {
     }
 
     // ── Role management ──────────────────────────────────────────────────
+
+    @Transactional
+    public String grantSupportByUsername(Long grantedByTgId, String rawUsername, SupportRole role) {
+        String username = rawUsername.startsWith("@") ? rawUsername.substring(1) : rawUsername;
+
+        Player player = playerRepository.findByUsernameIgnoreCase(username).orElse(null);
+        if (player == null) {
+            return "❌ Игрок @" + username + " не найден. Убедись, что он зарегистрирован в боте.";
+        }
+
+        return grantSupport(grantedByTgId, player.getUsername(), null, player.getTelegramId(), role);
+    }
 
     @Transactional
     public String grantSupport(Long grantedByTgId, String username, String firstName, Long targetTgId, SupportRole role) {

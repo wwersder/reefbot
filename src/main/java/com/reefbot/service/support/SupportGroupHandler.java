@@ -199,10 +199,16 @@ public class SupportGroupHandler {
     // ── /grantsupport / /supersupport ────────────────────────────────────
 
     private String handleGrant(Message message, Long senderTgId, String args, SupportRole role) {
-        // The target must have replied or been mentioned. For simplicity, use reply sender.
+        String cmdName = role == SupportRole.SUPPORT ? "grantsupport" : "supersupport";
+
+        // /grantsupport @username — lookup by username in players table
+        if (!args.isEmpty()) {
+            return supportService.grantSupportByUsername(senderTgId, args, role);
+        }
+
+        // /grantsupport as reply
         if (message.getReplyToMessage() == null) {
-            return "⚠️ Используй /" + (role == SupportRole.SUPPORT ? "grantsupport" : "supersupport")
-                    + " как реплай на сообщение нужного пользователя.";
+            return "⚠️ Используй /" + cmdName + " @username  или реплай на сообщение нужного пользователя.";
         }
 
         org.telegram.telegrambots.meta.api.objects.message.Message replyTo = message.getReplyToMessage();
