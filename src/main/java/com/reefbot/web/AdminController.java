@@ -41,7 +41,7 @@ public class AdminController {
 
     // ── Dashboard ─────────────────────────────────────────────────────────
 
-    @GetMapping({"/", "/dashboard"})
+    @GetMapping({"", "/", "/dashboard"})
     public String dashboard(Model model) {
         long openCount       = ticketRepository.countByStatus(TicketStatus.OPEN);
         long inProgressCount = ticketRepository.countByStatus(TicketStatus.IN_PROGRESS);
