@@ -17,6 +17,7 @@ jobs:
 
       - name: Notify — deploy started
         id: notify
+        continue-on-error: true
         env:
           TG_BOT_TOKEN: ${{ secrets.TG_NOTIFY_TOKEN }}
           TG_CHAT_ID: "-1004405301190"
