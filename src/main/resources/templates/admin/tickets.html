@@ -61,7 +61,7 @@
                         <td>
                             <div th:text="${t.player.username != null ? '@' + t.player.username : t.player.telegramId}">@user</div>
                             <a th:href="@{/admin/players/{tgId}/tickets(tgId=${t.player.telegramId})}"
-                               style="font-size:11px;color:#6b7280">История →</a>
+                               class="link-history">История ›</a>
                         </td>
                         <td>
                             <span class="badge"
