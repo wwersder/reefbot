@@ -66,6 +66,7 @@ public class SupportGroupHandler {
         String reply = switch (cmd) {
             case "/resolve"       -> handleResolve(message, senderTgId);
             case "/close"         -> handleClose(message, senderTgId, args);
+            case "/reply"         -> handleReply(senderTgId, args);
             case "/transfer"      -> handleTransfer(message, senderTgId, args);
             case "/history"       -> handleHistory(chatId, args);
             case "/tickets"       -> handleTickets(chatId, args);
@@ -131,6 +132,26 @@ public class SupportGroupHandler {
             log.error("Failed to send ticket detail for #{}", ticketId, e);
         }
         return null; // already sent
+    }
+
+    // ── /reply <id> <text> ────────────────────────────────────────────────
+
+    private String handleReply(Long senderTgId, String args) {
+        if (args.isEmpty()) return "Использование: /reply &lt;id&gt; &lt;текст&gt;";
+
+        String[] parts = args.split("\\s+", 2);
+        if (parts.length < 2 || parts[1].isBlank()) {
+            return "Использование: /reply &lt;id&gt; &lt;текст&gt;";
+        }
+
+        long ticketId;
+        try {
+            ticketId = Long.parseLong(parts[0]);
+        } catch (NumberFormatException e) {
+            return "⚠️ ID тикета должен быть числом.";
+        }
+
+        return supportService.replyToTicket(ticketId, senderTgId, parts[1].trim());
     }
 
     // ── /transfer @username ───────────────────────────────────────────────

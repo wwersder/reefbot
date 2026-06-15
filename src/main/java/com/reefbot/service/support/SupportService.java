@@ -477,6 +477,28 @@ public class SupportService {
         return "✅ Тикет #" + ticketId + " закрыт.";
     }
 
+    /**
+     * Sends a text reply to a ticket player directly by ticket ID.
+     * Used by the /reply command — no need to find and reply to the original message.
+     */
+    @Transactional
+    public String replyToTicket(Long ticketId, Long staffTgId, String text) {
+        SupportStaff staff = staffRepository.findByTelegramIdAndActiveTrue(staffTgId).orElse(null);
+        if (staff == null) return "❌ У тебя нет прав поддержки.";
+
+        SupportTicket ticket = ticketRepository.findById(ticketId).orElse(null);
+        if (ticket == null) return "❌ Тикет #" + ticketId + " не найден.";
+        if (!ticket.getStatus().isActive()) return "❌ Тикет #" + ticketId + " уже закрыт.";
+
+        if (!canAct(staff, ticket)) {
+            return "❌ Тикет взял " + staffDisplayName(ticket.getClaimedBy()) + ". Только он или SUPER_ADMIN могут ответить.";
+        }
+
+        autoClaimIfNeeded(ticket, staff);
+        relayStaffText(ticket, staff, text, null);
+        return "✅ Ответ отправлен в тикет #" + ticketId + ".";
+    }
+
     @Transactional
     public String transferTicket(Long ticketId, Long fromStaffTgId, String toUsername) {
         SupportStaff from = staffRepository.findByTelegramIdAndActiveTrue(fromStaffTgId).orElse(null);
