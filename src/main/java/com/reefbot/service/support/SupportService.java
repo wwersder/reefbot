@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.meta.api.methods.CopyMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -720,18 +722,55 @@ public class SupportService {
     }
 
     /**
-     * Rebuilds the group ticket card text with the current ticket status.
-     * Used to update the message after inline resolve.
+     * Resolves a ticket and immediately edits the group message to reflect the new status.
+     * Everything runs in a single transaction to avoid lazy-loading issues.
+     *
+     * @return true if resolved successfully, false otherwise
      */
-    @Transactional(readOnly = true)
-    public String buildGroupTicketCard(SupportTicket ticket) {
+    @Transactional
+    public boolean resolveAndEditGroupMessage(Long ticketId, Long staffTgId,
+                                              long groupChatId, int groupMessageId) {
+        String result = resolveTicket(ticketId, staffTgId);
+        if (!result.startsWith("✅")) {
+            log.warn("resolveAndEditGroupMessage: resolve failed for ticket #{}: {}", ticketId, result);
+            return false;
+        }
+
+        SupportTicket ticket = ticketRepository.findById(ticketId).orElse(null);
+        if (ticket == null) return false;
+
+        String newText = buildGroupTicketCardText(ticket);
+
+        // Try text edit first; fall back to caption for photo messages
+        try {
+            telegramClient.execute(EditMessageText.builder()
+                    .chatId(groupChatId)
+                    .messageId(groupMessageId)
+                    .text(newText)
+                    .parseMode("HTML")
+                    .build());
+        } catch (TelegramApiException e) {
+            try {
+                telegramClient.execute(EditMessageCaption.builder()
+                        .chatId(groupChatId)
+                        .messageId(groupMessageId)
+                        .caption(newText)
+                        .parseMode("HTML")
+                        .build());
+            } catch (TelegramApiException e2) {
+                log.warn("Failed to edit group message for resolved ticket #{}", ticketId, e2);
+            }
+        }
+        return true;
+    }
+
+    private String buildGroupTicketCardText(SupportTicket ticket) {
         Player player = ticket.getPlayer();
         Island island = player.getIsland();
         String devPoints = island != null
                 ? String.valueOf(island.getDevPoints() != null ? island.getDevPoints() : 0) : "—";
         String islandName = island != null ? island.getName() : "—";
 
-        // Fetch original player message text
         List<SupportMessage> msgs = messageRepository.findAllByTicketOrderBySentAtAsc(ticket);
         String firstText = msgs.stream()
                 .filter(m -> m.getDirection() == MessageDirection.FROM_PLAYER && m.getText() != null)
