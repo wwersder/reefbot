@@ -394,7 +394,7 @@ public class SupportService {
                     telegramClient.execute(SendMessage.builder()
                             .chatId(props.getGroupChatId())
                             .replyToMessageId(groupMsgId.intValue())
-                            .text("✅ Доставлено игроку")
+                            .text("✅ Ответ отправлен в тикет #" + ticket.getId() + ".")
                             .build());
                 } catch (TelegramApiException ignored) {}
             }
