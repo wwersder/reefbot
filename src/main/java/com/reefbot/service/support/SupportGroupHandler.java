@@ -283,63 +283,45 @@ public class SupportGroupHandler {
 
         String adminUrl = buildAdminUrl();
         String text = """
-            🪸 <b>ReefBot Support — Руководство</b>
-            ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+            🪸 <b>ReefBot Support</b>
 
-            Добро пожаловать в беседу поддержки. Каждый новый тикет от игрока появляется здесь отдельным сообщением. Всё, что ты пишешь реплаем — уходит прямо игроку.
+            Каждый новый тикет появляется здесь отдельным сообщением. Реплай на него — и ответ уходит игроку.
 
-            ━━━ 🎫 <b>Тикеты</b> ━━━
+            <b>Тикеты</b>
+            Ответить — реплай на сообщение тикета
+            Ответить по ID — <code>/reply &lt;id&gt; &lt;текст&gt;</code>
+            Список открытых — <code>/tickets</code>
+            Детали и история — <code>/ticket &lt;id&gt;</code>
 
-            <b>Ответить на тикет</b> — реплай на его сообщение в беседе
-            <b>Ответить по ID</b> — <code>/reply &lt;id&gt; &lt;текст&gt;</code>
-            <b>Список открытых</b> — <code>/tickets</code>
-            <b>Детали тикета</b> — <code>/ticket &lt;id&gt;</code>
+            <b>Закрытие</b>
+            Кнопка <b>Закрыть</b> под карточкой, реплай <code>/resolve</code> или <code>/close &lt;id&gt;</code>
+            Игрок получает уведомление автоматически.
 
-            ━━━ ✅ <b>Закрытие</b> ━━━
-
-            · кнопка <b>✅ Закрыть</b> под карточкой тикета
-            · реплай → <code>/resolve</code>
-            · по ID → <code>/close &lt;id&gt;</code>
-
-            Игрок получит уведомление автоматически.
-
-            ━━━ 🔀 <b>Передача</b> ━━━
-
+            <b>Передача</b>
             Реплай на тикет → <code>/transfer @username</code>
-            Используй, если знаешь кто справится лучше или уходишь со смены.
 
-            ━━━ 🚫 <b>Блокировка игрока</b> ━━━
+            <b>Блокировка</b>
+            <code>/sblock</code> — реплай на тикет
+            <code>/sblock &lt;id&gt;</code> — по internal или TG ID
+            <code>/sblock @username</code> — по юзернейму
+            Снять блокировку — те же варианты через <code>/sunblock</code>
 
-            Заблокировать (3 варианта):
-            · реплай на тикет → <code>/sblock</code>
-            · по ID игрока / TG ID → <code>/sblock &lt;id&gt;</code>
-            · по юзернейму → <code>/sblock @username</code>
+            <i>Игрок может отправить не более 3 сообщений подряд без ответа — потом бот попросит подождать.</i>
 
-            Разблокировать — те же варианты через <code>/sunblock</code>
-
-            ━━━ ℹ️ <b>Прочее</b> ━━━
-
-            Игрок может отправить не более 3 сообщений подряд без ответа — после этого бот попросит его подождать. Лимит сбрасывается после любого ответа от поддержки.
-
-            ━━━ 🌐 <b>Веб-панель</b> ━━━
-
-            История тикетов, поиск, фильтры, фото из переписки:
-            """ + adminUrl;
+            🌐 """ + adminUrl;
 
         InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
                 .keyboardRow(new InlineKeyboardRow(List.of(
                         InlineKeyboardButton.builder()
-                                .text("📋 Правила общения")
+                                .text("📋 Правила")
                                 .url(adminUrl + "/guide/conduct")
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("📖 Типичные ситуации")
+                                .text("📖 Ситуации")
                                 .url(adminUrl + "/guide/scenarios")
-                                .build()
-                )))
-                .keyboardRow(new InlineKeyboardRow(List.of(
+                                .build(),
                         InlineKeyboardButton.builder()
-                                .text("🌐 Открыть панель")
+                                .text("🌐 Панель")
                                 .url(adminUrl)
                                 .build()
                 )))
