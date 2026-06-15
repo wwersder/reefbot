@@ -567,16 +567,132 @@ public class SupportService {
 
         if (tickets.isEmpty()) return "✅ Активных обращений нет.";
 
-        StringBuilder sb = new StringBuilder("🎫 <b>Активные обращения</b> (" + tickets.size() + ")\n\n");
+        StringBuilder sb = new StringBuilder("🎫 <b>Активные обращения</b> (" + tickets.size() + ")\n");
+
         for (SupportTicket t : tickets) {
+            sb.append("━━━━━━━━━━━━━━━━\n");
             sb.append(t.getStatus().emoji()).append(" <b>#").append(t.getId()).append("</b>  ")
               .append(escapeHtml(displayName(t.getPlayer())));
             if (t.getClaimedBy() != null) {
                 sb.append("  👷 ").append(escapeHtml(staffDisplayName(t.getClaimedBy())));
             }
             sb.append("\n");
+
+            // Last message preview
+            Optional<SupportMessage> lastMsg = messageRepository.findTopByTicketOrderBySentAtDesc(t);
+            if (lastMsg.isPresent()) {
+                SupportMessage m = lastMsg.get();
+                String preview = m.getText() != null
+                        ? truncate(m.getText(), 60)
+                        : (m.getAttachmentType() != null ? "[" + m.getAttachmentType().name().toLowerCase() + "]" : "");
+                String who = m.getDirection() == MessageDirection.FROM_PLAYER ? "👤" : "👷";
+                sb.append(who).append(" <i>").append(escapeHtml(preview)).append("</i>\n");
+                sb.append("🕐 ").append(timeAgo(m.getSentAt())).append("\n");
+            }
         }
-        return sb.toString().trim();
+        sb.append("━━━━━━━━━━━━━━━━\n");
+        sb.append("<i>Детали: /ticket &lt;id&gt;</i>");
+        return sb.toString();
+    }
+
+    @Transactional(readOnly = true)
+    public String buildTicketDetail(Long ticketId) {
+        SupportTicket ticket = ticketRepository.findById(ticketId).orElse(null);
+        if (ticket == null) return "❌ Тикет #" + ticketId + " не найден.";
+
+        Player player = ticket.getPlayer();
+        Island island = player.getIsland();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("━━━━━━━━━━━━━━━━\n");
+        sb.append("🎫 <b>Тикет #").append(ticket.getId()).append("</b>  ")
+          .append(ticket.getStatus().emoji()).append(" ").append(ticket.getStatus().displayName()).append("\n\n");
+
+        sb.append("👤 ").append(escapeHtml(displayName(player)));
+        if (player.getUsername() != null) sb.append("  @").append(player.getUsername());
+        sb.append("  · ID: ").append(player.getTelegramId()).append("\n");
+        if (island != null) {
+            sb.append("🏝 ").append(escapeHtml(island.getName()))
+              .append("  · ").append(island.getDevPoints() != null ? island.getDevPoints() : 0).append(" ОР\n");
+        }
+        sb.append("📅 ").append(ticket.getCreatedAt().format(DATE_FMT)).append("\n");
+
+        if (ticket.getClaimedBy() != null) {
+            sb.append("👷 ").append(escapeHtml(staffDisplayName(ticket.getClaimedBy()))).append("\n");
+        } else {
+            sb.append("👷 Не взят\n");
+        }
+
+        // Time without staff reply
+        List<SupportMessage> msgs = messageRepository.findTop5ByTicketOrderBySentAtDesc(ticket);
+        Optional<SupportMessage> lastStaffMsg = msgs.stream()
+                .filter(m -> m.getDirection() == MessageDirection.FROM_SUPPORT)
+                .findFirst();
+        Optional<SupportMessage> lastPlayerMsg = msgs.stream()
+                .filter(m -> m.getDirection() == MessageDirection.FROM_PLAYER)
+                .findFirst();
+        if (lastPlayerMsg.isPresent()) {
+            boolean staffRepliedAfter = lastStaffMsg.isPresent() &&
+                    lastStaffMsg.get().getSentAt().isAfter(lastPlayerMsg.get().getSentAt());
+            if (!staffRepliedAfter) {
+                long sec = java.time.Duration.between(lastPlayerMsg.get().getSentAt(), java.time.LocalDateTime.now()).getSeconds();
+                sb.append("⏱ Без ответа: ").append(formatDuration(sec)).append("\n");
+            }
+        }
+
+        // Last messages (reversed to show oldest first)
+        if (!msgs.isEmpty()) {
+            sb.append("\n💬 <b>Последние сообщения:</b>\n");
+            List<SupportMessage> ordered = new java.util.ArrayList<>(msgs);
+            java.util.Collections.reverse(ordered);
+            for (SupportMessage m : ordered) {
+                String who = m.getDirection() == MessageDirection.FROM_PLAYER
+                        ? "👤 " + escapeHtml(m.getSenderName())
+                        : "👷 " + escapeHtml(m.getSenderName());
+                String text = m.getText() != null ? truncate(m.getText(), 80)
+                        : (m.getAttachmentType() != null ? "[" + m.getAttachmentType().name().toLowerCase() + "]" : "");
+                sb.append(who).append(": <i>").append(escapeHtml(text)).append("</i>  ")
+                  .append("<code>").append(m.getSentAt().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))).append("</code>\n");
+            }
+        }
+
+        sb.append("━━━━━━━━━━━━━━━━");
+        return sb.toString();
+    }
+
+    public InlineKeyboardMarkup buildTicketDetailKeyboard(Long ticketId) {
+        return InlineKeyboardMarkup.builder()
+                .keyboardRow(new InlineKeyboardRow(List.of(
+                        InlineKeyboardButton.builder()
+                                .text("✅ Закрыть")
+                                .callbackData("support:resolve:" + ticketId)
+                                .build(),
+                        InlineKeyboardButton.builder()
+                                .text("📋 Сайт")
+                                .url(props.getAdminUrl() + "/tickets/" + ticketId)
+                                .build()
+                )))
+                .build();
+    }
+
+    @Transactional
+    public String closeTicketById(Long ticketId, Long staffTgId) {
+        return resolveTicket(ticketId, staffTgId);
+    }
+
+    // ── Formatting helpers ─────────────────────────────────────────────────
+
+    private String truncate(String text, int max) {
+        if (text == null) return "";
+        return text.length() <= max ? text : text.substring(0, max) + "…";
+    }
+
+    private String timeAgo(java.time.LocalDateTime time) {
+        long sec = java.time.Duration.between(time, java.time.LocalDateTime.now()).getSeconds();
+        if (sec < 60) return "только что";
+        if (sec < 3600) return (sec / 60) + " мин назад";
+        if (sec < 86400) return (sec / 3600) + " ч назад";
+        return (sec / 86400) + " д назад";
     }
 
     @Transactional(readOnly = true)

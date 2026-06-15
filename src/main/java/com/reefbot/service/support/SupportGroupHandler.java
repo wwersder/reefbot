@@ -65,9 +65,11 @@ public class SupportGroupHandler {
 
         String reply = switch (cmd) {
             case "/resolve"       -> handleResolve(message, senderTgId);
+            case "/close"         -> handleClose(message, senderTgId, args);
             case "/transfer"      -> handleTransfer(message, senderTgId, args);
             case "/history"       -> handleHistory(chatId, args);
             case "/tickets"       -> handleTickets(chatId, args);
+            case "/ticket"        -> handleTicketDetail(chatId, args);
             case "/grantsupport"  -> handleGrant(message, senderTgId, args, SupportRole.SUPPORT);
             case "/supersupport"  -> handleGrant(message, senderTgId, args, SupportRole.SUPER_ADMIN);
             case "/revokesupport" -> handleRevoke(senderTgId, args);
@@ -85,6 +87,50 @@ public class SupportGroupHandler {
         Long ticketId = resolveTicketIdFromReply(message);
         if (ticketId == null) return "⚠️ Используй /resolve как реплай на сообщение тикета.";
         return supportService.resolveTicket(ticketId, senderTgId);
+    }
+
+    // ── /close [id] ───────────────────────────────────────────────────────
+
+    private String handleClose(Message message, Long senderTgId, String args) {
+        // /close 16  — by ID
+        if (!args.isEmpty()) {
+            try {
+                long id = Long.parseLong(args.trim());
+                return supportService.closeTicketById(id, senderTgId);
+            } catch (NumberFormatException e) {
+                return "⚠️ Использование: /close <id>  или /close как реплай на тикет.";
+            }
+        }
+        // /close as reply
+        Long ticketId = resolveTicketIdFromReply(message);
+        if (ticketId == null) return "⚠️ Использование: /close <id>  или /close как реплай на тикет.";
+        return supportService.closeTicketById(ticketId, senderTgId);
+    }
+
+    // ── /ticket <id> ──────────────────────────────────────────────────────
+
+    private String handleTicketDetail(Long chatId, String args) {
+        if (args.isEmpty()) return "Использование: /ticket &lt;id&gt;";
+
+        long ticketId;
+        try {
+            ticketId = Long.parseLong(args.trim());
+        } catch (NumberFormatException e) {
+            return "⚠️ ID тикета должен быть числом.";
+        }
+
+        String detail = supportService.buildTicketDetail(ticketId);
+        try {
+            telegramClient.execute(SendMessage.builder()
+                    .chatId(chatId)
+                    .text(detail)
+                    .parseMode("HTML")
+                    .replyMarkup(supportService.buildTicketDetailKeyboard(ticketId))
+                    .build());
+        } catch (TelegramApiException e) {
+            log.error("Failed to send ticket detail for #{}", ticketId, e);
+        }
+        return null; // already sent
     }
 
     // ── /transfer @username ───────────────────────────────────────────────

@@ -13,4 +13,10 @@ public interface SupportMessageRepository extends JpaRepository<SupportMessage, 
     Optional<SupportMessage> findByGroupMsgId(Long groupMsgId);
 
     List<SupportMessage> findAllByTicketOrderBySentAtAsc(SupportTicket ticket);
+
+    /** Last message in a ticket (for previews). */
+    Optional<SupportMessage> findTopByTicketOrderBySentAtDesc(SupportTicket ticket);
+
+    /** Last N messages in a ticket (for /ticket detail). */
+    List<SupportMessage> findTop5ByTicketOrderBySentAtDesc(SupportTicket ticket);
 }
