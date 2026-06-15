@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="ru">
-<head th:replace="~{admin/layout :: head('Правила общения')}"><title>Правила общения</title></head>
+<head th:replace="~{admin/layout :: head('Правила работы')}"><title>Правила работы</title></head>
 <body>
 <th:block th:replace="~{admin/layout :: sidebar('guide')}"/>
 <div class="main">
@@ -8,149 +8,228 @@
     <a href="/admin/guide/scenarios" class="back-link" style="float:right;margin-top:4px;">
         📖 Типичные ситуации →
     </a>
-    <h1>📋 Правила общения с игроками</h1>
+    <h1>📋 Правила работы с тикетами</h1>
 
     <style>
-        .guide-section { margin-bottom: 28px; }
-        .guide-section h2 {
+        .section { margin-bottom: 32px; }
+        .section-title {
             font-size: 13px; font-weight: 700; color: #374151;
             text-transform: uppercase; letter-spacing: .05em;
-            margin-bottom: 12px; padding-bottom: 6px;
+            margin-bottom: 14px; padding-bottom: 8px;
             border-bottom: 2px solid #e5e7eb;
         }
-        .rule-list { display: flex; flex-direction: column; gap: 10px; }
-        .rule {
-            display: flex; gap: 12px;
-            background: #fff; border-radius: 10px;
-            padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06);
-        }
-        .rule-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
-        .rule-body { flex: 1; }
-        .rule-title { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
-        .rule-desc { font-size: 13px; color: #4b5563; line-height: 1.5; }
-        .rule.do .rule-title { color: #065f46; }
-        .rule.dont .rule-title { color: #991b1b; }
-        .rule.do { border-left: 3px solid #10b981; }
-        .rule.dont { border-left: 3px solid #ef4444; }
 
-        .sla-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
-            margin-bottom: 0;
+        /* Two-column can/cannot */
+        .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .split-col { display: flex; flex-direction: column; gap: 8px; }
+        .col-label {
+            font-size: 11px; font-weight: 700; letter-spacing: .06em;
+            text-transform: uppercase; margin-bottom: 4px;
         }
-        .sla-card {
-            background: #fff; border-radius: 10px;
-            padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06);
-            text-align: center;
-        }
-        .sla-card .sla-val { font-size: 26px; font-weight: 700; color: #3b82f6; }
-        .sla-card .sla-lbl { font-size: 12px; color: #6b7280; margin-top: 4px; }
-        .sla-card .sla-desc { font-size: 11px; color: #9ca3af; margin-top: 6px; }
+        .col-label.green { color: #065f46; }
+        .col-label.red   { color: #991b1b; }
 
-        .escalate-card {
-            background: #fff7ed; border: 1px solid #fed7aa;
-            border-radius: 10px; padding: 16px 18px;
+        .item {
+            display: flex; gap: 10px; align-items: flex-start;
+            background: #fff; border-radius: 8px;
+            padding: 11px 13px; font-size: 13px; line-height: 1.5;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06);
         }
-        .escalate-card p { font-size: 13px; color: #92400e; line-height: 1.6; margin-bottom: 8px; }
-        .escalate-card p:last-child { margin-bottom: 0; }
+        .item.can  { border-left: 3px solid #10b981; }
+        .item.cant { border-left: 3px solid #ef4444; }
+        .item.note { border-left: 3px solid #f59e0b; background: #fffbeb; }
+        .item.info { border-left: 3px solid #3b82f6; }
+        .item-icon { flex-shrink: 0; font-size: 15px; line-height: 1.4; }
+        .item-text { color: #374151; }
+        .item-text b { color: #111827; }
 
-        @media (max-width: 600px) { .sla-grid { grid-template-columns: 1fr; } }
+        /* Step list */
+        .steps { display: flex; flex-direction: column; gap: 8px; }
+        .step {
+            display: flex; gap: 12px; align-items: flex-start;
+            background: #fff; border-radius: 8px;
+            padding: 12px 14px; font-size: 13px; line-height: 1.5;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+        }
+        .step-num {
+            width: 22px; height: 22px; border-radius: 50%;
+            background: #3b82f6; color: #fff;
+            font-size: 11px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; margin-top: 1px;
+        }
+        .step-body { flex: 1; }
+        .step-title { font-weight: 600; margin-bottom: 2px; color: #111827; }
+        .step-desc { color: #4b5563; font-size: 12px; }
+
+        /* Escalation cards */
+        .esc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .esc-card {
+            background: #fff; border-radius: 8px;
+            padding: 13px 14px; font-size: 13px; line-height: 1.5;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+            border-top: 3px solid #f59e0b;
+        }
+        .esc-card .esc-title { font-weight: 600; margin-bottom: 4px; color: #92400e; }
+        .esc-card .esc-desc { color: #4b5563; font-size: 12px; }
+
+        /* Tips */
+        .tips { display: flex; flex-direction: column; gap: 8px; }
+
+        @media (max-width: 640px) {
+            .split { grid-template-columns: 1fr; }
+            .esc-grid { grid-template-columns: 1fr; }
+        }
     </style>
 
-    <!-- SLA -->
-    <div class="guide-section">
-        <h2>⏱ Время ответа (SLA)</h2>
-        <div class="sla-grid">
-            <div class="sla-card">
-                <div class="sla-val">15 мин</div>
-                <div class="sla-lbl">Первый ответ</div>
-                <div class="sla-desc">С момента появления тикета</div>
+    <!-- ── Закрытие тикетов ─────────────────────────────────────── -->
+    <div class="section">
+        <div class="section-title">🔒 Закрытие тикетов</div>
+        <div class="split">
+            <div class="split-col">
+                <div class="col-label green">✅ Можно закрыть</div>
+                <div class="item can">
+                    <div class="item-icon">💬</div>
+                    <div class="item-text">Игрок явно подтвердил, что всё решено — написал «спасибо», «работает», «разобрался»</div>
+                </div>
+                <div class="item can">
+                    <div class="item-icon">⏱</div>
+                    <div class="item-text">Прошло <b>24 часа</b> с момента твоего ответа, и игрок больше не отвечал</div>
+                </div>
+                <div class="item can">
+                    <div class="item-icon">ℹ️</div>
+                    <div class="item-text">Вопрос был информационным — ты дал полный ответ, и дополнительных вопросов не поступало</div>
+                </div>
+                <div class="item can">
+                    <div class="item-icon">🔄</div>
+                    <div class="item-text">Проблема дублирует уже решённый тикет — ответ дан со ссылкой на решение</div>
+                </div>
             </div>
-            <div class="sla-card">
-                <div class="sla-val">1 час</div>
-                <div class="sla-lbl">Продолжение диалога</div>
-                <div class="sla-desc">Если игрок ответил</div>
+            <div class="split-col">
+                <div class="col-label red">🚫 Нельзя закрыть</div>
+                <div class="item cant">
+                    <div class="item-icon">⏳</div>
+                    <div class="item-text">Игрок ждёт ответа или продолжает присылать сообщения</div>
+                </div>
+                <div class="item cant">
+                    <div class="item-icon">🐛</div>
+                    <div class="item-text">Баг подтверждён, но ещё не исправлен — закрытие до фикса вводит игрока в заблуждение</div>
+                </div>
+                <div class="item cant">
+                    <div class="item-icon">😤</div>
+                    <div class="item-text">Игрок выразил недовольство и не получил ответа на своё возражение</div>
+                </div>
+                <div class="item cant">
+                    <div class="item-icon">🔁</div>
+                    <div class="item-text">Проблема передана старшему коллеге — тикет закрывает тот, кто довёл её до конца</div>
+                </div>
             </div>
-            <div class="sla-card">
-                <div class="sla-val">24 часа</div>
-                <div class="sla-lbl">Закрытие без ответа</div>
-                <div class="sla-desc">Если игрок молчит после ответа</div>
+        </div>
+        <div style="margin-top:10px;">
+            <div class="item note">
+                <div class="item-icon">⚠️</div>
+                <div class="item-text">Если не уверен — не закрывай. Лучше лишний раз уточнить у игрока, всё ли решено.</div>
             </div>
         </div>
     </div>
 
-    <!-- Тон и стиль -->
-    <div class="guide-section">
-        <h2>✍️ Тон и стиль</h2>
-        <div class="rule-list">
-            <div class="rule do">
-                <div class="rule-icon">✅</div>
-                <div class="rule-body">
-                    <div class="rule-title">Пиши по-человечески</div>
-                    <div class="rule-desc">Дружелюбно, коротко, по делу. Без официоза и канцелярщины. Обращайся на «ты».</div>
+    <!-- ── Ответы на тикеты ─────────────────────────────────────── -->
+    <div class="section">
+        <div class="section-title">💬 Как отвечать</div>
+        <div class="steps">
+            <div class="step">
+                <div class="step-num">1</div>
+                <div class="step-body">
+                    <div class="step-title">Реплай на сообщение тикета в беседе</div>
+                    <div class="step-desc">Основной способ. Ты автоматически становишься исполнителем, ответ уходит игроку. Важно отвечать именно на карточку тикета — не на произвольные сообщения в беседе.</div>
                 </div>
             </div>
-            <div class="rule do">
-                <div class="rule-icon">✅</div>
-                <div class="rule-body">
-                    <div class="rule-title">Называй игрока по имени</div>
-                    <div class="rule-desc">Если знаешь ник или имя острова — используй его. Это делает общение живее.</div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <div class="step-body">
+                    <div class="step-title">Команда <code>/reply &lt;id&gt; &lt;текст&gt;</code></div>
+                    <div class="step-desc">Используй, если сообщение тикета ушло высоко вверх и его сложно найти. Ответ уйдёт игроку без реплая.</div>
                 </div>
             </div>
-            <div class="rule do">
-                <div class="rule-icon">✅</div>
-                <div class="rule-body">
-                    <div class="rule-title">Признавай проблему</div>
-                    <div class="rule-desc">Если что-то не работает или игрок расстроен — сначала прими это, потом разбирайся. «Понимаю, это неприятно» работает лучше, чем сухое «принято в работу».</div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <div class="step-body">
+                    <div class="step-title">Один голос на тикет</div>
+                    <div class="step-desc">Если тикет уже взял другой сотрудник — не отвечай параллельно. Это путает игрока. При необходимости попроси передать через <code>/transfer</code>.</div>
                 </div>
             </div>
-            <div class="rule do">
-                <div class="rule-icon">✅</div>
-                <div class="rule-body">
-                    <div class="rule-title">Давай конкретные ответы</div>
-                    <div class="rule-desc">Не «скоро разберёмся», а «проверим в течение часа» или «это баг, поставили задачу».</div>
-                </div>
-            </div>
-            <div class="rule dont">
-                <div class="rule-icon">🚫</div>
-                <div class="rule-body">
-                    <div class="rule-title">Не груби и не провоцируй</div>
-                    <div class="rule-desc">Даже если игрок агрессивен — держи нейтральный тон. Если не можешь — передай тикет коллеге.</div>
-                </div>
-            </div>
-            <div class="rule dont">
-                <div class="rule-icon">🚫</div>
-                <div class="rule-body">
-                    <div class="rule-title">Не обещай того, чего не знаешь</div>
-                    <div class="rule-desc">«Сделаем к пятнице» — только если уверен. Лучше «уточним и дам знать» чем несбывшееся обещание.</div>
-                </div>
-            </div>
-            <div class="rule dont">
-                <div class="rule-icon">🚫</div>
-                <div class="rule-body">
-                    <div class="rule-title">Не закрывай тикет без решения</div>
-                    <div class="rule-desc">Закрывай только когда проблема решена или получен ответ «спасибо, всё ок». Молчание — не согласие.</div>
-                </div>
-            </div>
-            <div class="rule dont">
-                <div class="rule-icon">🚫</div>
-                <div class="rule-body">
-                    <div class="rule-title">Не разглашай внутренние детали</div>
-                    <div class="rule-desc">Планы разработки, баги других игроков, личные данные — за пределы поддержки не уходят.</div>
+            <div class="step">
+                <div class="step-num">4</div>
+                <div class="step-body">
+                    <div class="step-title">Прочти историю перед ответом</div>
+                    <div class="step-desc">Особенно если тикет переведён к тебе. Команда <code>/history &lt;id&gt;</code> или страница тикета на сайте покажут всю переписку.</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Эскалация -->
-    <div class="guide-section">
-        <h2>🔺 Когда эскалировать</h2>
-        <div class="escalate-card">
-            <p>Передавай тикет SUPER_ADMIN (<code>/transfer @username</code>) если:</p>
-            <p>— игрок сообщает о потере прогресса или ресурсов<br>
-               — просит вернуть деньги или компенсацию<br>
-               — пишет угрозы или обвинения в мошенничестве<br>
-               — ситуация выходит за рамки обычного технического вопроса<br>
-               — ты не знаешь ответа и не можешь найти его за 30 минут</p>
+    <!-- ── Что оставить старшим ─────────────────────────────────── -->
+    <div class="section">
+        <div class="section-title">🔺 Что передавать старшим коллегам</div>
+        <p style="font-size:13px;color:#6b7280;margin-bottom:12px;">
+            Используй <code>/transfer @username</code> — реплаем на сообщение тикета.
+        </p>
+        <div class="esc-grid">
+            <div class="esc-card">
+                <div class="esc-title">📦 Потеря прогресса или ресурсов</div>
+                <div class="esc-desc">Любые случаи, когда у игрока пропало то, что он заработал. Это требует проверки базы данных.</div>
+            </div>
+            <div class="esc-card">
+                <div class="esc-title">💰 Компенсации и возвраты</div>
+                <div class="esc-desc">Любые запросы на возврат денег или игровую компенсацию — не берёшь на себя без согласования.</div>
+            </div>
+            <div class="esc-card">
+                <div class="esc-title">⚡ Конфликт, угрозы, оскорбления</div>
+                <div class="esc-desc">Если игрок переходит черту и диалог продуктивно не идёт — это не твоя ответственность разрешать в одиночку.</div>
+            </div>
+            <div class="esc-card">
+                <div class="esc-title">🔧 Техническое вне твоей компетенции</div>
+                <div class="esc-desc">Если не знаешь ответа и за 30 минут не нашёл — честнее передать, чем угадывать.</div>
+            </div>
+            <div class="esc-card">
+                <div class="esc-title">📣 Жалобы на поддержку</div>
+                <div class="esc-desc">Если игрок жалуется на действия кого-то из команды — разбираться должен тот, кто стоит выше.</div>
+            </div>
+            <div class="esc-card">
+                <div class="esc-title">🗂 Массовые проблемы</div>
+                <div class="esc-desc">Если несколько игроков одновременно пишут об одном — это сигнал на уровень выше, а не серия отдельных тикетов.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Как помогать эффективнее ─────────────────────────────── -->
+    <div class="section">
+        <div class="section-title">💡 Как помогать эффективнее</div>
+        <div class="tips">
+            <div class="item info">
+                <div class="item-icon">🎯</div>
+                <div class="item-text"><b>Сначала уточни, потом эскалируй.</b> Большинство «сложных» обращений решаются одним уточняющим вопросом. Не передавай тикет, пока не понял суть проблемы.</div>
+            </div>
+            <div class="item info">
+                <div class="item-icon">📖</div>
+                <div class="item-text"><b>Читай историю тикета целиком.</b> Игрок уже мог объяснять проблему раньше — заставлять его повторять раздражает.</div>
+            </div>
+            <div class="item info">
+                <div class="item-icon">⏰</div>
+                <div class="item-text"><b>Не обещай сроки без уверенности.</b> «Сделаем к пятнице» — только если это реально. Лучше: «уточню у команды и дам знать».</div>
+            </div>
+            <div class="item info">
+                <div class="item-icon">🎭</div>
+                <div class="item-text"><b>Признавай проблему.</b> Если что-то не работает как надо — скажи об этом прямо. Фраза «понимаю, что это неудобно» снижает напряжение лучше, чем «принято в работу».</div>
+            </div>
+            <div class="item info">
+                <div class="item-icon">🔇</div>
+                <div class="item-text"><b>Не разглашай внутреннюю информацию.</b> Планы разработки, ошибки системы, данные других игроков — остаются внутри команды.</div>
+            </div>
+            <div class="item info">
+                <div class="item-icon">📌</div>
+                <div class="item-text"><b>Один тикет — одна проблема.</b> Если в одном обращении несколько разных вопросов — отвечай на них по очереди, не смешивай в одном ответе.</div>
+            </div>
         </div>
     </div>
 

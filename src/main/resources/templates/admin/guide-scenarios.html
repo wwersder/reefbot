@@ -6,12 +6,15 @@
 <div class="main">
 
     <a href="/admin/guide/conduct" class="back-link" style="float:right;margin-top:4px;">
-        ← 📋 Правила общения
+        ← 📋 Правила работы
     </a>
     <h1>📖 Типичные ситуации</h1>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:24px;">
+        Нажми на ситуацию, чтобы раскрыть пример диалога и рекомендации.
+    </p>
 
     <style>
-        .scenario { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 16px; overflow: hidden; }
+        .scenario { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 12px; overflow: hidden; }
         .scenario-header {
             display: flex; align-items: center; gap: 10px;
             padding: 14px 18px; cursor: pointer;
@@ -20,8 +23,8 @@
             user-select: none;
         }
         .scenario-header:hover { background: #f9fafb; }
-        .scenario-header.open { border-bottom-color: #e5e7eb; }
-        .scenario-icon { font-size: 20px; }
+        .scenario-header.open { border-bottom-color: #e5e7eb; background: #f9fafb; }
+        .scenario-icon { font-size: 20px; flex-shrink: 0; }
         .scenario-title { font-size: 14px; font-weight: 600; flex: 1; }
         .scenario-tag {
             font-size: 11px; font-weight: 600; padding: 3px 10px;
@@ -30,39 +33,46 @@
         .tag-bug      { background: #fee2e2; color: #991b1b; }
         .tag-question { background: #dbeafe; color: #1d4ed8; }
         .tag-conflict { background: #fef9c3; color: #854d0e; }
+        .tag-loss     { background: #fce7f3; color: #9d174d; }
         .tag-other    { background: #f3f4f6; color: #374151; }
-        .chevron { color: #9ca3af; font-size: 12px; transition: transform .2s; }
+        .chevron { color: #9ca3af; font-size: 11px; transition: transform .2s; flex-shrink: 0; }
         .scenario-header.open .chevron { transform: rotate(90deg); }
 
-        .scenario-body { padding: 16px 18px; display: none; }
+        .scenario-body { padding: 18px 18px; display: none; }
         .scenario-body.open { display: block; }
 
-        .chat-preview { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-        .bubble {
-            border-radius: 12px; padding: 9px 13px;
-            font-size: 13px; line-height: 1.5;
-            max-width: 80%;
+        .scenario-body h4 {
+            font-size: 11px; font-weight: 700; color: #6b7280;
+            text-transform: uppercase; letter-spacing: .05em;
+            margin: 16px 0 8px;
         }
-        .bubble-player { background: #f3f4f6; margin-right: auto; border-bottom-left-radius: 4px; }
-        .bubble-player::before { content: '👤 '; font-size: 11px; color: #6b7280; display: block; margin-bottom: 2px; }
-        .bubble-support { background: #eff6ff; margin-left: auto; text-align: right; border-bottom-right-radius: 4px; }
-        .bubble-support::before { content: '👷 '; font-size: 11px; color: #6b7280; display: block; margin-bottom: 2px; }
+        .scenario-body h4:first-child { margin-top: 0; }
 
-        .tip-box {
-            background: #f0fdf4; border: 1px solid #bbf7d0;
-            border-radius: 8px; padding: 12px 14px;
-            font-size: 13px; color: #166534; line-height: 1.6;
+        .chat-preview { display: flex; flex-direction: column; gap: 7px; }
+        .bubble {
+            border-radius: 10px; padding: 9px 13px;
+            font-size: 13px; line-height: 1.5; max-width: 82%;
         }
-        .tip-box strong { display: block; margin-bottom: 4px; }
-        .warn-box {
-            background: #fff7ed; border: 1px solid #fed7aa;
-            border-radius: 8px; padding: 12px 14px;
-            font-size: 13px; color: #92400e; line-height: 1.6;
-            margin-top: 10px;
+        .bubble-who { font-size: 10px; color: #9ca3af; margin-bottom: 2px; }
+        .bubble-player { background: #f3f4f6; margin-right: auto; border-bottom-left-radius: 3px; }
+        .bubble-support { background: #eff6ff; margin-left: auto; text-align: right; border-bottom-right-radius: 3px; }
+
+        .advice { display: flex; flex-direction: column; gap: 7px; }
+        .adv {
+            display: flex; gap: 10px; align-items: flex-start;
+            font-size: 13px; line-height: 1.5; color: #374151;
+            padding: 9px 12px; border-radius: 8px;
         }
+        .adv.do   { background: #f0fdf4; border-left: 3px solid #10b981; }
+        .adv.dont { background: #fef2f2; border-left: 3px solid #ef4444; }
+        .adv.warn { background: #fff7ed; border-left: 3px solid #f59e0b; }
+        .adv-icon { flex-shrink: 0; }
+        .adv b { color: #111827; }
+
+        .divider { border: none; border-top: 1px solid #e5e7eb; margin: 16px 0; }
     </style>
 
-    <!-- Сценарий 1 -->
+    <!-- 1. Баг в игре -->
     <div class="scenario">
         <div class="scenario-header" onclick="toggle(this)">
             <div class="scenario-icon">🐛</div>
@@ -71,38 +81,68 @@
             <span class="chevron">▶</span>
         </div>
         <div class="scenario-body">
+            <h4>Пример диалога</h4>
             <div class="chat-preview">
-                <div class="bubble bubble-player">у меня застряла рыбалка, кнопка не работает уже час</div>
-                <div class="bubble bubble-support">Привет! Уже смотрю — это известный баг, фикс в работе. Попробуй сейчас написать /start, сессия должна сброситься. Напиши, помогло ли.</div>
+                <div class="bubble bubble-player">
+                    <div class="bubble-who">Игрок</div>
+                    у меня застряла рыбалка, кнопка не реагирует уже час
+                </div>
+                <div class="bubble bubble-support">
+                    <div class="bubble-who">Поддержка</div>
+                    Привет! Уже смотрю. Попробуй написать /start — это сбросит зависшую сессию. Напиши, помогло?
+                </div>
+                <div class="bubble bubble-player">
+                    <div class="bubble-who">Игрок</div>
+                    о, сработало, спасибо!
+                </div>
+                <div class="bubble bubble-support">
+                    <div class="bubble-who">Поддержка</div>
+                    Отлично 🙌 Закрываю обращение. Если повторится — пиши.
+                </div>
             </div>
-            <div class="tip-box">
-                <strong>Что делать:</strong>
-                Спроси уточняющие детали, если нужно. Зафиксируй баг внутри команды. Сообщи игроку реальный статус — «в работе» или «временный воркараунд». Не закрывай тикет до подтверждения.
+            <hr class="divider">
+            <h4>Рекомендации</h4>
+            <div class="advice">
+                <div class="adv do"><span class="adv-icon">✅</span><span>Уточни детали, если нужно: когда началось, что делал перед этим. <b>Не передавай без попытки воспроизвести.</b></span></div>
+                <div class="adv do"><span class="adv-icon">✅</span><span>Если воркараунд есть — дай его сразу, не жди фикса.</span></div>
+                <div class="adv do"><span class="adv-icon">✅</span><span>Зафикси баг внутри команды, даже если решил своими силами.</span></div>
+                <div class="adv dont"><span class="adv-icon">🚫</span><span><b>Не закрывай</b>, пока игрок не подтвердил, что проблема ушла.</span></div>
             </div>
         </div>
     </div>
 
-    <!-- Сценарий 2 -->
+    <!-- 2. Вопрос о механике -->
     <div class="scenario">
         <div class="scenario-header" onclick="toggle(this)">
             <div class="scenario-icon">❓</div>
-            <div class="scenario-title">Вопрос о механике игры</div>
+            <div class="scenario-title">Вопрос о механике или правилах игры</div>
             <span class="scenario-tag tag-question">Вопрос</span>
             <span class="chevron">▶</span>
         </div>
         <div class="scenario-body">
+            <h4>Пример диалога</h4>
             <div class="chat-preview">
-                <div class="bubble bubble-player">а как получить жемчуг?</div>
-                <div class="bubble bubble-support">Пока жемчуг в разработке — его добавят в одном из ближайших обновлений. Следи за @reefbot_news, там будем анонсировать!</div>
+                <div class="bubble bubble-player">
+                    <div class="bubble-who">Игрок</div>
+                    а как добыть жемчуг? нигде не нашёл
+                </div>
+                <div class="bubble bubble-support">
+                    <div class="bubble-who">Поддержка</div>
+                    Жемчуг пока в разработке — появится в одном из ближайших обновлений. Следи за новостями в @reefbot_news, там будет анонс!
+                </div>
             </div>
-            <div class="tip-box">
-                <strong>Что делать:</strong>
-                Отвечай честно. Если функции ещё нет — скажи об этом прямо, не придумывай. Закрывай тикет сразу после ответа.
+            <hr class="divider">
+            <h4>Рекомендации</h4>
+            <div class="advice">
+                <div class="adv do"><span class="adv-icon">✅</span><span>Отвечай честно. Если функции ещё нет — скажи прямо, не придумывай.</span></div>
+                <div class="adv do"><span class="adv-icon">✅</span><span>Направляй в @reefbot_news по вопросам будущих обновлений.</span></div>
+                <div class="adv do"><span class="adv-icon">✅</span><span>Тикет можно закрыть сразу после полного ответа.</span></div>
+                <div class="adv dont"><span class="adv-icon">🚫</span><span><b>Не гадай</b> по срокам выхода фич — только если точно знаешь.</span></div>
             </div>
         </div>
     </div>
 
-    <!-- Сценарий 3 -->
+    <!-- 3. Агрессивный игрок -->
     <div class="scenario">
         <div class="scenario-header" onclick="toggle(this)">
             <div class="scenario-icon">😤</div>
@@ -111,41 +151,67 @@
             <span class="chevron">▶</span>
         </div>
         <div class="scenario-body">
+            <h4>Пример диалога</h4>
             <div class="chat-preview">
-                <div class="bubble bubble-player">это вообще за что? я только что потерял всё что фармил! ваш бот — полная херня</div>
-                <div class="bubble bubble-support">Понимаю, что это очень неприятно. Давай разберёмся — напиши, что именно пропало и когда это случилось? Постараемся восстановить.</div>
+                <div class="bubble bubble-player">
+                    <div class="bubble-who">Игрок</div>
+                    это вообще за что?! я только что всё потерял, ваш бот — полная херня
+                </div>
+                <div class="bubble bubble-support">
+                    <div class="bubble-who">Поддержка</div>
+                    Понимаю, что это очень неприятно. Давай разберёмся — напиши, что именно пропало и когда это случилось?
+                </div>
+                <div class="bubble bubble-player">
+                    <div class="bubble-who">Игрок</div>
+                    рыба пропала, час фармил
+                </div>
+                <div class="bubble bubble-support">
+                    <div class="bubble-who">Поддержка</div>
+                    Уточняю у команды — проверим твой аккаунт. Дам знать, как только получу ответ.
+                </div>
             </div>
-            <div class="tip-box">
-                <strong>Что делать:</strong>
-                Держи спокойный тон. Не защищайся и не спорь. Сначала прими эмоцию, потом разбирайся с проблемой. Если игрок продолжает грубить после 2–3 попыток — вежливо предупреди: «Готов помочь, если общаемся конструктивно».
-            </div>
-            <div class="warn-box">
-                Если угрозы или откровенные оскорбления — эскалируй SUPER_ADMIN и не отвечай самостоятельно.
+            <hr class="divider">
+            <h4>Рекомендации</h4>
+            <div class="advice">
+                <div class="adv do"><span class="adv-icon">✅</span><span><b>Сначала прими эмоцию</b>, потом разбирайся с проблемой. «Понимаю, неприятно» — важнее формального «принято».</span></div>
+                <div class="adv do"><span class="adv-icon">✅</span><span>Держи нейтральный тон, даже если игрок груб. Твоя задача — помочь, не победить в споре.</span></div>
+                <div class="adv warn"><span class="adv-icon">⚠️</span><span>Если диалог не идёт после 2–3 попыток — вежливо обозначи: <i>«Готов помочь, давай разберёмся конструктивно»</i>. Если не помогает — передай коллеге.</span></div>
+                <div class="adv dont"><span class="adv-icon">🚫</span><span>Угрозы и систематические оскорбления — <b>не твоя ответственность разруливать в одиночку.</b> Передай старшему коллеге.</span></div>
             </div>
         </div>
     </div>
 
-    <!-- Сценарий 4 -->
+    <!-- 4. Пропавший прогресс -->
     <div class="scenario">
         <div class="scenario-header" onclick="toggle(this)">
             <div class="scenario-icon">📦</div>
-            <div class="scenario-title">Пропали ресурсы / прогресс</div>
-            <span class="scenario-tag tag-bug">Баг</span>
+            <div class="scenario-title">Пропали ресурсы или прогресс</div>
+            <span class="scenario-tag tag-loss">Потеря</span>
             <span class="chevron">▶</span>
         </div>
         <div class="scenario-body">
+            <h4>Пример диалога</h4>
             <div class="chat-preview">
-                <div class="bubble bubble-player">у меня пропали все ресурсы после обновления</div>
-                <div class="bubble bubble-support">Это серьёзно, разберёмся. Напиши свой ник и примерное время, когда заметил? Передам команде для проверки базы.</div>
+                <div class="bubble bubble-player">
+                    <div class="bubble-who">Игрок</div>
+                    после вчерашнего обновления пропали все ресурсы
+                </div>
+                <div class="bubble bubble-support">
+                    <div class="bubble-who">Поддержка</div>
+                    Это серьёзно, разберёмся. Напиши свой ник и примерное время, когда заметил? Уточню у команды.
+                </div>
             </div>
-            <div class="tip-box">
-                <strong>Что делать:</strong>
-                Немедленно эскалируй SUPER_ADMIN — это решение принимается на уровне разработки. Не обещай компенсацию самостоятельно. Держи тикет открытым до подтверждения от команды.
+            <hr class="divider">
+            <h4>Рекомендации</h4>
+            <div class="advice">
+                <div class="adv do"><span class="adv-icon">✅</span><span>Собери детали: ник, время, что именно пропало. Это нужно команде для проверки.</span></div>
+                <div class="adv warn"><span class="adv-icon">⚠️</span><span>Это <b>обязательная передача</b> старшему коллеге — потеря прогресса требует проверки базы данных.</span></div>
+                <div class="adv dont"><span class="adv-icon">🚫</span><span><b>Не обещай компенсацию</b> самостоятельно. Держи тикет открытым до подтверждения от команды.</span></div>
             </div>
         </div>
     </div>
 
-    <!-- Сценарий 5 -->
+    <!-- 5. Игрок молчит -->
     <div class="scenario">
         <div class="scenario-header" onclick="toggle(this)">
             <div class="scenario-icon">🔇</div>
@@ -154,18 +220,47 @@
             <span class="chevron">▶</span>
         </div>
         <div class="scenario-body">
-            <div class="chat-preview">
-                <div class="bubble bubble-player">а, ладно, разобрался сам</div>
-                <div class="bubble bubble-support">Отлично, рад что помогло! Если ещё что-то — пиши 🙌</div>
-            </div>
-            <div class="tip-box">
-                <strong>Что делать:</strong>
-                Если игрок не отвечает 24 часа после твоего ответа — тикет можно закрыть. Предварительно убедись, что вопрос был решён с твоей стороны.
+            <h4>Варианты развития</h4>
+            <div class="advice">
+                <div class="adv do"><span class="adv-icon">✅</span><span><b>Игрок написал «спасибо» или «разобрался»</b> — закрывай сразу, всё хорошо.</span></div>
+                <div class="adv do"><span class="adv-icon">✅</span><span><b>Прошло 24 часа после твоего ответа, тишина</b> — закрывай тикет. Не нужно дополнительно уточнять.</span></div>
+                <div class="adv warn"><span class="adv-icon">⚠️</span><span><b>Ты задал уточняющий вопрос, а игрок пропал</b> — подожди 24 часа, потом закрывай с пометкой «ответа не поступило».</span></div>
+                <div class="adv dont"><span class="adv-icon">🚫</span><span><b>Проблема была серьёзной (баг, потеря)</b> и игрок молчит — не закрывай раньше 48 часов. Уточни один раз.</span></div>
             </div>
         </div>
     </div>
 
-    <!-- Сценарий 6 -->
+    <!-- 6. Запрос на функцию -->
+    <div class="scenario">
+        <div class="scenario-header" onclick="toggle(this)">
+            <div class="scenario-icon">💡</div>
+            <div class="scenario-title">Идея или запрос на новую функцию</div>
+            <span class="scenario-tag tag-question">Вопрос</span>
+            <span class="chevron">▶</span>
+        </div>
+        <div class="scenario-body">
+            <h4>Пример диалога</h4>
+            <div class="chat-preview">
+                <div class="bubble bubble-player">
+                    <div class="bubble-who">Игрок</div>
+                    было бы круто добавить PvP между островами
+                </div>
+                <div class="bubble bubble-support">
+                    <div class="bubble-who">Поддержка</div>
+                    Спасибо за идею, передам команде! Следи за @reefbot_news — там выходят анонсы обновлений.
+                </div>
+            </div>
+            <hr class="divider">
+            <h4>Рекомендации</h4>
+            <div class="advice">
+                <div class="adv do"><span class="adv-icon">✅</span><span>Поблагодари за идею — это приятно для игрока и полезно для команды.</span></div>
+                <div class="adv do"><span class="adv-icon">✅</span><span>Направь в новостной канал. Закрывай тикет сразу.</span></div>
+                <div class="adv dont"><span class="adv-icon">🚫</span><span><b>Не обещай</b>, что идею реализуют. Даже если она хорошая.</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. Вопросы о данных -->
     <div class="scenario">
         <div class="scenario-header" onclick="toggle(this)">
             <div class="scenario-icon">🔒</div>
@@ -174,13 +269,23 @@
             <span class="chevron">▶</span>
         </div>
         <div class="scenario-body">
+            <h4>Пример диалога</h4>
             <div class="chat-preview">
-                <div class="bubble bubble-player">какие мои данные вы храните?</div>
-                <div class="bubble bubble-support">Мы храним только то, что нужно для игры: твой Telegram ID, ник и игровой прогресс. Никаких личных данных вне Telegram — не собираем и не передаём.</div>
+                <div class="bubble bubble-player">
+                    <div class="bubble-who">Игрок</div>
+                    какие мои данные вы храните?
+                </div>
+                <div class="bubble bubble-support">
+                    <div class="bubble-who">Поддержка</div>
+                    Только то, что нужно для игры: Telegram ID, ник и игровой прогресс. Личные данные вне Telegram не собираем и третьим лицам не передаём.
+                </div>
             </div>
-            <div class="tip-box">
-                <strong>Что делать:</strong>
-                Отвечай честно и коротко. Не обсуждай данные других игроков. Если вопрос сложный — эскалируй.
+            <hr class="divider">
+            <h4>Рекомендации</h4>
+            <div class="advice">
+                <div class="adv do"><span class="adv-icon">✅</span><span>Отвечай коротко и честно. Не вдавайся в технические подробности без необходимости.</span></div>
+                <div class="adv dont"><span class="adv-icon">🚫</span><span>Никогда не обсуждай данные <b>других</b> игроков — даже косвенно.</span></div>
+                <div class="adv warn"><span class="adv-icon">⚠️</span><span>Если вопрос выходит за рамки стандартного (например, запрос на удаление аккаунта) — передай старшему коллеге.</span></div>
             </div>
         </div>
     </div>
@@ -188,8 +293,7 @@
     <script>
         function toggle(header) {
             header.classList.toggle('open');
-            const body = header.nextElementSibling;
-            body.classList.toggle('open');
+            header.nextElementSibling.classList.toggle('open');
         }
     </script>
 
