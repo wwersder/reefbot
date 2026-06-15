@@ -558,9 +558,25 @@ public class SupportService {
             return "❌ Только SUPER_ADMIN может выдавать роли.";
         }
 
+        // Check active first
         Optional<SupportStaff> existing = staffRepository.findByTelegramIdAndActiveTrue(targetTgId);
         if (existing.isPresent()) {
             return "⚠️ @" + username + " уже является " + existing.get().getRole().name() + ".";
+        }
+
+        // Reactivate inactive record if one exists (avoids UNIQUE constraint violation on telegram_id)
+        Optional<SupportStaff> inactive = staffRepository.findByTelegramId(targetTgId);
+        if (inactive.isPresent()) {
+            SupportStaff staff = inactive.get();
+            staff.setActive(true);
+            staff.setRole(role);
+            staff.setUsername(username);
+            staff.setFirstName(firstName);
+            staff.setGrantedBy(grantedByTgId);
+            staff.setGrantedAt(LocalDateTime.now());
+            staffRepository.save(staff);
+            log.info("Support role {} re-granted to tg={} by tg={}", role, targetTgId, grantedByTgId);
+            return "✅ @" + username + " теперь " + role.name() + ".";
         }
 
         SupportStaff staff = SupportStaff.builder()

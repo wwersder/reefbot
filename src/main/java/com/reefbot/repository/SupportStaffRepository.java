@@ -8,6 +8,8 @@ import java.util.Optional;
 
 public interface SupportStaffRepository extends JpaRepository<SupportStaff, Long> {
 
+    Optional<SupportStaff> findByTelegramId(Long telegramId);
+
     Optional<SupportStaff> findByTelegramIdAndActiveTrue(Long telegramId);
 
     Optional<SupportStaff> findByUsernameIgnoreCaseAndActiveTrue(String username);
