@@ -690,7 +690,9 @@ public class SupportService {
         Optional<SupportMessage> lastPlayerMsg = msgs.stream()
                 .filter(m -> m.getDirection() == MessageDirection.FROM_PLAYER)
                 .findFirst();
-        if (lastPlayerMsg.isPresent()) {
+        boolean ticketIsOpen = ticket.getStatus() == TicketStatus.OPEN
+                || ticket.getStatus() == TicketStatus.IN_PROGRESS;
+        if (ticketIsOpen && lastPlayerMsg.isPresent()) {
             boolean staffRepliedAfter = lastStaffMsg.isPresent() &&
                     lastStaffMsg.get().getSentAt().isAfter(lastPlayerMsg.get().getSentAt());
             if (!staffRepliedAfter) {
@@ -718,18 +720,25 @@ public class SupportService {
     }
 
     public InlineKeyboardMarkup buildTicketDetailKeyboard(Long ticketId) {
-        return InlineKeyboardMarkup.builder()
-                .keyboardRow(new InlineKeyboardRow(List.of(
-                        InlineKeyboardButton.builder()
-                                .text("✅ Закрыть")
-                                .callbackData("support:resolve:" + ticketId)
-                                .build(),
-                        InlineKeyboardButton.builder()
-                                .text("📋 Сайт")
-                                .url(props.getAdminUrl() + "/tickets/" + ticketId)
-                                .build()
-                )))
-                .build();
+        SupportTicket ticket = ticketRepository.findById(ticketId).orElse(null);
+        boolean isOpen = ticket != null &&
+                (ticket.getStatus() == TicketStatus.OPEN || ticket.getStatus() == TicketStatus.IN_PROGRESS);
+
+        InlineKeyboardMarkup.InlineKeyboardMarkupBuilder builder = InlineKeyboardMarkup.builder();
+
+        List<InlineKeyboardButton> row = new java.util.ArrayList<>();
+        if (isOpen) {
+            row.add(InlineKeyboardButton.builder()
+                    .text("✅ Закрыть")
+                    .callbackData("support:resolve:" + ticketId)
+                    .build());
+        }
+        row.add(InlineKeyboardButton.builder()
+                .text("📋 Сайт")
+                .url(props.getAdminUrl() + "/tickets/" + ticketId)
+                .build());
+
+        return builder.keyboardRow(new InlineKeyboardRow(row)).build();
     }
 
     @Transactional
