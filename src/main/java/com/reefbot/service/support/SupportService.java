@@ -65,21 +65,21 @@ public class SupportService {
             if (!messageText.isEmpty()) {
                 boolean sent = relayPlayerText(player, messageText, null);
                 return sent
-                    ? new BotResponse("Сообщение отправлено.")
-                    : new BotResponse("Не удалось отправить сообщение. Попробуйте позже.");
+                    ? new BotResponse("📨 Сообщение передано в поддержку.")
+                    : new BotResponse("⚠️ Не удалось отправить сообщение. Попробуй позже.");
             }
             SupportTicket t = existing.get();
             return BotResponse.html(
-                "Обращение <b>#" + t.getId() + "</b> уже открыто ("
-                + t.getStatus().displayName() + ").\n\n"
-                + "Продолжайте писать — сообщения передаются специалисту.\n"
-                + "Закрыть обращение: /closeticket"
+                "У тебя уже есть открытое обращение <b>#" + t.getId() + "</b> "
+                + "(" + t.getStatus().emoji() + " " + t.getStatus().displayName() + ").\n\n"
+                + "Продолжай писать, я всё передаю. Закрыть: /closeticket"
             );
         }
 
         if (messageText.isEmpty()) {
             return BotResponse.html(
-                "Укажите текст обращения:\n<code>/support ваш вопрос</code>"
+                "Напиши сообщение после команды:\n<code>/support твой вопрос</code>\n\n"
+                + "Например: /support Застряла рыбалка"
             );
         }
 
@@ -121,9 +121,8 @@ public class SupportService {
                 player.getId(), player.getTelegramId());
 
         return BotResponse.html(
-            "Обращение <b>#" + ticket.getId() + "</b> принято.\n"
-            + "Специалист ответит в ближайшее время.\n\n"
-            + "Статус обращения: /myticket"
+            "✅ <b>Обращение #" + ticket.getId() + " принято</b> — скоро ответим!\n\n"
+            + "Статус: /myticket"
         );
     }
 
@@ -131,17 +130,18 @@ public class SupportService {
         Optional<SupportTicket> opt = ticketRepository.findByPlayerAndStatusIn(
                 player, List.of(TicketStatus.OPEN, TicketStatus.IN_PROGRESS));
         if (opt.isEmpty()) {
-            return new BotResponse("Активных обращений нет.");
+            return new BotResponse("У тебя нет открытых обращений.");
         }
 
         SupportTicket t = opt.get();
         String claimLine = t.getClaimedBy() != null
                 ? "\nСпециалист: " + staffDisplayName(t.getClaimedBy())
-                : "\nСпециалист: не назначен";
+                : "";
 
         return BotResponse.html(
-            "<b>Обращение #" + t.getId() + "</b>  ·  " + t.getStatus().displayName()
-            + "\nСоздано: " + t.getCreatedAt().format(DATE_FMT)
+            "🎫 <b>Обращение #" + t.getId() + "</b>  ·  "
+            + t.getStatus().emoji() + " " + t.getStatus().displayName() + "\n"
+            + "Создано: " + t.getCreatedAt().format(DATE_FMT)
             + claimLine
             + "\n\nЗакрыть: /closeticket"
         );
@@ -166,7 +166,7 @@ public class SupportService {
         log.info("Ticket #{} closed by player {} (tg={})", ticket.getId(),
                 player.getId(), player.getTelegramId());
 
-        return new BotResponse("Обращение #" + ticket.getId() + " закрыто. Спасибо за обращение.");
+        return BotResponse.html("🔴 <b>Обращение #" + ticket.getId() + " закрыто.</b>\n\nСпасибо за обращение!");
     }
 
     // ── Relay: player follow-up → group ──────────────────────────────────
@@ -188,7 +188,7 @@ public class SupportService {
             // Reply to root message in group so thread stays connected
             SendMessage.SendMessageBuilder<?, ?> builder = SendMessage.builder()
                     .chatId(props.getGroupChatId())
-                    .text("<b>" + escapeHtml(displayName(player)) + "</b>\n" + escapeHtml(text))
+                    .text("💬 <b>" + escapeHtml(displayName(player)) + "</b>\n" + escapeHtml(text))
                     .parseMode("HTML");
 
             if (ticket.getRootGroupMsgId() != null) {
@@ -236,7 +236,7 @@ public class SupportService {
             if (isForwarded) {
                 // Forwarded messages attach to an existing ticket only
                 return new BotResponse(
-                    "Нет активного обращения. Создайте его командой /support.");
+                    "⚠️ Нет открытого обращения. Сначала напиши /support текст — потом пересылай сообщения.");
             }
             log.info("relayPlayerMedia: no open ticket for player tg={}, auto-creating", player.getTelegramId());
             LocalDateTime now = LocalDateTime.now();
@@ -307,11 +307,10 @@ public class SupportService {
 
             if (isNewTicket) {
                 return BotResponse.html(
-                    "Обращение <b>#" + ticket.getId() + "</b> принято.\n"
-                    + "Специалист ответит в ближайшее время.\n\n"
+                    "✅ <b>Обращение #" + ticket.getId() + " принято</b> — скоро ответим!\n\n"
                     + "Статус: /myticket");
             }
-            return new BotResponse("Файл отправлен.");
+            return new BotResponse("📨 Файл передан в поддержку.");
 
         } catch (TelegramApiException e) {
             log.error("Failed to relay player media to group for ticket #{}", ticket.getId(), e);
@@ -325,11 +324,11 @@ public class SupportService {
                 ? String.valueOf(island.getDevPoints() != null ? island.getDevPoints() : 0) : "—";
         String islandName = island != null ? island.getName() : "—";
 
-        return "<b>Тикет #" + ticket.getId() + "</b>  ·  OPEN\n\n"
-            + escapeHtml(displayName(player))
+        return "🎫 <b>Тикет #" + ticket.getId() + "</b>  ·  🟡 OPEN\n\n"
+            + "👤 " + escapeHtml(displayName(player))
             + (player.getUsername() != null ? "  ·  @" + player.getUsername() : "")
             + "  ·  <code>" + player.getTelegramId() + "</code>\n"
-            + escapeHtml(islandName) + "  ·  " + devPoints + " ОР\n\n"
+            + "🏝 " + escapeHtml(islandName) + "  ·  " + devPoints + " ОР\n\n"
             + (messageText != null && !messageText.isEmpty() ? escapeHtml(messageText) + "\n\n" : "")
             + "<i>" + ticket.getCreatedAt().format(DATE_FMT) + "</i>";
     }
@@ -338,11 +337,11 @@ public class SupportService {
         return InlineKeyboardMarkup.builder()
                 .keyboardRow(new InlineKeyboardRow(List.of(
                         InlineKeyboardButton.builder()
-                                .text("Открыть в панели")
+                                .text("📋 История на сайте")
                                 .url(props.getAdminUrl() + "/tickets/" + ticket.getId())
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("Закрыть")
+                                .text("✅ Закрыть")
                                 .callbackData("support:resolve:" + ticket.getId())
                                 .build()
                 )))
@@ -368,7 +367,7 @@ public class SupportService {
         try {
             SendMessage send = SendMessage.builder()
                     .chatId(playerTgId)
-                    .text("<b>Обращение #" + ticket.getId() + "</b>\n\n"
+                    .text("🎫 <b>Обращение #" + ticket.getId() + "</b>\n\n"
                         + escapeHtml(text) + "\n\n"
                         + "<i>Ответить: /support &lt;текст&gt;</i>")
                     .parseMode("HTML")
@@ -397,7 +396,7 @@ public class SupportService {
                     telegramClient.execute(SendMessage.builder()
                             .chatId(props.getGroupChatId())
                             .replyToMessageId(groupMsgId.intValue())
-                            .text("Доставлено")
+                            .text("✅ Доставлено игроку")
                             .build());
                 } catch (TelegramApiException ignored) {}
             }
@@ -560,16 +559,15 @@ public class SupportService {
                 List.of(TicketStatus.OPEN, TicketStatus.IN_PROGRESS),
                 org.springframework.data.domain.PageRequest.of(0, 20));
 
-        if (tickets.isEmpty()) return "Активных обращений нет.";
+        if (tickets.isEmpty()) return "✅ Активных обращений нет.";
 
-        StringBuilder sb = new StringBuilder("<b>Активные обращения</b> — " + tickets.size() + "\n\n");
+        StringBuilder sb = new StringBuilder("🎫 <b>Активные обращения</b> (" + tickets.size() + ")\n\n");
 
         for (SupportTicket t : tickets) {
-            sb.append("<b>#").append(t.getId()).append("</b>  ")
-              .append(t.getStatus().displayName()).append("  ·  ")
-              .append(escapeHtml(displayName(t.getPlayer())));
+            sb.append(t.getStatus().emoji()).append(" <b>#").append(t.getId()).append("</b>")
+              .append("  ·  ").append(escapeHtml(displayName(t.getPlayer())));
             if (t.getClaimedBy() != null) {
-                sb.append("  [").append(escapeHtml(staffDisplayName(t.getClaimedBy()))).append("]");
+                sb.append("  👷 ").append(escapeHtml(staffDisplayName(t.getClaimedBy())));
             }
             sb.append("\n");
 
@@ -580,9 +578,9 @@ public class SupportService {
                 String preview = m.getText() != null
                         ? truncate(m.getText(), 60)
                         : (m.getAttachmentType() != null ? "[" + m.getAttachmentType().name().toLowerCase() + "]" : "");
-                String who = m.getDirection() == MessageDirection.FROM_PLAYER ? "Игрок" : "Поддержка";
-                sb.append(who).append(": <i>").append(escapeHtml(preview)).append("</i>  ")
-                  .append(timeAgo(m.getSentAt())).append("\n");
+                String who = m.getDirection() == MessageDirection.FROM_PLAYER ? "👤" : "👷";
+                sb.append(who).append(" <i>").append(escapeHtml(preview)).append("</i>")
+                  .append("  ·  ").append(timeAgo(m.getSentAt())).append("\n");
             }
             sb.append("\n");
         }
@@ -599,22 +597,22 @@ public class SupportService {
         Island island = player.getIsland();
 
         StringBuilder sb = new StringBuilder();
-        sb.append("<b>Тикет #").append(ticket.getId()).append("</b>  ·  ")
-          .append(ticket.getStatus().displayName()).append("\n\n");
+        sb.append("🎫 <b>Тикет #").append(ticket.getId()).append("</b>  ·  ")
+          .append(ticket.getStatus().emoji()).append(" ").append(ticket.getStatus().displayName()).append("\n\n");
 
-        sb.append("Игрок: ").append(escapeHtml(displayName(player)));
+        sb.append("👤 ").append(escapeHtml(displayName(player)));
         if (player.getUsername() != null) sb.append("  ·  @").append(player.getUsername());
         sb.append("  ·  <code>").append(player.getTelegramId()).append("</code>\n");
         if (island != null) {
-            sb.append("Остров: ").append(escapeHtml(island.getName()))
+            sb.append("🏝 ").append(escapeHtml(island.getName()))
               .append("  ·  ").append(island.getDevPoints() != null ? island.getDevPoints() : 0).append(" ОР\n");
         }
         sb.append("Создан: ").append(ticket.getCreatedAt().format(DATE_FMT)).append("\n");
 
         if (ticket.getClaimedBy() != null) {
-            sb.append("Специалист: ").append(escapeHtml(staffDisplayName(ticket.getClaimedBy()))).append("\n");
+            sb.append("👷 ").append(escapeHtml(staffDisplayName(ticket.getClaimedBy())));
         } else {
-            sb.append("Специалист: не назначен\n");
+            sb.append("👷 не назначен");
         }
 
         // Time without staff reply
@@ -630,9 +628,10 @@ public class SupportService {
                     lastStaffMsg.get().getSentAt().isAfter(lastPlayerMsg.get().getSentAt());
             if (!staffRepliedAfter) {
                 long sec = java.time.Duration.between(lastPlayerMsg.get().getSentAt(), java.time.LocalDateTime.now()).getSeconds();
-                sb.append("Без ответа: ").append(formatDuration(sec)).append("\n");
+                sb.append("  ·  ⏱ без ответа ").append(formatDuration(sec));
             }
         }
+        sb.append("\n");
 
         // Last messages (reversed to show oldest first)
         if (!msgs.isEmpty()) {
@@ -640,12 +639,11 @@ public class SupportService {
             List<SupportMessage> ordered = new java.util.ArrayList<>(msgs);
             java.util.Collections.reverse(ordered);
             for (SupportMessage m : ordered) {
-                String who = m.getDirection() == MessageDirection.FROM_PLAYER
-                        ? "Игрок" : "Поддержка";
+                String who = m.getDirection() == MessageDirection.FROM_PLAYER ? "👤" : "👷";
                 String text = m.getText() != null ? truncate(m.getText(), 80)
                         : (m.getAttachmentType() != null ? "[" + m.getAttachmentType().name().toLowerCase() + "]" : "");
                 sb.append("<code>").append(m.getSentAt().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))).append("</code>")
-                  .append(" ").append(who).append(": <i>").append(escapeHtml(text)).append("</i>\n");
+                  .append(" ").append(who).append(" <i>").append(escapeHtml(text)).append("</i>\n");
             }
         }
 
@@ -656,11 +654,11 @@ public class SupportService {
         return InlineKeyboardMarkup.builder()
                 .keyboardRow(new InlineKeyboardRow(List.of(
                         InlineKeyboardButton.builder()
-                                .text("Закрыть")
+                                .text("✅ Закрыть")
                                 .callbackData("support:resolve:" + ticketId)
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("Открыть в панели")
+                                .text("📋 Сайт")
                                 .url(props.getAdminUrl() + "/tickets/" + ticketId)
                                 .build()
                 )))
@@ -702,17 +700,19 @@ public class SupportService {
         }
 
         String claimLine = ticket.getClaimedBy() != null
-                ? "\nСпециалист: " + staffDisplayName(ticket.getClaimedBy())
+                ? "\n👷 Взял: " + staffDisplayName(ticket.getClaimedBy())
                 : "";
 
-        return "<b>Тикет #" + ticket.getId() + "</b>  ·  " + ticket.getStatus().displayName() + "\n\n"
-            + "Игрок: " + escapeHtml(displayName(player))
+        return "🎫 <b>Тикет #" + ticket.getId() + "</b>  ·  "
+            + ticket.getStatus().emoji() + " " + ticket.getStatus().displayName() + "\n\n"
+            + "👤 " + escapeHtml(displayName(player))
             + (player.getUsername() != null ? "  ·  @" + player.getUsername() : "")
             + "  ·  <code>" + player.getTelegramId() + "</code>\n"
-            + (island != null ? "Остров: " + escapeHtml(island.getName()) + "  ·  "
+            + (island != null ? "🏝 " + escapeHtml(island.getName()) + "  ·  "
                 + (island.getDevPoints() != null ? island.getDevPoints() : 0) + " ОР\n" : "")
-            + "Создан: " + ticket.getCreatedAt().format(DATE_FMT)
+            + "<i>" + ticket.getCreatedAt().format(DATE_FMT)
             + (ticket.getResolvedAt() != null ? " → " + ticket.getResolvedAt().format(DATE_FMT) + duration : "")
+            + "</i>"
             + claimLine;
     }
 
@@ -745,22 +745,22 @@ public class SupportService {
                 : "—";
         String islandName = island != null ? island.getName() : "—";
 
-        String text = "<b>Тикет #" + ticket.getId() + "</b>  ·  OPEN\n\n"
-            + escapeHtml(displayName(player))
+        String text = "🎫 <b>Тикет #" + ticket.getId() + "</b>  ·  🟡 OPEN\n\n"
+            + "👤 " + escapeHtml(displayName(player))
             + (player.getUsername() != null ? "  ·  @" + player.getUsername() : "")
             + "  ·  <code>" + player.getTelegramId() + "</code>\n"
-            + escapeHtml(islandName) + "  ·  " + devPoints + " ОР\n\n"
+            + "🏝 " + escapeHtml(islandName) + "  ·  " + devPoints + " ОР\n\n"
             + escapeHtml(messageText) + "\n\n"
             + "<i>" + ticket.getCreatedAt().format(DATE_FMT) + "</i>";
 
         InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
                 .keyboardRow(new InlineKeyboardRow(List.of(
                         InlineKeyboardButton.builder()
-                                .text("Открыть в панели")
+                                .text("📋 История на сайте")
                                 .url(props.getAdminUrl() + "/tickets/" + ticket.getId())
                                 .build(),
                         InlineKeyboardButton.builder()
-                                .text("Закрыть")
+                                .text("✅ Закрыть")
                                 .callbackData("support:resolve:" + ticket.getId())
                                 .build()
                 )))
@@ -786,15 +786,15 @@ public class SupportService {
     private void notifyGroupTicketClosed(SupportTicket ticket, Player player) {
         if (props.getGroupChatId() == null || props.getGroupChatId() == 0) return;
 
-        String text = "<b>Тикет #" + ticket.getId() + " закрыт игроком</b>\n\n"
-                + escapeHtml(displayName(player))
+        String text = "🔴 <b>Тикет #" + ticket.getId() + " закрыт игроком</b>\n\n"
+                + "👤 " + escapeHtml(displayName(player))
                 + (player.getUsername() != null ? "  ·  @" + player.getUsername() : "")
                 + "  ·  <code>" + player.getTelegramId() + "</code>";
 
         InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
                 .keyboardRow(new InlineKeyboardRow(List.of(
                         InlineKeyboardButton.builder()
-                                .text("История")
+                                .text("🌐 Открыть историю")
                                 .url(props.getAdminUrl() + "/tickets/" + ticket.getId())
                                 .build()
                 )))
@@ -819,8 +819,8 @@ public class SupportService {
         try {
             SendMessage send = SendMessage.builder()
                     .chatId(ticket.getPlayer().getTelegramId())
-                    .text("Обращение #" + ticket.getId() + " закрыто специалистом.\n\n"
-                            + "Если возникнут вопросы — /support")
+                    .text("✅ Обращение #" + ticket.getId() + " закрыто командой поддержки.\n\n"
+                            + "Если появятся вопросы — пиши /support")
                     .build();
             telegramClient.execute(send);
         } catch (TelegramApiException e) {
