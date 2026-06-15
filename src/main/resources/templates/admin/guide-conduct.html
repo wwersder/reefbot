@@ -5,234 +5,249 @@
 <th:block th:replace="~{admin/layout :: sidebar('guide')}"/>
 <div class="main">
 
-    <a href="/admin/guide/scenarios" class="back-link" style="float:right;margin-top:4px;">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <a href="/admin/guide/scenarios" class="back-link" style="float:right;margin-top:6px;">
         📖 Типичные ситуации →
     </a>
     <h1>📋 Правила работы с тикетами</h1>
 
     <style>
-        .section { margin-bottom: 32px; }
-        .section-title {
-            font-size: 13px; font-weight: 700; color: #374151;
-            text-transform: uppercase; letter-spacing: .05em;
-            margin-bottom: 14px; padding-bottom: 8px;
-            border-bottom: 2px solid #e5e7eb;
+        .guide-wrap { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 860px; }
+
+        /* ── Section ── */
+        .gsec { margin-bottom: 36px; }
+        .gsec-title {
+            font-size: 11px; font-weight: 700; color: #6b7280;
+            text-transform: uppercase; letter-spacing: .08em;
+            margin-bottom: 16px; padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
         }
 
-        /* Two-column can/cannot */
-        .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        /* ── Two-column can/cannot ── */
+        .split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         .split-col { display: flex; flex-direction: column; gap: 8px; }
         .col-label {
             font-size: 11px; font-weight: 700; letter-spacing: .06em;
             text-transform: uppercase; margin-bottom: 4px;
+            display: flex; align-items: center; gap: 5px;
         }
-        .col-label.green { color: #065f46; }
-        .col-label.red   { color: #991b1b; }
+        .col-label.green { color: #059669; }
+        .col-label.red   { color: #dc2626; }
 
         .item {
-            display: flex; gap: 10px; align-items: flex-start;
-            background: #fff; border-radius: 8px;
-            padding: 11px 13px; font-size: 13px; line-height: 1.5;
+            background: #fff; border-radius: 9px;
+            padding: 12px 14px; font-size: 13.5px; line-height: 1.6;
             box-shadow: 0 1px 3px rgba(0,0,0,.06);
+            color: #374151;
         }
         .item.can  { border-left: 3px solid #10b981; }
         .item.cant { border-left: 3px solid #ef4444; }
-        .item.note { border-left: 3px solid #f59e0b; background: #fffbeb; }
+        .item.note { border-left: 3px solid #f59e0b; background: #fffbeb; color: #78350f; }
         .item.info { border-left: 3px solid #3b82f6; }
-        .item-icon { flex-shrink: 0; font-size: 15px; line-height: 1.4; }
-        .item-text { color: #374151; }
-        .item-text b { color: #111827; }
+        .item b { color: #111827; }
 
-        /* Step list */
-        .steps { display: flex; flex-direction: column; gap: 8px; }
+        /* ── Steps ── */
+        .steps { display: flex; flex-direction: column; gap: 10px; }
         .step {
-            display: flex; gap: 12px; align-items: flex-start;
-            background: #fff; border-radius: 8px;
-            padding: 12px 14px; font-size: 13px; line-height: 1.5;
-            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+            display: flex; gap: 14px; align-items: flex-start;
+            background: #fff; border-radius: 9px;
+            padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06);
         }
         .step-num {
-            width: 22px; height: 22px; border-radius: 50%;
+            width: 24px; height: 24px; border-radius: 50%;
             background: #3b82f6; color: #fff;
             font-size: 11px; font-weight: 700;
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0; margin-top: 1px;
         }
-        .step-body { flex: 1; }
-        .step-title { font-weight: 600; margin-bottom: 2px; color: #111827; }
-        .step-desc { color: #4b5563; font-size: 12px; }
+        .step-title { font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 3px; }
+        .step-desc  { font-size: 13px; color: #4b5563; line-height: 1.6; }
+        .step-desc code { font-size: 12px; background: #f3f4f6; padding: 1px 6px; border-radius: 4px; }
 
-        /* Escalation cards */
+        /* ── Transfer reasons ── */
+        .transfer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .tr-card {
+            background: #fff; border-radius: 9px;
+            padding: 13px 15px; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+            border-top: 3px solid #8b5cf6;
+        }
+        .tr-card .tr-title { font-size: 13.5px; font-weight: 600; color: #111827; margin-bottom: 4px; }
+        .tr-card .tr-desc  { font-size: 12.5px; color: #6b7280; line-height: 1.55; }
+
+        /* ── Escalation ── */
         .esc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
         .esc-card {
-            background: #fff; border-radius: 8px;
-            padding: 13px 14px; font-size: 13px; line-height: 1.5;
-            box-shadow: 0 1px 3px rgba(0,0,0,.06);
+            background: #fff; border-radius: 9px;
+            padding: 13px 15px; box-shadow: 0 1px 3px rgba(0,0,0,.06);
             border-top: 3px solid #f59e0b;
         }
-        .esc-card .esc-title { font-weight: 600; margin-bottom: 4px; color: #92400e; }
-        .esc-card .esc-desc { color: #4b5563; font-size: 12px; }
+        .esc-card .esc-title { font-size: 13.5px; font-weight: 600; color: #92400e; margin-bottom: 4px; }
+        .esc-card .esc-desc  { font-size: 12.5px; color: #6b7280; line-height: 1.55; }
 
-        /* Tips */
+        /* ── Tips ── */
         .tips { display: flex; flex-direction: column; gap: 8px; }
+        .tip {
+            display: flex; gap: 12px; align-items: flex-start;
+            background: #fff; border-radius: 9px; border-left: 3px solid #3b82f6;
+            padding: 13px 15px; font-size: 13.5px; line-height: 1.6;
+            box-shadow: 0 1px 3px rgba(0,0,0,.06); color: #374151;
+        }
+        .tip-icon { flex-shrink: 0; font-size: 16px; }
+        .tip b { color: #111827; }
 
         @media (max-width: 640px) {
-            .split { grid-template-columns: 1fr; }
-            .esc-grid { grid-template-columns: 1fr; }
+            .split, .transfer-grid, .esc-grid { grid-template-columns: 1fr; }
         }
     </style>
 
-    <!-- ── Закрытие тикетов ─────────────────────────────────────── -->
-    <div class="section">
-        <div class="section-title">🔒 Закрытие тикетов</div>
-        <div class="split">
-            <div class="split-col">
-                <div class="col-label green">✅ Можно закрыть</div>
-                <div class="item can">
-                    <div class="item-icon">💬</div>
-                    <div class="item-text">Игрок явно подтвердил, что всё решено — написал «спасибо», «работает», «разобрался»</div>
-                </div>
-                <div class="item can">
-                    <div class="item-icon">⏱</div>
-                    <div class="item-text">Прошло <b>24 часа</b> с момента твоего ответа, и игрок больше не отвечал</div>
-                </div>
-                <div class="item can">
-                    <div class="item-icon">ℹ️</div>
-                    <div class="item-text">Вопрос был информационным — ты дал полный ответ, и дополнительных вопросов не поступало</div>
-                </div>
-                <div class="item can">
-                    <div class="item-icon">🔄</div>
-                    <div class="item-text">Проблема дублирует уже решённый тикет — ответ дан со ссылкой на решение</div>
-                </div>
-            </div>
-            <div class="split-col">
-                <div class="col-label red">🚫 Нельзя закрыть</div>
-                <div class="item cant">
-                    <div class="item-icon">⏳</div>
-                    <div class="item-text">Игрок ждёт ответа или продолжает присылать сообщения</div>
-                </div>
-                <div class="item cant">
-                    <div class="item-icon">🐛</div>
-                    <div class="item-text">Баг подтверждён, но ещё не исправлен — закрытие до фикса вводит игрока в заблуждение</div>
-                </div>
-                <div class="item cant">
-                    <div class="item-icon">😤</div>
-                    <div class="item-text">Игрок выразил недовольство и не получил ответа на своё возражение</div>
-                </div>
-                <div class="item cant">
-                    <div class="item-icon">🔁</div>
-                    <div class="item-text">Проблема передана старшему коллеге — тикет закрывает тот, кто довёл её до конца</div>
-                </div>
-            </div>
-        </div>
-        <div style="margin-top:10px;">
-            <div class="item note">
-                <div class="item-icon">⚠️</div>
-                <div class="item-text">Если не уверен — не закрывай. Лучше лишний раз уточнить у игрока, всё ли решено.</div>
-            </div>
-        </div>
-    </div>
+    <div class="guide-wrap">
 
-    <!-- ── Ответы на тикеты ─────────────────────────────────────── -->
-    <div class="section">
-        <div class="section-title">💬 Как отвечать</div>
-        <div class="steps">
-            <div class="step">
-                <div class="step-num">1</div>
-                <div class="step-body">
-                    <div class="step-title">Реплай на сообщение тикета в беседе</div>
-                    <div class="step-desc">Основной способ. Ты автоматически становишься исполнителем, ответ уходит игроку. Важно отвечать именно на карточку тикета — не на произвольные сообщения в беседе.</div>
+        <!-- ── Закрытие тикетов ── -->
+        <div class="gsec">
+            <div class="gsec-title">🔒 Закрытие тикетов</div>
+            <div class="split">
+                <div class="split-col">
+                    <div class="col-label green">✅ Можно закрыть</div>
+                    <div class="item can">Игрок явно подтвердил, что проблема решена — написал «спасибо», «работает», «разобрался»</div>
+                    <div class="item can">Прошло <b>24 часа</b> после твоего ответа, игрок больше не пишет</div>
+                    <div class="item can">Вопрос был информационным — дал полный ответ, новых вопросов нет</div>
+                    <div class="item can">Тикет дублирует уже решённую проблему — ответ дан со ссылкой на решение</div>
+                    <div class="item can">Бессмысленный спам, флуд, явно не по адресу — закрывай без лишних слов</div>
+                </div>
+                <div class="split-col">
+                    <div class="col-label red">🚫 Нельзя закрыть</div>
+                    <div class="item cant">Игрок ещё ждёт ответа или продолжает писать</div>
+                    <div class="item cant">Баг подтверждён, но не исправлен — игрок думает, что проблема будет решена</div>
+                    <div class="item cant">Игрок выразил недовольство и не получил ответа на своё возражение</div>
+                    <div class="item cant">Тикет передан другому сотруднику — закрывает тот, кто его довёл до конца</div>
                 </div>
             </div>
-            <div class="step">
-                <div class="step-num">2</div>
-                <div class="step-body">
-                    <div class="step-title">Команда <code>/reply &lt;id&gt; &lt;текст&gt;</code></div>
-                    <div class="step-desc">Используй, если сообщение тикета ушло высоко вверх и его сложно найти. Ответ уйдёт игроку без реплая.</div>
-                </div>
+            <div style="margin-top:10px">
+                <div class="item note">⚠️ Если не уверен — не закрывай. Лучше лишний раз уточнить у игрока, всё ли в порядке.</div>
             </div>
-            <div class="step">
-                <div class="step-num">3</div>
-                <div class="step-body">
-                    <div class="step-title">Один голос на тикет</div>
-                    <div class="step-desc">Если тикет уже взял другой сотрудник — не отвечай параллельно. Это путает игрока. При необходимости попроси передать через <code>/transfer</code>.</div>
+        </div>
+
+        <!-- ── Ответы на тикеты ── -->
+        <div class="gsec">
+            <div class="gsec-title">💬 Как отвечать</div>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div>
+                        <div class="step-title">Реплай на сообщение тикета в беседе</div>
+                        <div class="step-desc">Основной способ. Ты автоматически становишься исполнителем, ответ уходит игроку. Важно отвечать именно на карточку тикета — реплай на случайное сообщение в беседе не сработает.</div>
+                    </div>
                 </div>
-            </div>
-            <div class="step">
-                <div class="step-num">4</div>
-                <div class="step-body">
-                    <div class="step-title">Прочти историю перед ответом</div>
-                    <div class="step-desc">Особенно если тикет переведён к тебе. Команда <code>/history &lt;id&gt;</code> или страница тикета на сайте покажут всю переписку.</div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div>
+                        <div class="step-title">Команда <code>/reply &lt;id&gt; &lt;текст&gt;</code></div>
+                        <div class="step-desc">Используй, если сообщение тикета ушло высоко вверх и его неудобно искать. Ответ уйдёт игроку напрямую.</div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div>
+                        <div class="step-title">Один голос на тикет</div>
+                        <div class="step-desc">Если тикет уже взял другой сотрудник — ты не сможешь на него ответить. Это сделано специально: игроку не должны отвечать двое одновременно. Если хочешь помочь — скажи коллеге в беседе, пусть он ответит.</div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div>
+                        <div class="step-title">Читай историю перед ответом</div>
+                        <div class="step-desc">Особенно если тикет пришёл через передачу. Команда <code>/history &lt;id&gt;</code> или страница тикета на сайте покажут всю переписку — не заставляй игрока объяснять всё заново.</div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- ── Что оставить старшим ─────────────────────────────────── -->
-    <div class="section">
-        <div class="section-title">🔺 Что передавать старшим коллегам</div>
-        <p style="font-size:13px;color:#6b7280;margin-bottom:12px;">
-            Используй <code>/transfer @username</code> — реплаем на сообщение тикета.
-        </p>
-        <div class="esc-grid">
-            <div class="esc-card">
-                <div class="esc-title">📦 Потеря прогресса или ресурсов</div>
-                <div class="esc-desc">Любые случаи, когда у игрока пропало то, что он заработал. Это требует проверки базы данных.</div>
-            </div>
-            <div class="esc-card">
-                <div class="esc-title">💰 Компенсации и возвраты</div>
-                <div class="esc-desc">Любые запросы на возврат денег или игровую компенсацию — не берёшь на себя без согласования.</div>
-            </div>
-            <div class="esc-card">
-                <div class="esc-title">⚡ Конфликт, угрозы, оскорбления</div>
-                <div class="esc-desc">Если игрок переходит черту и диалог продуктивно не идёт — это не твоя ответственность разрешать в одиночку.</div>
-            </div>
-            <div class="esc-card">
-                <div class="esc-title">🔧 Техническое вне твоей компетенции</div>
-                <div class="esc-desc">Если не знаешь ответа и за 30 минут не нашёл — честнее передать, чем угадывать.</div>
-            </div>
-            <div class="esc-card">
-                <div class="esc-title">📣 Жалобы на поддержку</div>
-                <div class="esc-desc">Если игрок жалуется на действия кого-то из команды — разбираться должен тот, кто стоит выше.</div>
-            </div>
-            <div class="esc-card">
-                <div class="esc-title">🗂 Массовые проблемы</div>
-                <div class="esc-desc">Если несколько игроков одновременно пишут об одном — это сигнал на уровень выше, а не серия отдельных тикетов.</div>
+        <!-- ── Когда передавать тикет ── -->
+        <div class="gsec">
+            <div class="gsec-title">🔁 Когда передавать тикет коллеге</div>
+            <p style="font-size:13px;color:#6b7280;margin-bottom:12px;line-height:1.6">
+                Реплай на тикет: <code style="font-size:12px;background:#f3f4f6;padding:1px 6px;border-radius:4px">/transfer @username</code> — тикет перейдёт к выбранному сотруднику.
+            </p>
+            <div class="transfer-grid">
+                <div class="tr-card">
+                    <div class="tr-title">Нет времени прямо сейчас</div>
+                    <div class="tr-desc">Взял тикет, но понял, что не сможешь заниматься им в ближайшее время — передай, пока игрок не ждёт слишком долго.</div>
+                </div>
+                <div class="tr-card">
+                    <div class="tr-title">Другой знает лучше</div>
+                    <div class="tr-desc">Вопрос касается механики или технической части, в которой кто-то из команды разбирается лучше тебя. Не угадывай — передай.</div>
+                </div>
+                <div class="tr-card">
+                    <div class="tr-title">Не можешь продолжить диалог</div>
+                    <div class="tr-desc">Уходишь или заканчиваешь смену, а тикет ещё открыт и игрок ожидает ответа.</div>
+                </div>
+                <div class="tr-card">
+                    <div class="tr-title">Эмоциональная усталость</div>
+                    <div class="tr-desc">Конфликтный игрок, диалог не идёт, ты чувствуешь, что теряешь нейтральный тон. Лучше передать, чем ответить не так.</div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- ── Как помогать эффективнее ─────────────────────────────── -->
-    <div class="section">
-        <div class="section-title">💡 Как помогать эффективнее</div>
-        <div class="tips">
-            <div class="item info">
-                <div class="item-icon">🎯</div>
-                <div class="item-text"><b>Сначала уточни, потом эскалируй.</b> Большинство «сложных» обращений решаются одним уточняющим вопросом. Не передавай тикет, пока не понял суть проблемы.</div>
-            </div>
-            <div class="item info">
-                <div class="item-icon">📖</div>
-                <div class="item-text"><b>Читай историю тикета целиком.</b> Игрок уже мог объяснять проблему раньше — заставлять его повторять раздражает.</div>
-            </div>
-            <div class="item info">
-                <div class="item-icon">⏰</div>
-                <div class="item-text"><b>Не обещай сроки без уверенности.</b> «Сделаем к пятнице» — только если это реально. Лучше: «уточню у команды и дам знать».</div>
-            </div>
-            <div class="item info">
-                <div class="item-icon">🎭</div>
-                <div class="item-text"><b>Признавай проблему.</b> Если что-то не работает как надо — скажи об этом прямо. Фраза «понимаю, что это неудобно» снижает напряжение лучше, чем «принято в работу».</div>
-            </div>
-            <div class="item info">
-                <div class="item-icon">🔇</div>
-                <div class="item-text"><b>Не разглашай внутреннюю информацию.</b> Планы разработки, ошибки системы, данные других игроков — остаются внутри команды.</div>
-            </div>
-            <div class="item info">
-                <div class="item-icon">📌</div>
-                <div class="item-text"><b>Один тикет — одна проблема.</b> Если в одном обращении несколько разных вопросов — отвечай на них по очереди, не смешивай в одном ответе.</div>
+        <!-- ── Что передавать старшим ── -->
+        <div class="gsec">
+            <div class="gsec-title">🔺 Что передавать старшим коллегам</div>
+            <p style="font-size:13px;color:#6b7280;margin-bottom:12px;line-height:1.6">
+                Конфликты, грубость и бессмысленный спам — не повод эскалировать. Закрывай сам или передай коллеге. К старшим — только то, что требует доступа к данным или принятия решений за пределами твоих полномочий.
+            </p>
+            <div class="esc-grid">
+                <div class="esc-card">
+                    <div class="esc-title">📦 Потеря прогресса или ресурсов</div>
+                    <div class="esc-desc">Любые случаи, когда у игрока пропало заработанное. Требует проверки базы данных — это не в твоих руках.</div>
+                </div>
+                <div class="esc-card">
+                    <div class="esc-title">💰 Компенсации и возвраты</div>
+                    <div class="esc-desc">Любые запросы на возврат или игровую компенсацию. Не бери это на себя без согласования.</div>
+                </div>
+                <div class="esc-card">
+                    <div class="esc-title">🗂 Массовые проблемы</div>
+                    <div class="esc-desc">Несколько игроков одновременно пишут об одном и том же. Это сигнал на уровень выше, а не серия отдельных тикетов.</div>
+                </div>
+                <div class="esc-card">
+                    <div class="esc-title">📣 Жалобы на сотрудников поддержки</div>
+                    <div class="esc-desc">Если игрок жалуется на действия кого-то из команды — разбираться должен тот, кто стоит выше.</div>
+                </div>
             </div>
         </div>
-    </div>
 
+        <!-- ── Как помогать эффективнее ── -->
+        <div class="gsec">
+            <div class="gsec-title">💡 Как помогать эффективнее</div>
+            <div class="tips">
+                <div class="tip">
+                    <div class="tip-icon">🎯</div>
+                    <div><b>Сначала уточни, потом передавай.</b> Большинство «сложных» обращений решаются одним уточняющим вопросом. Не передавай тикет, пока не понял суть проблемы.</div>
+                </div>
+                <div class="tip">
+                    <div class="tip-icon">📖</div>
+                    <div><b>Читай историю целиком.</b> Игрок уже мог объяснять проблему раньше — заставлять его повторять раздражает и снижает доверие.</div>
+                </div>
+                <div class="tip">
+                    <div class="tip-icon">🎭</div>
+                    <div><b>Признавай проблему.</b> «Понимаю, это неудобно» работает лучше, чем «принято в работу». Сначала прими эмоцию, потом разбирайся с сутью.</div>
+                </div>
+                <div class="tip">
+                    <div class="tip-icon">⏰</div>
+                    <div><b>Не обещай сроки без уверенности.</b> «Сделаем к пятнице» — только если это реально. Лучше: «уточню у команды и дам знать».</div>
+                </div>
+                <div class="tip">
+                    <div class="tip-icon">📌</div>
+                    <div><b>Один тикет — одна проблема.</b> Если в одном обращении несколько вопросов — отвечай по очереди, не мешай всё в один ответ.</div>
+                </div>
+                <div class="tip">
+                    <div class="tip-icon">🔇</div>
+                    <div><b>Не разглашай внутреннюю информацию.</b> Планы разработки, данные других игроков, ошибки системы — остаются внутри команды.</div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /guide-wrap -->
 </div>
 </body>
 </html>
