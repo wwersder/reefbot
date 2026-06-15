@@ -24,7 +24,7 @@ import java.util.Optional;
 /**
  * Handles all messages arriving in the support group:
  * - Replies from staff → relayed to the corresponding player
- * - Slash commands: /resolve, /transfer, /tickets, /ticket, /grantsupport, /revokesupport
+ * - Slash commands: /resolve, /transfer, /tickets, /ticket, /grantsupport, /revokesupport, /blocksupport, /unblocksupport
  */
 @Slf4j
 @Component
@@ -70,9 +70,11 @@ public class SupportGroupHandler {
             case "/transfer"      -> handleTransfer(message, senderTgId, args);
             case "/tickets"       -> handleTickets(chatId, args);
             case "/ticket"        -> handleTicketDetail(chatId, args);
-            case "/grantsupport"  -> handleGrant(message, senderTgId, args, SupportRole.SUPPORT);
-            case "/supersupport"  -> handleGrant(message, senderTgId, args, SupportRole.SUPER_ADMIN);
-            case "/revokesupport" -> handleRevoke(senderTgId, args);
+            case "/grantsupport"   -> handleGrant(message, senderTgId, args, SupportRole.SUPPORT);
+            case "/supersupport"   -> handleGrant(message, senderTgId, args, SupportRole.SUPER_ADMIN);
+            case "/revokesupport"  -> handleRevoke(senderTgId, args);
+            case "/blocksupport", "/sblock"   -> handleBlockSupport(senderTgId, args);
+            case "/unblocksupport", "/sunblock" -> handleUnblockSupport(senderTgId, args);
             case "/handbook"      -> handleHandbook(senderTgId, chatId);
             default               -> null;
         };
@@ -202,6 +204,20 @@ public class SupportGroupHandler {
         return supportService.revokeSupport(senderTgId, args);
     }
 
+    // ── /blocksupport / /unblocksupport @username ─────────────────────────
+
+    private String handleBlockSupport(Long senderTgId, String args) {
+        if (!supportService.isActiveStaff(senderTgId)) return "❌ Недостаточно прав.";
+        if (args.isEmpty()) return "Использование: /blocksupport @username";
+        return supportService.blockPlayerSupport(args.trim());
+    }
+
+    private String handleUnblockSupport(Long senderTgId, String args) {
+        if (!supportService.isActiveStaff(senderTgId)) return "❌ Недостаточно прав.";
+        if (args.isEmpty()) return "Использование: /unblocksupport @username";
+        return supportService.unblockPlayerSupport(args.trim());
+    }
+
     // ── Staff reply relay ─────────────────────────────────────────────────
 
     private void handleStaffReply(Message message, Long senderTgId, Long chatId) {
@@ -275,6 +291,14 @@ public class SupportGroupHandler {
             <b>Передача тикета</b>
 
             Реплай на тикет: <code>/transfer @username</code>
+
+            <b>Блокировка игрока</b>
+
+            Запретить создавать обращения:
+            <code>/blocksupport @username</code>
+
+            Снять блокировку:
+            <code>/unblocksupport @username</code>
 
             <b>Лимит сообщений</b>
 

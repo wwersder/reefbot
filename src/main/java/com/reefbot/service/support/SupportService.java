@@ -60,6 +60,10 @@ public class SupportService {
     }
 
     private BotResponse handleCreateTicket(Player player, String messageText) {
+        if (player.isSupportBlocked()) {
+            return BotResponse.html("🚫 Тебе закрыт доступ к поддержке.");
+        }
+
         Optional<SupportTicket> existing = ticketRepository.findByPlayerAndStatusIn(
                 player, List.of(TicketStatus.OPEN, TicketStatus.IN_PROGRESS));
 
@@ -785,6 +789,34 @@ public class SupportService {
         return (sec / 86400) + " д назад";
     }
 
+    // ── Support block / unblock ───────────────────────────────────────────
+
+    @Transactional
+    public String blockPlayerSupport(String username) {
+        String clean = username.replaceAll("^@", "").trim();
+        Optional<Player> opt = playerRepository.findByUsernameIgnoreCase(clean);
+        if (opt.isEmpty()) return "❌ Игрок @" + clean + " не найден.";
+        Player player = opt.get();
+        if (player.isSupportBlocked()) return "⚠️ @" + clean + " уже заблокирован.";
+        player.setSupportBlocked(true);
+        playerRepository.save(player);
+        log.info("Support blocked for player @{}", clean);
+        return "🚫 @" + clean + " больше не может создавать обращения.";
+    }
+
+    @Transactional
+    public String unblockPlayerSupport(String username) {
+        String clean = username.replaceAll("^@", "").trim();
+        Optional<Player> opt = playerRepository.findByUsernameIgnoreCase(clean);
+        if (opt.isEmpty()) return "❌ Игрок @" + clean + " не найден.";
+        Player player = opt.get();
+        if (!player.isSupportBlocked()) return "⚠️ @" + clean + " и так не заблокирован.";
+        player.setSupportBlocked(false);
+        playerRepository.save(player);
+        log.info("Support unblocked for player @{}", clean);
+        return "✅ @" + clean + " снова может обращаться в поддержку.";
+    }
+
     // ── Ticket lookup helpers ─────────────────────────────────────────────
 
     @Transactional(readOnly = true)
@@ -869,6 +901,11 @@ public class SupportService {
 
     public Optional<SupportStaff> findStaff(Long telegramId) {
         return staffRepository.findByTelegramIdAndActiveTrue(telegramId);
+    }
+
+    public boolean isActiveStaff(Long telegramId) {
+        if (OWNER_TELEGRAM_ID.equals(telegramId)) return true;
+        return staffRepository.findByTelegramIdAndActiveTrue(telegramId).isPresent();
     }
 
     public boolean isSuperAdminOrOwner(Long telegramId) {

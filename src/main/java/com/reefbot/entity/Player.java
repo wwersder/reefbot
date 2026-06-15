@@ -61,4 +61,8 @@ public class Player {
 
     @OneToOne(mappedBy = "player")
     private Island island;
+
+    /** When true, player cannot create new support tickets. */
+    @Builder.Default
+    private boolean supportBlocked = false;
 }

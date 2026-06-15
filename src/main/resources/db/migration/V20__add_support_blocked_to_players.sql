@@ -1,0 +1,2 @@
+ALTER TABLE players
+    ADD COLUMN support_blocked TINYINT(1) NOT NULL DEFAULT 0;
