@@ -47,18 +47,58 @@
         <div class="msg-list">
             <div th:each="msg : ${messages}"
                  th:class="${msg.direction.name() == 'FROM_PLAYER' ? 'msg-bubble msg-from-player' : 'msg-bubble msg-from-support'}">
+
                 <div class="msg-meta">
                     <span th:text="${msg.senderName}">Игрок</span>
                     · <span th:text="${#temporals.format(msg.sentAt, 'HH:mm, d MMM')}">—</span>
                 </div>
-                <div class="msg-text" th:if="${msg.text != null}" th:text="${msg.text}"></div>
-                <div class="badge-attach" th:if="${msg.attachmentType != null}"
-                     th:text="${'📎 ' + msg.attachmentType.name().toLowerCase()}">📎 photo</div>
+
+                <!-- Photo -->
+                <div th:if="${msg.attachmentType != null and msg.attachmentType.name() == 'PHOTO'}">
+                    <img th:src="@{/admin/media/photo/{id}(id=${msg.attachmentFileId})}"
+                         alt="фото"
+                         style="max-width:280px;max-height:300px;border-radius:8px;
+                                display:block;margin-top:4px;cursor:pointer"
+                         onclick="openImg(this.src)">
+                    <div class="badge-attach" th:if="${msg.text != null and !#strings.isEmpty(msg.text)}"
+                         th:text="${msg.text}" style="margin-top:5px;color:#374151;font-size:13px"></div>
+                </div>
+
+                <!-- Text -->
+                <div class="msg-text"
+                     th:if="${(msg.attachmentType == null or msg.attachmentType.name() != 'PHOTO') and msg.text != null and !#strings.isEmpty(msg.text)}"
+                     th:text="${msg.text}"></div>
+
+                <!-- Other attachments (not photo) -->
+                <div class="badge-attach"
+                     th:if="${msg.attachmentType != null and msg.attachmentType.name() != 'PHOTO'}"
+                     th:text="${'📎 ' + msg.attachmentType.name().toLowerCase()}">📎 voice</div>
+
+                <!-- Empty / forwarded without content -->
+                <div th:if="${msg.text == null and msg.attachmentType == null}"
+                     style="color:#9ca3af;font-size:12px;font-style:italic">
+                    📨 Пересланное сообщение
+                </div>
+
             </div>
             <div th:if="${#lists.isEmpty(messages)}"
                  style="text-align:center;color:#6b7280;padding:24px">Сообщений нет</div>
         </div>
     </div>
+
+    <!-- Lightbox for photos -->
+    <div id="lightbox" onclick="this.style.display='none'"
+         style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);
+                z-index:9999;align-items:center;justify-content:center;cursor:zoom-out">
+        <img id="lightbox-img" src="" alt="фото"
+             style="max-width:90vw;max-height:90vh;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.6)">
+    </div>
+    <script>
+        function openImg(src) {
+            document.getElementById('lightbox-img').src = src;
+            document.getElementById('lightbox').style.display = 'flex';
+        }
+    </script>
 </div>
 </body>
 </html>

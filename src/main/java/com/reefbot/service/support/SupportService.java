@@ -265,8 +265,8 @@ public class SupportService {
         }
 
         try {
-            // Strip /support prefix from caption if player wrote it there
-            String rawCaption = message.getCaption();
+            // For media messages use caption; for forwarded text messages fall back to getText()
+            String rawCaption = message.getCaption() != null ? message.getCaption() : message.getText();
             if (rawCaption != null && rawCaption.toLowerCase().startsWith("/support")) {
                 rawCaption = rawCaption.substring(8).trim();
             }

@@ -8,8 +8,11 @@ import com.reefbot.repository.SupportMessageRepository;
 import com.reefbot.repository.SupportStaffRepository;
 import com.reefbot.repository.SupportTicketRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
@@ -17,6 +20,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.client.RestTemplate;
+import org.telegram.telegrambots.meta.api.methods.GetFile;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,6 +40,10 @@ public class AdminController {
     private final SupportMessageRepository messageRepository;
     private final SupportStaffRepository staffRepository;
     private final PlayerRepository playerRepository;
+    private final TelegramClient telegramClient;
+
+    @Value("${telegram.bot.token}")
+    private String botToken;
 
     @GetMapping("/login")
     public String loginPage() {
@@ -68,11 +79,22 @@ public class AdminController {
     // ── Ticket list ───────────────────────────────────────────────────────
 
     @GetMapping("/tickets")
-    public String ticketList(@RequestParam(required = false) String status, Model model) {
+    public String ticketList(@RequestParam(required = false) String status,
+                             @RequestParam(required = false) String q,
+                             Model model) {
         Pageable pageable = PageRequest.of(0, 50);
-
         List<SupportTicket> tickets;
-        if (status != null && !status.isBlank()) {
+
+        if (q != null && !q.isBlank()) {
+            // Search by ticket ID (strip leading #) or by player username
+            String clean = q.trim().replaceAll("^#", "");
+            try {
+                Long id = Long.parseLong(clean);
+                tickets = ticketRepository.findById(id).map(List::of).orElseGet(List::of);
+            } catch (NumberFormatException e) {
+                tickets = ticketRepository.searchByPlayerUsername(clean, pageable);
+            }
+        } else if (status != null && !status.isBlank()) {
             try {
                 TicketStatus filter = TicketStatus.valueOf(status.toUpperCase());
                 tickets = ticketRepository.findAllByStatusInOrderByCreatedAtDesc(List.of(filter), pageable);
@@ -85,9 +107,28 @@ public class AdminController {
 
         model.addAttribute("tickets", tickets);
         model.addAttribute("selectedStatus", status);
+        model.addAttribute("searchQuery", q);
         model.addAttribute("allStatuses", TicketStatus.values());
 
         return "admin/tickets";
+    }
+
+    // ── Photo proxy ───────────────────────────────────────────────────────
+
+    @GetMapping("/media/photo/{fileId}")
+    public ResponseEntity<byte[]> proxyPhoto(@PathVariable String fileId) {
+        try {
+            org.telegram.telegrambots.meta.api.objects.File tgFile =
+                    telegramClient.execute(GetFile.builder().fileId(fileId).build());
+            String url = "https://api.telegram.org/file/bot" + botToken + "/" + tgFile.getFilePath();
+            byte[] bytes = new RestTemplate().getForObject(url, byte[].class);
+            if (bytes == null) return ResponseEntity.notFound().build();
+            String path = tgFile.getFilePath().toLowerCase();
+            MediaType ct = path.endsWith(".png") ? MediaType.IMAGE_PNG : MediaType.IMAGE_JPEG;
+            return ResponseEntity.ok().contentType(ct).body(bytes);
+        } catch (TelegramApiException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     // ── Ticket detail ─────────────────────────────────────────────────────

@@ -22,6 +22,11 @@ public interface SupportTicketRepository extends JpaRepository<SupportTicket, Lo
 
     List<SupportTicket> findAllByPlayerOrderByCreatedAtDesc(Player player);
 
+    @Query("SELECT t FROM SupportTicket t LEFT JOIN t.player p " +
+           "WHERE LOWER(p.username) LIKE LOWER(CONCAT('%', :q, '%')) " +
+           "ORDER BY t.createdAt DESC")
+    List<SupportTicket> searchByPlayerUsername(@org.springframework.data.repository.query.Param("q") String q, Pageable pageable);
+
     long countByStatus(TicketStatus status);
 
     long countByStatusAndResolvedAtBetween(TicketStatus status, LocalDateTime from, LocalDateTime to);
