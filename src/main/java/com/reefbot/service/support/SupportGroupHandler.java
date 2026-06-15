@@ -1,6 +1,7 @@
 package com.reefbot.service.support;
 
 import com.reefbot.config.SupportProperties;
+import com.reefbot.entity.Player;
 import com.reefbot.entity.SupportStaff;
 import com.reefbot.entity.SupportTicket;
 import com.reefbot.enums.SupportRole;
@@ -73,8 +74,8 @@ public class SupportGroupHandler {
             case "/grantsupport"   -> handleGrant(message, senderTgId, args, SupportRole.SUPPORT);
             case "/supersupport"   -> handleGrant(message, senderTgId, args, SupportRole.SUPER_ADMIN);
             case "/revokesupport"  -> handleRevoke(senderTgId, args);
-            case "/blocksupport", "/sblock"   -> handleBlockSupport(senderTgId, args);
-            case "/unblocksupport", "/sunblock" -> handleUnblockSupport(senderTgId, args);
+            case "/blocksupport", "/sblock"     -> handleBlockSupport(message, senderTgId, args);
+            case "/unblocksupport", "/sunblock" -> handleUnblockSupport(message, senderTgId, args);
             case "/handbook"      -> handleHandbook(senderTgId, chatId);
             default               -> null;
         };
@@ -204,18 +205,37 @@ public class SupportGroupHandler {
         return supportService.revokeSupport(senderTgId, args);
     }
 
-    // ── /blocksupport / /unblocksupport @username ─────────────────────────
+    // ── /blocksupport / /unblocksupport ──────────────────────────────────
+    // Usage:
+    //   реплай на тикет         — блокирует автора тикета
+    //   /sblock 42              — по внутреннему ID игрока
+    //   /sblock 920215477       — по Telegram ID (если нет совпадения с internal)
+    //   /sblock @username       — по username
 
-    private String handleBlockSupport(Long senderTgId, String args) {
+    private String handleBlockSupport(Message message, Long senderTgId, String args) {
         if (!supportService.isActiveStaff(senderTgId)) return "❌ Недостаточно прав.";
-        if (args.isEmpty()) return "Использование: /blocksupport @username";
-        return supportService.blockPlayerSupport(args.trim());
+        Player player = resolvePlayerFromReplyOrArg(message, args);
+        if (player == null) return "Использование: реплай на тикет, или /sblock &lt;@username | internal_id | tg_id&gt;";
+        return supportService.setPlayerSupportBlocked(player, true);
     }
 
-    private String handleUnblockSupport(Long senderTgId, String args) {
+    private String handleUnblockSupport(Message message, Long senderTgId, String args) {
         if (!supportService.isActiveStaff(senderTgId)) return "❌ Недостаточно прав.";
-        if (args.isEmpty()) return "Использование: /unblocksupport @username";
-        return supportService.unblockPlayerSupport(args.trim());
+        Player player = resolvePlayerFromReplyOrArg(message, args);
+        if (player == null) return "Использование: реплай на тикет, или /sunblock &lt;@username | internal_id | tg_id&gt;";
+        return supportService.setPlayerSupportBlocked(player, false);
+    }
+
+    /** Resolves player from reply-to-ticket (priority) or from text arg. */
+    private Player resolvePlayerFromReplyOrArg(Message message, String args) {
+        Long ticketId = resolveTicketIdFromReply(message);
+        if (ticketId != null) {
+            return supportService.findTicketById(ticketId)
+                    .map(t -> t.getPlayer())
+                    .orElse(null);
+        }
+        if (args.isBlank()) return null;
+        return supportService.resolvePlayerByArg(args.trim()).orElse(null);
     }
 
     // ── Staff reply relay ─────────────────────────────────────────────────

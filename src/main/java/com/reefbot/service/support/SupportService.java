@@ -791,30 +791,45 @@ public class SupportService {
 
     // ── Support block / unblock ───────────────────────────────────────────
 
-    @Transactional
-    public String blockPlayerSupport(String username) {
-        String clean = username.replaceAll("^@", "").trim();
-        Optional<Player> opt = playerRepository.findByUsernameIgnoreCase(clean);
-        if (opt.isEmpty()) return "❌ Игрок @" + clean + " не найден.";
-        Player player = opt.get();
-        if (player.isSupportBlocked()) return "⚠️ @" + clean + " уже заблокирован.";
-        player.setSupportBlocked(true);
-        playerRepository.save(player);
-        log.info("Support blocked for player @{}", clean);
-        return "🚫 @" + clean + " больше не может создавать обращения.";
+    /**
+     * Resolves a player by arg:
+     * - numeric → tries internal DB id first, then Telegram id
+     * - otherwise → username (with or without @)
+     */
+    @Transactional(readOnly = true)
+    public Optional<Player> resolvePlayerByArg(String arg) {
+        String clean = arg.replaceAll("^@", "").trim();
+        try {
+            long num = Long.parseLong(clean);
+            Optional<Player> byId = playerRepository.findById(num);
+            if (byId.isPresent()) return byId;
+            return playerRepository.findByTelegramId(num);
+        } catch (NumberFormatException e) {
+            return playerRepository.findByUsernameIgnoreCase(clean);
+        }
     }
 
     @Transactional
-    public String unblockPlayerSupport(String username) {
-        String clean = username.replaceAll("^@", "").trim();
-        Optional<Player> opt = playerRepository.findByUsernameIgnoreCase(clean);
-        if (opt.isEmpty()) return "❌ Игрок @" + clean + " не найден.";
-        Player player = opt.get();
-        if (!player.isSupportBlocked()) return "⚠️ @" + clean + " и так не заблокирован.";
-        player.setSupportBlocked(false);
+    public String setPlayerSupportBlocked(Player player, boolean blocked) {
+        if (player.isSupportBlocked() == blocked) {
+            String name = playerDisplayName(player);
+            return blocked ? "⚠️ " + name + " уже заблокирован." : "⚠️ " + name + " и так не заблокирован.";
+        }
+        player.setSupportBlocked(blocked);
         playerRepository.save(player);
-        log.info("Support unblocked for player @{}", clean);
-        return "✅ @" + clean + " снова может обращаться в поддержку.";
+        String name = playerDisplayName(player);
+        if (blocked) {
+            log.info("Support blocked for player tg={}", player.getTelegramId());
+            return "🚫 " + name + " больше не может создавать обращения.";
+        } else {
+            log.info("Support unblocked for player tg={}", player.getTelegramId());
+            return "✅ " + name + " снова может обращаться в поддержку.";
+        }
+    }
+
+    private String playerDisplayName(Player player) {
+        if (player.getUsername() != null) return "@" + player.getUsername();
+        return "ID " + player.getTelegramId();
     }
 
     // ── Ticket lookup helpers ─────────────────────────────────────────────
