@@ -134,15 +134,11 @@ public class SupportService {
         }
 
         SupportTicket t = opt.get();
-        String claimLine = t.getClaimedBy() != null
-                ? "\nСпециалист: " + staffDisplayName(t.getClaimedBy())
-                : "";
 
         return BotResponse.html(
             "🎫 <b>Обращение #" + t.getId() + "</b>  ·  "
             + t.getStatus().emoji() + " " + t.getStatus().displayName() + "\n"
             + "Создано: " + t.getCreatedAt().format(DATE_FMT)
-            + claimLine
             + "\n\nЗакрыть: /closeticket"
         );
     }
@@ -326,7 +322,7 @@ public class SupportService {
 
         return "🎫 <b>Тикет #" + ticket.getId() + "</b>  ·  🟡 OPEN\n\n"
             + "👤 " + escapeHtml(displayName(player))
-            + (player.getUsername() != null ? "  ·  @" + player.getUsername() : "")
+            + "  ·  #" + player.getId()
             + "  ·  <code>" + player.getTelegramId() + "</code>\n"
             + "🏝 " + escapeHtml(islandName) + "  ·  " + devPoints + " ОР\n\n"
             + (messageText != null && !messageText.isEmpty() ? escapeHtml(messageText) + "\n\n" : "")
@@ -706,7 +702,7 @@ public class SupportService {
         return "🎫 <b>Тикет #" + ticket.getId() + "</b>  ·  "
             + ticket.getStatus().emoji() + " " + ticket.getStatus().displayName() + "\n\n"
             + "👤 " + escapeHtml(displayName(player))
-            + (player.getUsername() != null ? "  ·  @" + player.getUsername() : "")
+            + "  ·  #" + player.getId()
             + "  ·  <code>" + player.getTelegramId() + "</code>\n"
             + (island != null ? "🏝 " + escapeHtml(island.getName()) + "  ·  "
                 + (island.getDevPoints() != null ? island.getDevPoints() : 0) + " ОР\n" : "")
@@ -717,6 +713,40 @@ public class SupportService {
     }
 
     // ── Ticket lookup helpers ─────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public Optional<SupportTicket> findTicketById(Long ticketId) {
+        return ticketRepository.findById(ticketId);
+    }
+
+    /**
+     * Rebuilds the group ticket card text with the current ticket status.
+     * Used to update the message after inline resolve.
+     */
+    @Transactional(readOnly = true)
+    public String buildGroupTicketCard(SupportTicket ticket) {
+        Player player = ticket.getPlayer();
+        Island island = player.getIsland();
+        String devPoints = island != null
+                ? String.valueOf(island.getDevPoints() != null ? island.getDevPoints() : 0) : "—";
+        String islandName = island != null ? island.getName() : "—";
+
+        // Fetch original player message text
+        List<SupportMessage> msgs = messageRepository.findAllByTicketOrderBySentAtAsc(ticket);
+        String firstText = msgs.stream()
+                .filter(m -> m.getDirection() == MessageDirection.FROM_PLAYER && m.getText() != null)
+                .map(SupportMessage::getText)
+                .findFirst().orElse("");
+
+        return "🎫 <b>Тикет #" + ticket.getId() + "</b>  ·  "
+            + ticket.getStatus().emoji() + " " + ticket.getStatus().displayName() + "\n\n"
+            + "👤 " + escapeHtml(displayName(player))
+            + "  ·  #" + player.getId()
+            + "  ·  <code>" + player.getTelegramId() + "</code>\n"
+            + "🏝 " + escapeHtml(islandName) + "  ·  " + devPoints + " ОР\n\n"
+            + (!firstText.isEmpty() ? escapeHtml(firstText) + "\n\n" : "")
+            + "<i>" + ticket.getCreatedAt().format(DATE_FMT) + "</i>";
+    }
 
     @Transactional(readOnly = true)
     public Optional<SupportTicket> findTicketByGroupMsgId(Long groupMsgId) {
@@ -747,7 +777,7 @@ public class SupportService {
 
         String text = "🎫 <b>Тикет #" + ticket.getId() + "</b>  ·  🟡 OPEN\n\n"
             + "👤 " + escapeHtml(displayName(player))
-            + (player.getUsername() != null ? "  ·  @" + player.getUsername() : "")
+            + "  ·  #" + player.getId()
             + "  ·  <code>" + player.getTelegramId() + "</code>\n"
             + "🏝 " + escapeHtml(islandName) + "  ·  " + devPoints + " ОР\n\n"
             + escapeHtml(messageText) + "\n\n"
@@ -788,7 +818,7 @@ public class SupportService {
 
         String text = "🔴 <b>Тикет #" + ticket.getId() + " закрыт игроком</b>\n\n"
                 + "👤 " + escapeHtml(displayName(player))
-                + (player.getUsername() != null ? "  ·  @" + player.getUsername() : "")
+                + "  ·  #" + player.getId()
                 + "  ·  <code>" + player.getTelegramId() + "</code>";
 
         InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()

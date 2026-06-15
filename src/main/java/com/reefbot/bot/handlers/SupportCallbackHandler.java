@@ -2,11 +2,14 @@ package com.reefbot.bot.handlers;
 
 import com.reefbot.bot.CallbackHandler;
 import com.reefbot.entity.Player;
+import com.reefbot.entity.SupportTicket;
 import com.reefbot.service.support.SupportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -69,15 +72,39 @@ public class SupportCallbackHandler implements CallbackHandler {
         String result = supportService.resolveTicket(ticketId, player.getTelegramId());
         log.info("Inline resolve ticket #{}: {}", ticketId, result);
 
-        // Remove the inline keyboard from the ticket message after action
-        if (result.startsWith("✅")) {
+        if (!result.startsWith("✅")) return;
+
+        // Reload ticket and rebuild card text with updated status
+        SupportTicket ticket = supportService.findTicketById(ticketId).orElse(null);
+        if (ticket == null) return;
+
+        String newText = supportService.buildGroupTicketCard(ticket);
+
+        // Try editing text message first; if it's a photo, fall back to caption
+        try {
+            telegramClient.execute(EditMessageText.builder()
+                    .chatId(chatId)
+                    .messageId(messageId)
+                    .text(newText)
+                    .parseMode("HTML")
+                    .build());
+        } catch (TelegramApiException e) {
             try {
-                telegramClient.execute(EditMessageReplyMarkup.builder()
+                telegramClient.execute(EditMessageCaption.builder()
                         .chatId(chatId)
                         .messageId(messageId)
+                        .caption(newText)
+                        .parseMode("HTML")
                         .build());
-            } catch (TelegramApiException e) {
-                log.warn("Failed to remove keyboard from resolved ticket message", e);
+            } catch (TelegramApiException e2) {
+                log.warn("Failed to update ticket #{} message after resolve", ticketId, e2);
+                // Fallback: at least remove the keyboard
+                try {
+                    telegramClient.execute(EditMessageReplyMarkup.builder()
+                            .chatId(chatId)
+                            .messageId(messageId)
+                            .build());
+                } catch (TelegramApiException ignored) {}
             }
         }
     }
