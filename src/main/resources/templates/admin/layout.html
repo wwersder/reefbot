@@ -263,6 +263,8 @@
                th:class="${activePage == 'tickets' ? 'active' : ''}">🎫 Тикеты</a>
             <a th:href="@{/admin/staff}"
                th:class="${activePage == 'staff' ? 'active' : ''}">👷 Персонал</a>
+            <a th:href="@{/admin/guide/conduct}"
+               th:class="${activePage == 'guide' ? 'active' : ''}">📋 Гайды</a>
         </nav>
         <div class="sidebar-footer">
             <form th:action="@{/admin/logout}" method="post">

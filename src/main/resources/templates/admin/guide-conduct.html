@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head th:replace="~{admin/layout :: head('Правила общения')}"><title>Правила общения</title></head>
+<body>
+<th:block th:replace="~{admin/layout :: sidebar('guide')}"/>
+<div class="main">
+
+    <a href="/admin/guide/scenarios" class="back-link" style="float:right;margin-top:4px;">
+        📖 Типичные ситуации →
+    </a>
+    <h1>📋 Правила общения с игроками</h1>
+
+    <style>
+        .guide-section { margin-bottom: 28px; }
+        .guide-section h2 {
+            font-size: 13px; font-weight: 700; color: #374151;
+            text-transform: uppercase; letter-spacing: .05em;
+            margin-bottom: 12px; padding-bottom: 6px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .rule-list { display: flex; flex-direction: column; gap: 10px; }
+        .rule {
+            display: flex; gap: 12px;
+            background: #fff; border-radius: 10px;
+            padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+        }
+        .rule-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+        .rule-body { flex: 1; }
+        .rule-title { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+        .rule-desc { font-size: 13px; color: #4b5563; line-height: 1.5; }
+        .rule.do .rule-title { color: #065f46; }
+        .rule.dont .rule-title { color: #991b1b; }
+        .rule.do { border-left: 3px solid #10b981; }
+        .rule.dont { border-left: 3px solid #ef4444; }
+
+        .sla-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+            margin-bottom: 0;
+        }
+        .sla-card {
+            background: #fff; border-radius: 10px;
+            padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+            text-align: center;
+        }
+        .sla-card .sla-val { font-size: 26px; font-weight: 700; color: #3b82f6; }
+        .sla-card .sla-lbl { font-size: 12px; color: #6b7280; margin-top: 4px; }
+        .sla-card .sla-desc { font-size: 11px; color: #9ca3af; margin-top: 6px; }
+
+        .escalate-card {
+            background: #fff7ed; border: 1px solid #fed7aa;
+            border-radius: 10px; padding: 16px 18px;
+        }
+        .escalate-card p { font-size: 13px; color: #92400e; line-height: 1.6; margin-bottom: 8px; }
+        .escalate-card p:last-child { margin-bottom: 0; }
+
+        @media (max-width: 600px) { .sla-grid { grid-template-columns: 1fr; } }
+    </style>
+
+    <!-- SLA -->
+    <div class="guide-section">
+        <h2>⏱ Время ответа (SLA)</h2>
+        <div class="sla-grid">
+            <div class="sla-card">
+                <div class="sla-val">15 мин</div>
+                <div class="sla-lbl">Первый ответ</div>
+                <div class="sla-desc">С момента появления тикета</div>
+            </div>
+            <div class="sla-card">
+                <div class="sla-val">1 час</div>
+                <div class="sla-lbl">Продолжение диалога</div>
+                <div class="sla-desc">Если игрок ответил</div>
+            </div>
+            <div class="sla-card">
+                <div class="sla-val">24 часа</div>
+                <div class="sla-lbl">Закрытие без ответа</div>
+                <div class="sla-desc">Если игрок молчит после ответа</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Тон и стиль -->
+    <div class="guide-section">
+        <h2>✍️ Тон и стиль</h2>
+        <div class="rule-list">
+            <div class="rule do">
+                <div class="rule-icon">✅</div>
+                <div class="rule-body">
+                    <div class="rule-title">Пиши по-человечески</div>
+                    <div class="rule-desc">Дружелюбно, коротко, по делу. Без официоза и канцелярщины. Обращайся на «ты».</div>
+                </div>
+            </div>
+            <div class="rule do">
+                <div class="rule-icon">✅</div>
+                <div class="rule-body">
+                    <div class="rule-title">Называй игрока по имени</div>
+                    <div class="rule-desc">Если знаешь ник или имя острова — используй его. Это делает общение живее.</div>
+                </div>
+            </div>
+            <div class="rule do">
+                <div class="rule-icon">✅</div>
+                <div class="rule-body">
+                    <div class="rule-title">Признавай проблему</div>
+                    <div class="rule-desc">Если что-то не работает или игрок расстроен — сначала прими это, потом разбирайся. «Понимаю, это неприятно» работает лучше, чем сухое «принято в работу».</div>
+                </div>
+            </div>
+            <div class="rule do">
+                <div class="rule-icon">✅</div>
+                <div class="rule-body">
+                    <div class="rule-title">Давай конкретные ответы</div>
+                    <div class="rule-desc">Не «скоро разберёмся», а «проверим в течение часа» или «это баг, поставили задачу».</div>
+                </div>
+            </div>
+            <div class="rule dont">
+                <div class="rule-icon">🚫</div>
+                <div class="rule-body">
+                    <div class="rule-title">Не груби и не провоцируй</div>
+                    <div class="rule-desc">Даже если игрок агрессивен — держи нейтральный тон. Если не можешь — передай тикет коллеге.</div>
+                </div>
+            </div>
+            <div class="rule dont">
+                <div class="rule-icon">🚫</div>
+                <div class="rule-body">
+                    <div class="rule-title">Не обещай того, чего не знаешь</div>
+                    <div class="rule-desc">«Сделаем к пятнице» — только если уверен. Лучше «уточним и дам знать» чем несбывшееся обещание.</div>
+                </div>
+            </div>
+            <div class="rule dont">
+                <div class="rule-icon">🚫</div>
+                <div class="rule-body">
+                    <div class="rule-title">Не закрывай тикет без решения</div>
+                    <div class="rule-desc">Закрывай только когда проблема решена или получен ответ «спасибо, всё ок». Молчание — не согласие.</div>
+                </div>
+            </div>
+            <div class="rule dont">
+                <div class="rule-icon">🚫</div>
+                <div class="rule-body">
+                    <div class="rule-title">Не разглашай внутренние детали</div>
+                    <div class="rule-desc">Планы разработки, баги других игроков, личные данные — за пределы поддержки не уходят.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Эскалация -->
+    <div class="guide-section">
+        <h2>🔺 Когда эскалировать</h2>
+        <div class="escalate-card">
+            <p>Передавай тикет SUPER_ADMIN (<code>/transfer @username</code>) если:</p>
+            <p>— игрок сообщает о потере прогресса или ресурсов<br>
+               — просит вернуть деньги или компенсацию<br>
+               — пишет угрозы или обвинения в мошенничестве<br>
+               — ситуация выходит за рамки обычного технического вопроса<br>
+               — ты не знаешь ответа и не можешь найти его за 30 минут</p>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

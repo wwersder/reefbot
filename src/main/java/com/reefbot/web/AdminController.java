@@ -134,6 +134,18 @@ public class AdminController {
         return "admin/staff";
     }
 
+    // ── Guides ───────────────────────────────────────────────────────────
+
+    @GetMapping("/guide/conduct")
+    public String guideConductPage() {
+        return "admin/guide-conduct";
+    }
+
+    @GetMapping("/guide/scenarios")
+    public String guideScenariosPage() {
+        return "admin/guide-scenarios";
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────
 
     private String formatDuration(long seconds) {

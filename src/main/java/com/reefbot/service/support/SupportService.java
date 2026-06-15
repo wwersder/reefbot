@@ -887,6 +887,13 @@ public class SupportService {
         return staffRepository.findByTelegramIdAndActiveTrue(telegramId);
     }
 
+    public boolean isSuperAdminOrOwner(Long telegramId) {
+        if (OWNER_TELEGRAM_ID.equals(telegramId)) return true;
+        return staffRepository.findByTelegramIdAndActiveTrue(telegramId)
+                .map(s -> s.getRole() == SupportRole.SUPER_ADMIN)
+                .orElse(false);
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────
 
     private Long postTicketToGroup(SupportTicket ticket, Player player, String messageText) {

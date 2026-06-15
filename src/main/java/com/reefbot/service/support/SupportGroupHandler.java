@@ -74,7 +74,7 @@ public class SupportGroupHandler {
             case "/grantsupport"  -> handleGrant(message, senderTgId, args, SupportRole.SUPPORT);
             case "/supersupport"  -> handleGrant(message, senderTgId, args, SupportRole.SUPER_ADMIN);
             case "/revokesupport" -> handleRevoke(senderTgId, args);
-            case "/handbook"      -> buildHandbook();
+            case "/handbook"      -> handleHandbook(senderTgId, chatId);
             default               -> null;
         };
 
@@ -268,64 +268,84 @@ public class SupportGroupHandler {
 
     // ── /handbook ─────────────────────────────────────────────────────────
 
-    private String buildHandbook() {
+    private String handleHandbook(Long senderTgId, Long chatId) {
+        if (!supportService.isSuperAdminOrOwner(senderTgId)) {
+            return "❌ Только SUPER_ADMIN может использовать эту команду.";
+        }
+
         String adminUrl = buildAdminUrl();
-        return """
+        String text = """
             🛟 <b>ReefBot Support — Руководство</b>
 
             Это внутренняя беседа команды поддержки. Каждое новое обращение игрока появляется здесь отдельным сообщением с карточкой тикета.
 
-            <b>Как работать с тикетами</b>
+            <b>Работа с тикетами</b>
 
-            Когда приходит новый тикет, просто ответь на его сообщение — ты автоматически станешь его исполнителем, а ответ уйдёт игроку.
+            Когда приходит новый тикет, ответь на его сообщение реплаем — ты автоматически станешь исполнителем, ответ уйдёт игроку.
 
-            Если нужно ответить на конкретный тикет без реплая:
+            Ответить без реплая, по ID:
             <code>/reply &lt;id&gt; &lt;текст&gt;</code>
 
-            Посмотреть все открытые обращения:
+            Список всех открытых обращений:
             <code>/tickets</code>
 
-            Детали конкретного тикета:
+            Детали тикета и последние сообщения:
             <code>/ticket &lt;id&gt;</code>
 
-            История переписки:
+            Полная история переписки:
             <code>/history &lt;id&gt;</code>
 
-            <b>Закрытие тикетов</b>
+            <b>Закрытие</b>
 
-            Закрыть можно тремя способами:
-            — кнопкой <b>✅ Закрыть</b> прямо под карточкой тикета
-            — реплаем на сообщение тикета: <code>/resolve</code>
+            — кнопка <b>✅ Закрыть</b> под карточкой тикета
+            — реплай на тикет: <code>/resolve</code>
             — по ID: <code>/close &lt;id&gt;</code>
 
-            Игрок получит уведомление о закрытии.
+            Игрок получит уведомление о закрытии автоматически.
 
             <b>Передача тикета</b>
 
-            Если нужно переключить исполнителя, реплай на тикет:
-            <code>/transfer @username</code>
+            Реплай на тикет: <code>/transfer @username</code>
 
-            <b>Лимит сообщений от игрока</b>
+            <b>Лимит сообщений</b>
 
-            Игрок может отправить не более 3 сообщений подряд без ответа поддержки — дальше бот просит его подождать. После любого ответа лимит сбрасывается.
-
-            <b>Роли</b>
-
-            <code>SUPPORT</code> — может отвечать на тикеты и закрывать их
-            <code>SUPER_ADMIN</code> — все права SUPPORT + управление командой
-
-            Выдать роль (только SUPER_ADMIN):
-            <code>/grantsupport @username</code>  или реплай на сообщение пользователя
-            <code>/supersupport @username</code>  — выдать SUPER_ADMIN
-
-            Отозвать:
-            <code>/revokesupport @username</code>
+            Игрок может отправить не более 3 сообщений подряд без ответа — бот попросит подождать. После любого ответа от поддержки лимит сбрасывается.
 
             <b>Веб-панель</b>
 
-            Полная история тикетов, поиск и фильтры:
-            """ + adminUrl + "\n\n"
-            + "<i>Обновить это сообщение: /handbook</i>";
+            Полная история тикетов, поиск, фильтры по статусу:
+            """ + adminUrl;
+
+        InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
+                .keyboardRow(new InlineKeyboardRow(List.of(
+                        InlineKeyboardButton.builder()
+                                .text("📋 Правила общения")
+                                .url(adminUrl + "/guide/conduct")
+                                .build(),
+                        InlineKeyboardButton.builder()
+                                .text("📖 Типичные ситуации")
+                                .url(adminUrl + "/guide/scenarios")
+                                .build()
+                )))
+                .keyboardRow(new InlineKeyboardRow(List.of(
+                        InlineKeyboardButton.builder()
+                                .text("🌐 Открыть панель")
+                                .url(adminUrl)
+                                .build()
+                )))
+                .build();
+
+        try {
+            telegramClient.execute(SendMessage.builder()
+                    .chatId(chatId)
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(keyboard)
+                    .build());
+        } catch (TelegramApiException e) {
+            log.error("Failed to send handbook", e);
+        }
+        return null; // already sent
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
