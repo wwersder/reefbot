@@ -668,7 +668,13 @@ public class SupportService {
             sb.append("🏝 ").append(escapeHtml(island.getName()))
               .append("  ·  ").append(island.getDevPoints() != null ? island.getDevPoints() : 0).append(" ОР\n");
         }
-        sb.append("Создан: ").append(ticket.getCreatedAt().format(DATE_FMT)).append("\n");
+        sb.append("📅 Создан: ").append(ticket.getCreatedAt().format(DATE_FMT));
+        if (ticket.getResolvedAt() != null) {
+            long sec = java.time.Duration.between(ticket.getCreatedAt(), ticket.getResolvedAt()).getSeconds();
+            sb.append("  →  Закрыт: ").append(ticket.getResolvedAt().format(DATE_FMT))
+              .append(" (").append(formatDuration(sec)).append(")");
+        }
+        sb.append("\n");
 
         if (ticket.getClaimedBy() != null) {
             sb.append("👷 ").append(escapeHtml(staffDisplayName(ticket.getClaimedBy())));
@@ -768,37 +774,6 @@ public class SupportService {
         if (sec < 3600) return (sec / 60) + " мин назад";
         if (sec < 86400) return (sec / 3600) + " ч назад";
         return (sec / 86400) + " д назад";
-    }
-
-    @Transactional(readOnly = true)
-    public String buildHistorySummary(Long ticketId) {
-        SupportTicket ticket = ticketRepository.findById(ticketId).orElse(null);
-        if (ticket == null) return "❌ Тикет #" + ticketId + " не найден.";
-
-        Player player = ticket.getPlayer();
-        Island island = player.getIsland();
-
-        String duration = "";
-        if (ticket.getResolvedAt() != null) {
-            long sec = java.time.Duration.between(ticket.getCreatedAt(), ticket.getResolvedAt()).getSeconds();
-            duration = " (" + formatDuration(sec) + ")";
-        }
-
-        String claimLine = ticket.getClaimedBy() != null
-                ? "\n👷 Взял: " + staffDisplayName(ticket.getClaimedBy())
-                : "";
-
-        return "🎫 <b>Тикет #" + ticket.getId() + "</b>  ·  "
-            + ticket.getStatus().emoji() + " " + ticket.getStatus().displayName() + "\n\n"
-            + "👤 " + escapeHtml(displayName(player))
-            + "  ·  #" + player.getId()
-            + "  ·  <code>" + player.getTelegramId() + "</code>\n"
-            + (island != null ? "🏝 " + escapeHtml(island.getName()) + "  ·  "
-                + (island.getDevPoints() != null ? island.getDevPoints() : 0) + " ОР\n" : "")
-            + "<i>" + ticket.getCreatedAt().format(DATE_FMT)
-            + (ticket.getResolvedAt() != null ? " → " + ticket.getResolvedAt().format(DATE_FMT) + duration : "")
-            + "</i>"
-            + claimLine;
     }
 
     // ── Ticket lookup helpers ─────────────────────────────────────────────

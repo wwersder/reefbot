@@ -24,7 +24,7 @@ import java.util.Optional;
 /**
  * Handles all messages arriving in the support group:
  * - Replies from staff → relayed to the corresponding player
- * - Slash commands: /resolve, /transfer, /history, /tickets, /grantsupport, /revokesupport
+ * - Slash commands: /resolve, /transfer, /tickets, /ticket, /grantsupport, /revokesupport
  */
 @Slf4j
 @Component
@@ -68,7 +68,6 @@ public class SupportGroupHandler {
             case "/close"         -> handleClose(message, senderTgId, args);
             case "/reply"         -> handleReply(senderTgId, args);
             case "/transfer"      -> handleTransfer(message, senderTgId, args);
-            case "/history"       -> handleHistory(chatId, args);
             case "/tickets"       -> handleTickets(chatId, args);
             case "/ticket"        -> handleTicketDetail(chatId, args);
             case "/grantsupport"  -> handleGrant(message, senderTgId, args, SupportRole.SUPPORT);
@@ -162,33 +161,6 @@ public class SupportGroupHandler {
         Long ticketId = resolveTicketIdFromReply(message);
         if (ticketId == null) return "⚠️ Используй /transfer как реплай на сообщение тикета.";
         return supportService.transferTicket(ticketId, senderTgId, args);
-    }
-
-    // ── /history <id> ─────────────────────────────────────────────────────
-
-    private String handleHistory(Long chatId, String args) {
-        if (args.isEmpty()) return "Использование: /history &lt;id&gt;";
-
-        long ticketId;
-        try {
-            ticketId = Long.parseLong(args.trim());
-        } catch (NumberFormatException e) {
-            return "⚠️ ID тикета должен быть числом.";
-        }
-
-        String summary = supportService.buildHistorySummary(ticketId);
-        // Send separately so inline button is included
-        try {
-            SendMessage.SendMessageBuilder<?, ?> builder = SendMessage.builder()
-                    .chatId(chatId)
-                    .text(summary)
-                    .parseMode("HTML")
-                    .replyMarkup(historyKeyboard(ticketId));
-            telegramClient.execute(builder.build());
-        } catch (TelegramApiException e) {
-            log.error("Failed to send history for ticket #{}", ticketId, e);
-        }
-        return null; // already sent inline
     }
 
     // ── /tickets @username ────────────────────────────────────────────────
@@ -289,11 +261,8 @@ public class SupportGroupHandler {
             Список всех открытых обращений:
             <code>/tickets</code>
 
-            Детали тикета и последние сообщения:
+            Детали тикета, даты и последние сообщения:
             <code>/ticket &lt;id&gt;</code>
-
-            Полная история переписки:
-            <code>/history &lt;id&gt;</code>
 
             <b>Закрытие</b>
 
@@ -360,17 +329,6 @@ public class SupportGroupHandler {
         return supportService.findTicketByGroupMsgId(replyToMsgId)
                 .map(SupportTicket::getId)
                 .orElse(null);
-    }
-
-    private InlineKeyboardMarkup historyKeyboard(long ticketId) {
-        return InlineKeyboardMarkup.builder()
-                .keyboardRow(new InlineKeyboardRow(List.of(
-                        InlineKeyboardButton.builder()
-                                .text("🌐 Открыть полную историю")
-                                .url(buildAdminUrl() + "/tickets/" + ticketId)
-                                .build()
-                )))
-                .build();
     }
 
     private String buildAdminUrl() {
