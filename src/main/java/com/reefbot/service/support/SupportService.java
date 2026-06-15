@@ -734,7 +734,7 @@ public class SupportService {
                     .build());
         }
         row.add(InlineKeyboardButton.builder()
-                .text("📋 Сайт")
+                .text("📋 История")
                 .url(props.getAdminUrl() + "/tickets/" + ticketId)
                 .build());
 
