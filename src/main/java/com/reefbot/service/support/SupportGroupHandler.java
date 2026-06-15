@@ -253,7 +253,7 @@ public class SupportGroupHandler {
         return InlineKeyboardMarkup.builder()
                 .keyboardRow(new InlineKeyboardRow(List.of(
                         InlineKeyboardButton.builder()
-                                .text("🌐 Открыть полную историю")
+                                .text("Полная история")
                                 .url(buildAdminUrl() + "/tickets/" + ticketId)
                                 .build()
                 )))
