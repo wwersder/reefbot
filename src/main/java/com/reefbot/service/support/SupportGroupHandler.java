@@ -74,6 +74,7 @@ public class SupportGroupHandler {
             case "/grantsupport"  -> handleGrant(message, senderTgId, args, SupportRole.SUPPORT);
             case "/supersupport"  -> handleGrant(message, senderTgId, args, SupportRole.SUPER_ADMIN);
             case "/revokesupport" -> handleRevoke(senderTgId, args);
+            case "/handbook"      -> buildHandbook();
             default               -> null;
         };
 
@@ -263,6 +264,68 @@ public class SupportGroupHandler {
         } else {
             supportService.relayStaffMedia(ticket, staff, message, groupMsgId);
         }
+    }
+
+    // ── /handbook ─────────────────────────────────────────────────────────
+
+    private String buildHandbook() {
+        String adminUrl = buildAdminUrl();
+        return """
+            🛟 <b>ReefBot Support — Руководство</b>
+
+            Это внутренняя беседа команды поддержки. Каждое новое обращение игрока появляется здесь отдельным сообщением с карточкой тикета.
+
+            <b>Как работать с тикетами</b>
+
+            Когда приходит новый тикет, просто ответь на его сообщение — ты автоматически станешь его исполнителем, а ответ уйдёт игроку.
+
+            Если нужно ответить на конкретный тикет без реплая:
+            <code>/reply &lt;id&gt; &lt;текст&gt;</code>
+
+            Посмотреть все открытые обращения:
+            <code>/tickets</code>
+
+            Детали конкретного тикета:
+            <code>/ticket &lt;id&gt;</code>
+
+            История переписки:
+            <code>/history &lt;id&gt;</code>
+
+            <b>Закрытие тикетов</b>
+
+            Закрыть можно тремя способами:
+            — кнопкой <b>✅ Закрыть</b> прямо под карточкой тикета
+            — реплаем на сообщение тикета: <code>/resolve</code>
+            — по ID: <code>/close &lt;id&gt;</code>
+
+            Игрок получит уведомление о закрытии.
+
+            <b>Передача тикета</b>
+
+            Если нужно переключить исполнителя, реплай на тикет:
+            <code>/transfer @username</code>
+
+            <b>Лимит сообщений от игрока</b>
+
+            Игрок может отправить не более 3 сообщений подряд без ответа поддержки — дальше бот просит его подождать. После любого ответа лимит сбрасывается.
+
+            <b>Роли</b>
+
+            <code>SUPPORT</code> — может отвечать на тикеты и закрывать их
+            <code>SUPER_ADMIN</code> — все права SUPPORT + управление командой
+
+            Выдать роль (только SUPER_ADMIN):
+            <code>/grantsupport @username</code>  или реплай на сообщение пользователя
+            <code>/supersupport @username</code>  — выдать SUPER_ADMIN
+
+            Отозвать:
+            <code>/revokesupport @username</code>
+
+            <b>Веб-панель</b>
+
+            Полная история тикетов, поиск и фильтры:
+            """ + adminUrl + "\n\n"
+            + "<i>Обновить это сообщение: /handbook</i>";
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
