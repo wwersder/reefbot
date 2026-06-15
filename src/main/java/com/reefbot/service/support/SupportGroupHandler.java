@@ -212,6 +212,9 @@ public class SupportGroupHandler {
         }
 
         org.telegram.telegrambots.meta.api.objects.message.Message replyTo = message.getReplyToMessage();
+        if (Boolean.TRUE.equals(replyTo.getFrom().getIsBot())) {
+            return "⚠️ Нельзя выдать роль поддержки боту.";
+        }
         Long targetTgId  = replyTo.getFrom().getId();
         String username  = replyTo.getFrom().getUserName();
         String firstName = replyTo.getFrom().getFirstName();
