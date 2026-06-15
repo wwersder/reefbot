@@ -32,7 +32,7 @@ public class WebSecurityConfig {
             )
             .formLogin(form -> form
                 .loginPage("/admin/login")
-                .defaultSuccessUrl("/admin/dashboard", true)
+                .defaultSuccessUrl("/admin/dashboard", false)
                 .failureUrl("/admin/login?error=true")
                 .permitAll()
             )
