@@ -65,6 +65,9 @@ public class SupportService {
         // If ticket already open and text provided, relay it as a follow-up
         if (existing.isPresent()) {
             if (!messageText.isEmpty()) {
+                if (countUnrespondedPlayerMessages(existing.get()) >= MAX_UNRESPONDED_MESSAGES) {
+                    return rateLimitResponse();
+                }
                 boolean sent = relayPlayerText(player, messageText, null);
                 return sent
                     ? new BotResponse("📨 Сообщение передано в поддержку.")
@@ -167,6 +170,9 @@ public class SupportService {
         return BotResponse.html("🔴 <b>Обращение #" + ticket.getId() + " закрыто.</b>\n\nСпасибо за обращение!");
     }
 
+    /** Maximum player messages allowed without a staff reply before further messages are blocked. */
+    private static final int MAX_UNRESPONDED_MESSAGES = 3;
+
     // ── Relay: player follow-up → group ──────────────────────────────────
 
     /**
@@ -181,6 +187,8 @@ public class SupportService {
 
         SupportTicket ticket = opt.get();
         if (props.getGroupChatId() == null || props.getGroupChatId() == 0) return false;
+
+        if (countUnrespondedPlayerMessages(ticket) >= MAX_UNRESPONDED_MESSAGES) return false;
 
         try {
             // Reply to root message in group so thread stays connected
@@ -250,6 +258,10 @@ public class SupportService {
 
         log.info("relayPlayerMedia: ticket={} groupChatId={}", ticket.getId(), props.getGroupChatId());
         if (props.getGroupChatId() == null || props.getGroupChatId() == 0) return null;
+
+        if (!isNewTicket && countUnrespondedPlayerMessages(ticket) >= MAX_UNRESPONDED_MESSAGES) {
+            return rateLimitResponse();
+        }
 
         try {
             // Strip /support prefix from caption if player wrote it there
@@ -688,6 +700,30 @@ public class SupportService {
     @Transactional
     public String closeTicketById(Long ticketId, Long staffTgId) {
         return resolveTicket(ticketId, staffTgId);
+    }
+
+    // ── Rate limiting ─────────────────────────────────────────────────────
+
+    /**
+     * Counts how many player messages have been sent since the last staff reply.
+     * If there are no staff replies at all, counts all player messages.
+     */
+    private int countUnrespondedPlayerMessages(SupportTicket ticket) {
+        List<SupportMessage> msgs = messageRepository.findAllByTicketOrderBySentAtAsc(ticket);
+        int count = 0;
+        for (int i = msgs.size() - 1; i >= 0; i--) {
+            MessageDirection dir = msgs.get(i).getDirection();
+            if (dir == MessageDirection.FROM_SUPPORT) break;
+            if (dir == MessageDirection.FROM_PLAYER) count++;
+        }
+        return count;
+    }
+
+    private BotResponse rateLimitResponse() {
+        return new BotResponse(
+            "Вы уже отправили несколько сообщений — дождитесь ответа специалиста.\n\n"
+            + "Статус обращения: /myticket"
+        );
     }
 
     // ── Formatting helpers ─────────────────────────────────────────────────
