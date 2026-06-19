@@ -1,30 +1,40 @@
 /**
- * Reef Plinko — UI controller v2 (light theme)
+ * Reef Plinko — UI controller v3
+ *
+ * Multi-ball: throw button never freezes.
+ * Free bet input + multiplier chips (½ ×2 ×5 ×10 MAX).
+ * Auto-spin is sequential; manual throws are concurrent.
+ * Leaderboard fetches fresh data every open.
+ * No daily loss limit.
  */
 
 import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js';
 import { PlinkoBoard } from './plinko.js';
 
-const BET_STEPS   = [5, 10, 25, 50, 100, 250, 500];
-const DAILY_LIMIT = 2000;
-const AUTO_MAX    = 100;
+const MIN_BET  = 5;
+const MAX_BET  = 500;
+const BET_STEP = 5;   // +/- increment
+const AUTO_MAX = 100;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-let balance    = 0;
-let dailyLost  = 0;
-let betIdx     = 2;      // default: 25 🐚
-let rows       = 8;
-let risk       = 'MEDIUM';
-let animating  = false;
+let balance     = 0;
+let betValue    = 25;    // current bet amount (free integer)
+let rows        = 8;
+let risk        = 'MEDIUM';
 let autoRunning = false;
-let autoCount  = 0;
-let board      = null;
+let autoCount   = 0;
+let autoInFlight = false;  // one auto-ball in flight at a time
+let board       = null;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const $  = id  => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
+
+function clampBet(v) {
+    return Math.max(MIN_BET, Math.min(MAX_BET, Math.round(v / BET_STEP) * BET_STEP || MIN_BET));
+}
 
 function escHtml(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -53,8 +63,7 @@ export async function init() {
             return;
         }
 
-        balance   = state.balance;
-        dailyLost = state.dailyLost;
+        balance = state.balance;
 
         if (!state.rows12Unlocked) {
             $('rows-select').querySelector('option[value="12"]')?.remove();
@@ -64,9 +73,8 @@ export async function init() {
         updateUI();
         showScreen('app');
 
-        // Canvas has 0 size while #app is display:none — init after reveal
         requestAnimationFrame(() => {
-            board = new PlinkoBoard($('plinko-canvas'), onAnimDone);
+            board = new PlinkoBoard($('plinko-canvas'), null);
             window.addEventListener('resize', () => board?.resize());
         });
 
@@ -93,23 +101,47 @@ function bindEvents() {
         board?.setRows(rows);
     });
 
-    $('bet-minus').addEventListener('click', () => adjustBet(-1));
-    $('bet-plus').addEventListener('click',  () => adjustBet(+1));
+    // Bet: +/- buttons (step by BET_STEP)
+    $('bet-minus').addEventListener('click', () => setBet(betValue - BET_STEP));
+    $('bet-plus').addEventListener('click',  () => setBet(betValue + BET_STEP));
 
-    $$('.qbet-btn').forEach((btn, i) =>
-        btn.addEventListener('click', () => selectBetIdx(i)));
+    // Bet: free input
+    $('bet-input').addEventListener('input', e => {
+        const v = parseInt(e.target.value) || MIN_BET;
+        betValue = Math.max(MIN_BET, Math.min(MAX_BET, v));
+        // Don't clamp display while typing — clamp on blur
+    });
+    $('bet-input').addEventListener('blur', () => {
+        setBet(parseInt($('bet-input').value) || MIN_BET);
+    });
 
+    // Multiplier chips
+    $$('.mult-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const m = btn.dataset.mult;
+            if (m === 'max') {
+                setBet(Math.min(MAX_BET, balance));
+            } else {
+                setBet(Math.round(betValue * parseFloat(m)));
+            }
+        });
+    });
+
+    // Throw button
     $('throw-btn').addEventListener('click', handleThrow);
 
+    // Auto-spin checkbox
     $('auto-check').addEventListener('change', e => {
         if (e.target.checked) startAuto();
         else stopAuto();
     });
 
+    // Turbo checkbox
     $('turbo-check').addEventListener('change', e => {
         board?.setFast(e.target.checked);
     });
 
+    // Leaderboard
     $('lb-btn').addEventListener('click', openLeaderboard);
     $('lb-close').addEventListener('click', closeLeaderboard);
     $('lb-backdrop').addEventListener('click', closeLeaderboard);
@@ -119,45 +151,55 @@ function bindEvents() {
 
 function handleThrow() {
     if (autoRunning) { stopAuto(); return; }
-    if (animating) return;
-    doThrow();
+    doManualThrow();
 }
 
-async function doThrow() {
-    if (!board || animating) return;
-    const bet = BET_STEPS[betIdx];
-
-    setAnimating(true);
-    setResult('', 'neutral');
-
+async function doManualThrow() {
+    if (!board) return;
+    const bet = betValue;
     try {
         const res = await postPlay(bet, rows, risk);
-
-        if (res.error) {
-            setResult(res.message || res.error, 'loss');
-            setAnimating(false);
-            stopAuto();
-            return;
-        }
-
-        balance   = res.newBalance;
-        dailyLost = Math.min(DAILY_LIMIT, dailyLost + Math.max(0, -(res.profit)));
+        if (res.error) { setResult(res.message || res.error, 'loss'); return; }
+        balance = res.newBalance;
         updateBalance();
-        updateLimitBar();
-
-        board.dropBall(res.path, res.slot, res.multiplier, res.profit);
-
+        board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
+            showResult(mult, profit);
+        });
     } catch (e) {
         console.error('Play error', e);
         setResult('Ошибка сети 🌊', 'loss');
-        setAnimating(false);
+    }
+}
+
+async function doAutoThrow() {
+    if (!autoRunning || !board) return;
+    autoInFlight = true;
+    try {
+        const res = await postPlay(betValue, rows, risk);
+        if (res.error) {
+            setResult(res.message || res.error, 'loss');
+            stopAuto();
+            return;
+        }
+        balance = res.newBalance;
+        updateBalance();
+        board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
+            showResult(mult, profit);
+            autoInFlight = false;
+
+            if (!autoRunning) return;
+            autoCount--;
+            updateThrowBtn();
+            if (autoCount <= 0) { stopAuto(); return; }
+            setTimeout(doAutoThrow, 900);
+        });
+    } catch (e) {
+        console.error('Auto play error', e);
         stopAuto();
     }
 }
 
-function onAnimDone(multiplier, profit) {
-    setAnimating(false);
-
+function showResult(multiplier, profit) {
     if (multiplier >= 15) {
         setResult(`🎰 ДЖЕКПОТ ×${multiplier.toFixed(0)}!`, 'jackpot');
     } else if (profit > 0) {
@@ -167,51 +209,37 @@ function onAnimDone(multiplier, profit) {
     } else {
         setResult(`НЕ ПОВЕЗЛО  ×${multiplier.toFixed(1)}`, 'loss');
     }
-
-    if (autoRunning) {
-        autoCount--;
-        updateThrowBtn();
-        if (autoCount <= 0 || dailyLost >= DAILY_LIMIT) {
-            stopAuto();
-            return;
-        }
-        setTimeout(doThrow, 1100);
-    }
 }
 
 // ── Auto ──────────────────────────────────────────────────────────────────────
 
 function startAuto() {
-    autoRunning = true;
-    autoCount   = AUTO_MAX;
+    autoRunning  = true;
+    autoCount    = AUTO_MAX;
+    autoInFlight = false;
     updateThrowBtn();
-    if (!animating) doThrow();
+    doAutoThrow();
 }
 
 function stopAuto() {
-    autoRunning = false;
-    autoCount   = 0;
+    autoRunning  = false;
+    autoInFlight = false;
+    autoCount    = 0;
     $('auto-check').checked = false;
     updateThrowBtn();
 }
 
-// ── UI state ──────────────────────────────────────────────────────────────────
+// ── UI helpers ────────────────────────────────────────────────────────────────
 
 function updateUI() {
-    selectBetIdx(betIdx);
+    setBet(betValue);
     updateBalance();
-    updateLimitBar();
     setResult('Выбери ставку и бросай', 'neutral');
 }
 
-function adjustBet(d) {
-    selectBetIdx(Math.max(0, Math.min(BET_STEPS.length - 1, betIdx + d)));
-}
-
-function selectBetIdx(i) {
-    betIdx = i;
-    $$('.qbet-btn').forEach((btn, j) => btn.classList.toggle('active', j === i));
-    $('bet-display').textContent = BET_STEPS[i] + ' 🐚';
+function setBet(v) {
+    betValue = clampBet(v);
+    $('bet-input').value = betValue;
 }
 
 function updateBalance() {
@@ -219,38 +247,21 @@ function updateBalance() {
     $('balance-hint').textContent = balance;
 }
 
-function updateLimitBar() {
-    const pct = Math.min(100, dailyLost / DAILY_LIMIT * 100);
-    $('limit-bar-fill').style.width = pct + '%';
-    $('limit-label').textContent = `Потери: ${dailyLost} / ${DAILY_LIMIT} 🐚`;
-}
-
-function setAnimating(val) {
-    animating = val;
-    updateThrowBtn();
-}
-
 function updateThrowBtn() {
     const btn = $('throw-btn');
     if (autoRunning) {
-        btn.disabled = false;
         btn.textContent = `■ СТОП (${autoCount}x)`;
-        btn.className = 'auto-running';
-    } else if (animating) {
-        btn.disabled = true;
-        btn.textContent = 'БРОСОК...';
-        btn.className = '';
+        btn.className   = 'auto-running';
     } else {
-        btn.disabled = false;
         btn.textContent = 'БРОСИТЬ';
-        btn.className = '';
+        btn.className   = '';
     }
 }
 
 function setResult(text, type) {
     const el = $('result-text');
     el.textContent = text;
-    el.className = type;
+    el.className   = type;
 }
 
 function showScreen(name) {
@@ -259,13 +270,11 @@ function showScreen(name) {
     $('app').style.display               = name === 'app'        ? 'flex' : 'none';
 }
 
-// ── Leaderboard bottom sheet ──────────────────────────────────────────────────
-
-let lbLoaded = false;
+// ── Leaderboard ───────────────────────────────────────────────────────────────
 
 function openLeaderboard() {
     $('lb-overlay').classList.add('open');
-    if (!lbLoaded) loadLeaderboard();
+    loadLeaderboard();   // always fetch fresh
 }
 
 function closeLeaderboard() {
@@ -277,7 +286,6 @@ async function loadLeaderboard() {
     content.innerHTML = '<div class="lb-placeholder">⏳ Загрузка...</div>';
     try {
         const data = await fetchLeaderboard();
-        lbLoaded = true;
         renderLeaderboard(data, content);
     } catch {
         content.innerHTML = '<div class="lb-empty">Не удалось загрузить рекорды</div>';

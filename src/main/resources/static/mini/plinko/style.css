@@ -219,44 +219,59 @@ html, body {
     align-items: center;
     justify-content: center;
     transition: background .1s;
+    font-family: inherit;
 }
 
 .adj-btn:active { background: rgba(0,122,255,.1); }
 
-#bet-display {
+#bet-input {
     flex: 1;
+    min-width: 0;
     text-align: center;
-    font-size: 17px;
+    font-size: 20px;
     font-weight: 700;
+    font-family: inherit;
     color: var(--text);
+    background: none;
+    border: none;
+    outline: none;
+    padding: 10px 4px;
+    /* hide number spinners */
+    -moz-appearance: textfield;
+}
+#bet-input::-webkit-outer-spin-button,
+#bet-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.bet-unit {
+    font-size: 17px;
+    padding-right: 10px;
+    flex-shrink: 0;
+    color: var(--text2);
 }
 
-/* ── Quick bet chips ─────────────────────────────────────────────────────── */
+/* ── Multiplier chips ────────────────────────────────────────────────────── */
 
-#quick-bets {
+#mult-btns {
     display: flex;
     gap: 6px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding: 2px 0;
 }
 
-#quick-bets::-webkit-scrollbar { display: none; }
-
-.qbet-btn {
-    padding: 6px 14px;
+.mult-btn {
+    flex: 1;
+    padding: 7px 0;
     background: var(--surface);
     border: 0.5px solid var(--border);
-    border-radius: 20px;
+    border-radius: 8px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
+    font-family: inherit;
     color: var(--text2);
     cursor: pointer;
-    flex-shrink: 0;
     transition: background .15s, color .15s, border-color .15s;
+    text-align: center;
 }
 
-.qbet-btn.active {
+.mult-btn:active {
     background: var(--accent);
     color: #fff;
     border-color: var(--accent);
@@ -339,50 +354,23 @@ select {
     flex-shrink: 0;
 }
 
-/* ── Footer (limit bar + leaderboard) ──────────────────────────────────── */
+/* ── Leaderboard footer link ─────────────────────────────────────────────── */
 
-.footer-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding-top: 4px;
-    padding-bottom: 4px;
-}
-
-#limit-area { flex: 1; }
-
-#limit-label {
-    display: block;
-    font-size: 11px;
-    color: var(--text2);
-    margin-bottom: 4px;
-}
-
-#limit-bar {
-    height: 3px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-}
-
-#limit-bar-fill {
-    height: 100%;
-    background: var(--red);
-    border-radius: 2px;
-    width: 0%;
-    transition: width .3s;
+.lb-footer {
+    text-align: center;
+    padding-top: 2px;
+    padding-bottom: 8px;
 }
 
 .link-btn {
     background: none;
     border: none;
     color: var(--accent);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
-    white-space: nowrap;
-    padding: 0;
+    padding: 4px 0;
 }
 
 /* ── Leaderboard overlay (bottom sheet) ─────────────────────────────────── */

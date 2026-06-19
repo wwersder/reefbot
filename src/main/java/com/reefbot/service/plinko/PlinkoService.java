@@ -132,13 +132,6 @@ public class PlinkoService {
                     "Недостаточно ракушек. Нужно " + req.bet() + " 🐚.");
         }
 
-        // ── Daily limit ──────────────────────────────────────────────────────
-        int dailyLost = currentDailyLost(player);
-        if (dailyLost >= DAILY_LOSS_LIMIT) {
-            return PlinkoPlayResponse.error("DAILY_LIMIT_REACHED",
-                    "Дневной лимит потерь достигнут. Возвращайся завтра! 🌅");
-        }
-
         // ── Cooldown ─────────────────────────────────────────────────────────
         if (player.getPlinkoLastPlay() != null) {
             long elapsed = System.currentTimeMillis()

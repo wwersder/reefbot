@@ -32,7 +32,7 @@
         <span id="balance-display">🐚 <span id="balance-num">0</span></span>
     </div>
 
-    <!-- Plinko board (dark game screen) -->
+    <!-- Plinko board -->
     <div id="canvas-wrap">
         <canvas id="plinko-canvas"></canvas>
     </div>
@@ -50,17 +50,16 @@
             <div class="section-label">Ставка <span class="hint">(баланс: <span id="balance-hint">0</span> 🐚)</span></div>
             <div id="bet-row">
                 <button class="adj-btn" id="bet-minus">−</button>
-                <span id="bet-display">25 🐚</span>
+                <input type="number" id="bet-input" value="25" min="5" max="500" inputmode="numeric">
+                <span class="bet-unit">🐚</span>
                 <button class="adj-btn" id="bet-plus">+</button>
             </div>
-            <div id="quick-bets">
-                <button class="qbet-btn" data-bet="5">5</button>
-                <button class="qbet-btn" data-bet="10">10</button>
-                <button class="qbet-btn active" data-bet="25">25</button>
-                <button class="qbet-btn" data-bet="50">50</button>
-                <button class="qbet-btn" data-bet="100">100</button>
-                <button class="qbet-btn" data-bet="250">250</button>
-                <button class="qbet-btn" data-bet="500">500</button>
+            <div id="mult-btns">
+                <button class="mult-btn" data-mult="0.5">½</button>
+                <button class="mult-btn" data-mult="2">×2</button>
+                <button class="mult-btn" data-mult="5">×5</button>
+                <button class="mult-btn" data-mult="10">×10</button>
+                <button class="mult-btn" data-mult="max">MAX</button>
             </div>
         </div>
 
@@ -96,12 +95,8 @@
             </label>
         </div>
 
-        <!-- Footer -->
-        <div class="section footer-row">
-            <div id="limit-area">
-                <span id="limit-label">Потери: 0 / 2000 🐚</span>
-                <div id="limit-bar"><div id="limit-bar-fill"></div></div>
-            </div>
+        <!-- Leaderboard link -->
+        <div class="section lb-footer">
             <button id="lb-btn" class="link-btn">🏆 Рекорды</button>
         </div>
 
