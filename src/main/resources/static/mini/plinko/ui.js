@@ -1,27 +1,34 @@
 /**
- * Reef Plinko — UI controller
- * Wires DOM controls to the API and PlinkoBoard animation.
+ * Reef Plinko — UI controller v2 (light theme)
  */
 
 import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js';
 import { PlinkoBoard } from './plinko.js';
 
-const BET_STEPS = [5, 10, 25, 50, 100, 250, 500];
+const BET_STEPS   = [5, 10, 25, 50, 100, 250, 500];
 const DAILY_LIMIT = 2000;
-const AUTO_MAX = 100;
+const AUTO_MAX    = 100;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
 let balance    = 0;
 let dailyLost  = 0;
-let betIdx     = 2;   // default: 25
+let betIdx     = 2;      // default: 25 🐚
 let rows       = 8;
 let risk       = 'MEDIUM';
 let animating  = false;
 let autoRunning = false;
 let autoCount  = 0;
-let speedFast  = false;
-let board;
+let board      = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const $  = id  => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+
+function escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -32,7 +39,6 @@ export async function init() {
         tg.expand();
         setInitData(tg.initData);
     } else {
-        // Dev fallback — leave initData empty; server will 401 but page renders
         setInitData('');
     }
 
@@ -42,7 +48,7 @@ export async function init() {
         const state = await fetchState();
 
         if (state.onboardingRequired) {
-            document.querySelector('#screen-onboarding p').textContent = state.message;
+            $('ob-text').textContent = state.message || 'Сначала заверши регистрацию в боте.';
             showScreen('onboarding');
             return;
         }
@@ -50,309 +56,264 @@ export async function init() {
         balance   = state.balance;
         dailyLost = state.dailyLost;
 
-        updateRowsSelect(state.rows12Unlocked);
-        initBoard();
+        if (!state.rows12Unlocked) {
+            $('rows-select').querySelector('option[value="12"]')?.remove();
+        }
+
         bindEvents();
         updateUI();
         showScreen('app');
 
+        // Canvas has 0 size while #app is display:none — init after reveal
+        requestAnimationFrame(() => {
+            board = new PlinkoBoard($('plinko-canvas'), onAnimDone);
+            window.addEventListener('resize', () => board?.resize());
+        });
+
     } catch (e) {
         console.error('Init failed', e);
-        document.querySelector('#screen-onboarding .emoji').textContent = '⚠️';
-        document.querySelector('#screen-onboarding h2').textContent = 'Ошибка загрузки';
-        document.querySelector('#screen-onboarding p').textContent =
-            'Не удалось подключиться к серверу. Попробуй перезапустить.';
+        const el = document.querySelector('.ob-emoji');
+        if (el) el.textContent = '⚠️';
+        $('ob-title') && ($('ob-title').textContent = 'Ошибка загрузки');
+        $('ob-text')  && ($('ob-text').textContent  = 'Не удалось подключиться к серверу.');
         showScreen('onboarding');
     }
-}
-
-// ── Board ─────────────────────────────────────────────────────────────────────
-
-function initBoard() {
-    const canvas = document.getElementById('plinko-canvas');
-    board = new PlinkoBoard(canvas, onAnimationDone);
-
-    window.addEventListener('resize', () => {
-        if (board) board.resize();
-    });
 }
 
 // ── Events ────────────────────────────────────────────────────────────────────
 
 function bindEvents() {
-    // Tab switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-    });
-
-    // Risk
-    document.getElementById('risk-select').addEventListener('change', e => {
+    $('risk-select').addEventListener('change', e => {
         risk = e.target.value;
-        if (board) board.setRisk(risk);
+        board?.setRisk(risk);
     });
 
-    // Rows
-    document.getElementById('rows-select').addEventListener('change', e => {
+    $('rows-select').addEventListener('change', e => {
         rows = parseInt(e.target.value);
-        if (board) board.setRows(rows);
+        board?.setRows(rows);
     });
 
-    // Bet adjust
-    document.getElementById('bet-minus').addEventListener('click', () => adjustBet(-1));
-    document.getElementById('bet-plus').addEventListener('click',  () => adjustBet(+1));
+    $('bet-minus').addEventListener('click', () => adjustBet(-1));
+    $('bet-plus').addEventListener('click',  () => adjustBet(+1));
 
-    // Quick bet buttons
-    document.querySelectorAll('.qbet-btn').forEach((btn, i) => {
-        btn.addEventListener('click', () => selectBetIdx(i));
+    $$('.qbet-btn').forEach((btn, i) =>
+        btn.addEventListener('click', () => selectBetIdx(i)));
+
+    $('throw-btn').addEventListener('click', handleThrow);
+
+    $('auto-check').addEventListener('change', e => {
+        if (e.target.checked) startAuto();
+        else stopAuto();
     });
 
-    // Throw
-    document.getElementById('throw-btn').addEventListener('click', doThrow);
-
-    // Auto
-    document.getElementById('auto-btn').addEventListener('click', toggleAuto);
-
-    // Speed toggle (double-click canvas)
-    document.getElementById('plinko-canvas').addEventListener('dblclick', () => {
-        speedFast = !speedFast;
-        if (board) board.setFast(speedFast);
-        document.getElementById('auto-count').textContent =
-            speedFast ? '⚡' : (autoRunning ? autoCount + '/' + AUTO_MAX : '');
+    $('turbo-check').addEventListener('change', e => {
+        board?.setFast(e.target.checked);
     });
+
+    $('lb-btn').addEventListener('click', openLeaderboard);
+    $('lb-close').addEventListener('click', closeLeaderboard);
+    $('lb-backdrop').addEventListener('click', closeLeaderboard);
 }
 
 // ── Throw ─────────────────────────────────────────────────────────────────────
 
-async function doThrow() {
+function handleThrow() {
+    if (autoRunning) { stopAuto(); return; }
     if (animating) return;
+    doThrow();
+}
+
+async function doThrow() {
+    if (!board || animating) return;
     const bet = BET_STEPS[betIdx];
 
     setAnimating(true);
-    hideFlash();
+    setResult('', 'neutral');
 
     try {
-        const result = await postPlay(bet, rows, risk);
+        const res = await postPlay(bet, rows, risk);
 
-        if (result.error) {
-            showFlash(result.message || result.error, 'loss');
+        if (res.error) {
+            setResult(res.message || res.error, 'loss');
             setAnimating(false);
-            if (autoRunning) stopAuto();
+            stopAuto();
             return;
         }
 
-        // Update state immediately
-        balance   = result.newBalance;
-        dailyLost = Math.min(DAILY_LIMIT, dailyLost + Math.max(0, -(result.profit)));
-        updateBalanceDisplay();
+        balance   = res.newBalance;
+        dailyLost = Math.min(DAILY_LIMIT, dailyLost + Math.max(0, -(res.profit)));
+        updateBalance();
         updateLimitBar();
 
-        // Animate ball
-        board.dropBall(result.path, result.slot, result.multiplier, result.profit);
+        board.dropBall(res.path, res.slot, res.multiplier, res.profit);
 
     } catch (e) {
         console.error('Play error', e);
-        showFlash('Ошибка сети', 'loss');
+        setResult('Ошибка сети 🌊', 'loss');
         setAnimating(false);
-        if (autoRunning) stopAuto();
+        stopAuto();
     }
 }
 
-function onAnimationDone(multiplier, profit) {
+function onAnimDone(multiplier, profit) {
     setAnimating(false);
 
-    const isJackpot = multiplier >= 15;
-    const isWin     = profit > 0;
-
-    if (isJackpot) {
-        showFlash(`🎰 ДЖЕКПОТ ×${multiplier.toFixed(0)}!`, 'jackpot');
-    } else if (isWin) {
-        showFlash(`+${profit} 🐚`, 'win');
+    if (multiplier >= 15) {
+        setResult(`🎰 ДЖЕКПОТ ×${multiplier.toFixed(0)}!`, 'jackpot');
+    } else if (profit > 0) {
+        setResult(`+${profit} 🐚  (×${multiplier.toFixed(1)})`, 'win');
+    } else if (profit === 0) {
+        setResult(`Ничья ×${multiplier.toFixed(1)}`, 'neutral');
     } else {
-        showFlash(`${profit} 🐚`, 'loss');
+        setResult(`НЕ ПОВЕЗЛО  ×${multiplier.toFixed(1)}`, 'loss');
     }
 
-    // Auto spin
     if (autoRunning) {
         autoCount--;
-        updateAutoCount();
+        updateThrowBtn();
         if (autoCount <= 0 || dailyLost >= DAILY_LIMIT) {
             stopAuto();
             return;
         }
-        setTimeout(doThrow, 1200);
+        setTimeout(doThrow, 1100);
     }
 }
 
-// ── Auto ─────────────────────────────────────────────────────────────────────
-
-function toggleAuto() {
-    if (autoRunning) {
-        stopAuto();
-    } else {
-        startAuto();
-    }
-}
+// ── Auto ──────────────────────────────────────────────────────────────────────
 
 function startAuto() {
     autoRunning = true;
     autoCount   = AUTO_MAX;
-    updateAutoCount();
-    document.getElementById('auto-btn').classList.add('running');
-    document.getElementById('auto-btn').textContent = '⏹';
+    updateThrowBtn();
     if (!animating) doThrow();
 }
 
 function stopAuto() {
     autoRunning = false;
     autoCount   = 0;
-    document.getElementById('auto-btn').classList.remove('running');
-    document.getElementById('auto-btn').textContent = '▶▶';
-    document.getElementById('auto-count').textContent = '';
+    $('auto-check').checked = false;
+    updateThrowBtn();
 }
 
-function updateAutoCount() {
-    document.getElementById('auto-count').textContent =
-        autoRunning ? `${autoCount}/${AUTO_MAX}` : '';
+// ── UI state ──────────────────────────────────────────────────────────────────
+
+function updateUI() {
+    selectBetIdx(betIdx);
+    updateBalance();
+    updateLimitBar();
+    setResult('Выбери ставку и бросай', 'neutral');
 }
 
-// ── UI helpers ────────────────────────────────────────────────────────────────
-
-function adjustBet(delta) {
-    selectBetIdx(Math.max(0, Math.min(BET_STEPS.length - 1, betIdx + delta)));
+function adjustBet(d) {
+    selectBetIdx(Math.max(0, Math.min(BET_STEPS.length - 1, betIdx + d)));
 }
 
 function selectBetIdx(i) {
     betIdx = i;
-    document.querySelectorAll('.qbet-btn').forEach((btn, j) => {
-        btn.classList.toggle('active', j === betIdx);
-    });
-    document.getElementById('bet-display').textContent = BET_STEPS[betIdx] + ' 🐚';
+    $$('.qbet-btn').forEach((btn, j) => btn.classList.toggle('active', j === i));
+    $('bet-display').textContent = BET_STEPS[i] + ' 🐚';
 }
 
-function updateUI() {
-    selectBetIdx(betIdx);
-    updateBalanceDisplay();
-    updateLimitBar();
-}
-
-function updateBalanceDisplay() {
-    document.getElementById('balance-num').textContent = balance;
+function updateBalance() {
+    $('balance-num').textContent  = balance;
+    $('balance-hint').textContent = balance;
 }
 
 function updateLimitBar() {
-    const pct = Math.min(100, (dailyLost / DAILY_LIMIT) * 100);
-    document.getElementById('limit-bar-fill').style.width = pct + '%';
-    document.getElementById('limit-label').textContent =
-        `Потери: ${dailyLost}/${DAILY_LIMIT} 🐚`;
+    const pct = Math.min(100, dailyLost / DAILY_LIMIT * 100);
+    $('limit-bar-fill').style.width = pct + '%';
+    $('limit-label').textContent = `Потери: ${dailyLost} / ${DAILY_LIMIT} 🐚`;
 }
 
 function setAnimating(val) {
     animating = val;
-    document.getElementById('throw-btn').disabled = val;
+    updateThrowBtn();
 }
 
-function showFlash(text, type) {
-    const el = document.getElementById('result-flash');
-    el.textContent = text;
-    el.className   = 'show ' + type;
-    clearTimeout(el._timeout);
-    el._timeout = setTimeout(() => {
-        el.className = type;  // keep type but remove 'show' -> fade via CSS
-        setTimeout(() => { el.className = ''; }, 300);
-    }, 1800);
-}
-
-function hideFlash() {
-    const el = document.getElementById('result-flash');
-    el.className = '';
-    el.textContent = '';
-}
-
-function updateRowsSelect(rows12Unlocked) {
-    const sel = document.getElementById('rows-select');
-    if (!rows12Unlocked) {
-        // Disable 12-row option
-        sel.querySelector('option[value="12"]')?.remove();
+function updateThrowBtn() {
+    const btn = $('throw-btn');
+    if (autoRunning) {
+        btn.disabled = false;
+        btn.textContent = `■ СТОП (${autoCount}x)`;
+        btn.className = 'auto-running';
+    } else if (animating) {
+        btn.disabled = true;
+        btn.textContent = 'БРОСОК...';
+        btn.className = '';
+    } else {
+        btn.disabled = false;
+        btn.textContent = 'БРОСИТЬ';
+        btn.className = '';
     }
+}
+
+function setResult(text, type) {
+    const el = $('result-text');
+    el.textContent = text;
+    el.className = type;
 }
 
 function showScreen(name) {
-    document.getElementById('screen-loading').style.display    = name === 'loading'    ? 'flex' : 'none';
-    document.getElementById('screen-onboarding').style.display = name === 'onboarding' ? 'flex' : 'none';
-    document.getElementById('app').style.display               = name === 'app'        ? 'flex' : 'none';
+    $('screen-loading').style.display    = name === 'loading'    ? 'flex' : 'none';
+    $('screen-onboarding').style.display = name === 'onboarding' ? 'flex' : 'none';
+    $('app').style.display               = name === 'app'        ? 'flex' : 'none';
 }
 
-function switchTab(tab) {
-    document.querySelectorAll('.tab-btn').forEach(b =>
-        b.classList.toggle('active', b.dataset.tab === tab));
-    document.querySelectorAll('.tab-panel').forEach(p =>
-        p.classList.toggle('active', p.id === 'panel-' + tab));
-
-    if (tab === 'top') loadLeaderboard();
-}
-
-// ── Leaderboard ───────────────────────────────────────────────────────────────
+// ── Leaderboard bottom sheet ──────────────────────────────────────────────────
 
 let lbLoaded = false;
 
-async function loadLeaderboard() {
-    if (lbLoaded) return;
-    const container = document.getElementById('panel-top');
-    container.innerHTML = '<div class="lb-loading">⏳ Загрузка...</div>';
+function openLeaderboard() {
+    $('lb-overlay').classList.add('open');
+    if (!lbLoaded) loadLeaderboard();
+}
 
+function closeLeaderboard() {
+    $('lb-overlay').classList.remove('open');
+}
+
+async function loadLeaderboard() {
+    const content = $('lb-content');
+    content.innerHTML = '<div class="lb-placeholder">⏳ Загрузка...</div>';
     try {
         const data = await fetchLeaderboard();
         lbLoaded = true;
-        renderLeaderboard(data);
+        renderLeaderboard(data, content);
     } catch {
-        document.getElementById('panel-top').innerHTML =
-            '<div class="lb-empty">Не удалось загрузить рекорды</div>';
+        content.innerHTML = '<div class="lb-empty">Не удалось загрузить рекорды</div>';
     }
 }
 
-const RANK_CLASS = ['gold', 'silver', 'bronze'];
+const MEDALS = ['🥇', '🥈', '🥉'];
 
-function renderLeaderboard(data) {
-    const container = document.getElementById('panel-top');
-
+function renderLeaderboard(data, container) {
     if (!data.topWin?.length) {
         container.innerHTML = '<div class="lb-empty">🪷 Пока нет записей. Сыграй первым!</div>';
         return;
     }
 
-    container.innerHTML = `
-        <div class="lb-section">
-            <div class="lb-title">💰 Лучший выигрыш</div>
-            ${data.topWin.slice(0, 10).map((e, i) => lbRow(e, i, 'win')).join('')}
-        </div>
-        <div class="lb-section">
-            <div class="lb-title">🎯 Лучший множитель</div>
-            ${data.topMultiplier.slice(0, 10).map((e, i) => lbRow(e, i, 'mult')).join('')}
+    const section = (title, entries, type) => {
+        const rows = entries.slice(0, 10).map((e, i) => {
+            const val = type === 'win'
+                ? `<span class="lb-val">+${e.profit} 🐚</span>`
+                : `<span class="lb-val">×${(+e.multiplier).toFixed(0)}</span>`;
+            const sub = type === 'win'
+                ? `×${(+e.multiplier).toFixed(0)}`
+                : `+${e.profit} 🐚`;
+            return `<div class="lb-row">
+                <span class="lb-rank">${MEDALS[i] || (i + 1)}</span>
+                <span class="lb-name">${escHtml(e.username || '?')}</span>
+                ${val}
+                <span class="lb-sub">${escHtml(sub)}</span>
+            </div>`;
+        }).join('');
+        return `<div class="lb-section">
+            <div class="lb-section-title">${title}</div>
+            ${rows}
         </div>`;
-}
+    };
 
-function lbRow(entry, idx, type) {
-    const rankClass = RANK_CLASS[idx] || '';
-    const name = escHtml(entry.username || '?');
-    const val  = type === 'win'
-        ? `<span class="lb-val">+${entry.profit} 🐚</span>`
-        : `<span class="lb-val">×${entry.multiplier.toFixed(0)}</span>`;
-    const sub = type === 'win'
-        ? `×${entry.multiplier.toFixed(0)}`
-        : `+${entry.profit} 🐚`;
-
-    return `
-        <div class="lb-row">
-            <span class="lb-rank ${rankClass}">${idx + 1}</span>
-            <span class="lb-name">${name}</span>
-            ${val}
-            <span class="lb-sub">${escHtml(sub)}</span>
-        </div>`;
-}
-
-function escHtml(s) {
-    return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+    container.innerHTML =
+        section('💰 Лучший выигрыш', data.topWin, 'win') +
+        section('🎯 Лучший множитель', data.topMultiplier, 'mult');
 }

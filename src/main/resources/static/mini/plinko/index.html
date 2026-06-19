@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Reef Plinko</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
@@ -18,89 +18,111 @@
 
 <!-- Onboarding / error -->
 <div id="screen-onboarding">
-    <div class="emoji">🏝️</div>
-    <h2>Сначала зарегистрируйся!</h2>
-    <p>Сначала заверши регистрацию в боте — напиши /start</p>
+    <div class="ob-emoji">🏝️</div>
+    <h2 id="ob-title">Сначала зарегистрируйся!</h2>
+    <p id="ob-text">Сначала заверши регистрацию в боте — напиши /start</p>
 </div>
 
 <!-- Main app -->
-<div id="app" style="display:none">
+<div id="app">
 
-    <!-- Top bar -->
+    <!-- Header -->
     <div id="topbar">
-        <span class="title">🪷 Reef Plinko</span>
-        <span id="balance-display">🐚 <span class="num" id="balance-num">0</span></span>
+        <span id="game-title">🪷 Reef Plinko</span>
+        <span id="balance-display">🐚 <span id="balance-num">0</span></span>
     </div>
 
-    <!-- Tab bar -->
-    <div id="tabbar">
-        <button class="tab-btn active" data-tab="game">🎰 Игра</button>
-        <button class="tab-btn"       data-tab="top">🏆 Рекорды</button>
+    <!-- Plinko board (dark game screen) -->
+    <div id="canvas-wrap">
+        <canvas id="plinko-canvas"></canvas>
     </div>
 
-    <!-- Game panel -->
-    <div id="panel-game" class="tab-panel active">
+    <!-- Result line -->
+    <div id="result-bar">
+        <span id="result-text" class="neutral">Выбери ставку и бросай</span>
+    </div>
 
-        <!-- Risk + rows + bet controls -->
-        <div id="controls">
+    <!-- Controls -->
+    <div id="controls">
+
+        <!-- Bet -->
+        <div class="section">
+            <div class="section-label">Ставка <span class="hint">(баланс: <span id="balance-hint">0</span> 🐚)</span></div>
+            <div id="bet-row">
+                <button class="adj-btn" id="bet-minus">−</button>
+                <span id="bet-display">25 🐚</span>
+                <button class="adj-btn" id="bet-plus">+</button>
+            </div>
+            <div id="quick-bets">
+                <button class="qbet-btn" data-bet="5">5</button>
+                <button class="qbet-btn" data-bet="10">10</button>
+                <button class="qbet-btn active" data-bet="25">25</button>
+                <button class="qbet-btn" data-bet="50">50</button>
+                <button class="qbet-btn" data-bet="100">100</button>
+                <button class="qbet-btn" data-bet="250">250</button>
+                <button class="qbet-btn" data-bet="500">500</button>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Risk + rows -->
+        <div class="section selects-row">
             <select id="risk-select">
-                <option value="LOW">Низкий</option>
-                <option value="MEDIUM" selected>Средний</option>
-                <option value="HIGH">Высокий</option>
+                <option value="LOW">🟢 Низкий риск</option>
+                <option value="MEDIUM" selected>🟡 Средний</option>
+                <option value="HIGH">🔴 Высокий</option>
             </select>
-
             <select id="rows-select">
                 <option value="8" selected>8 рядов</option>
                 <option value="12">12 рядов 🔓</option>
             </select>
+        </div>
 
-            <div id="bet-wrap">
-                <button class="bet-adj" id="bet-minus">−</button>
-                <div id="bet-display">25 🐚</div>
-                <button class="bet-adj" id="bet-plus">+</button>
+        <!-- Throw button -->
+        <div class="section">
+            <button id="throw-btn">БРОСИТЬ</button>
+        </div>
+
+        <!-- Checkboxes -->
+        <div class="section checks-row">
+            <label class="check-lbl">
+                <input type="checkbox" id="auto-check">
+                <span>Авто-спин (100x)</span>
+            </label>
+            <label class="check-lbl">
+                <input type="checkbox" id="turbo-check">
+                <span>Турбо ⚡</span>
+            </label>
+        </div>
+
+        <!-- Footer -->
+        <div class="section footer-row">
+            <div id="limit-area">
+                <span id="limit-label">Потери: 0 / 2000 🐚</span>
+                <div id="limit-bar"><div id="limit-bar-fill"></div></div>
             </div>
+            <button id="lb-btn" class="link-btn">🏆 Рекорды</button>
         </div>
 
-        <!-- Quick bet -->
-        <div id="quick-bets">
-            <button class="qbet-btn" data-bet="5">5</button>
-            <button class="qbet-btn" data-bet="10">10</button>
-            <button class="qbet-btn active" data-bet="25">25</button>
-            <button class="qbet-btn" data-bet="50">50</button>
-            <button class="qbet-btn" data-bet="100">100</button>
-            <button class="qbet-btn" data-bet="250">250</button>
-            <button class="qbet-btn" data-bet="500">500</button>
-        </div>
-
-        <!-- Daily limit bar -->
-        <div id="limit-bar-wrap">
-            <span id="limit-label">Потери: 0/2000 🐚</span>
-            <div id="limit-bar"><div id="limit-bar-fill" style="width:0%"></div></div>
-        </div>
-
-        <!-- Canvas -->
-        <div id="canvas-wrap">
-            <canvas id="plinko-canvas"></canvas>
-            <div id="result-flash"></div>
-        </div>
-
-        <!-- Throw + auto -->
-        <div id="bottom-bar">
-            <button id="throw-btn">🪷 Бросить</button>
-            <div id="auto-wrap">
-                <button id="auto-btn" title="Авто-бросок (макс. 100)">▶▶</button>
-                <span id="auto-count"></span>
-            </div>
-        </div>
-
-    </div><!-- /panel-game -->
-
-    <!-- Leaderboard panel -->
-    <div id="panel-top" class="tab-panel">
-        <div class="lb-loading">⏳ Загрузка...</div>
-    </div>
+    </div><!-- /controls -->
 
 </div><!-- /app -->
+
+<!-- Leaderboard bottom sheet -->
+<div id="lb-overlay">
+    <div id="lb-backdrop"></div>
+    <div id="lb-sheet">
+        <div id="lb-handle"></div>
+        <div id="lb-header">
+            <span>🏆 Рекорды</span>
+            <button id="lb-close">✕</button>
+        </div>
+        <div id="lb-content">
+            <div class="lb-placeholder">⏳ Загрузка...</div>
+        </div>
+    </div>
+</div>
 
 <script type="module">
     import { init } from './ui.js';
