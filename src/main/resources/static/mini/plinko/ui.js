@@ -174,9 +174,10 @@ async function doManualThrow() {
     try {
         const res = await postPlay(bet, rows, risk);
         if (res.error) { setResult(res.message || res.error, 'loss'); return; }
-        balance = res.newBalance;
-        updateBalance();
+        const newBalance = res.newBalance;
         board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
+            balance = newBalance;
+            updateBalance();
             showResult(mult, profit);
         });
     } catch (e) {
@@ -195,9 +196,10 @@ async function doAutoThrow() {
             stopAuto();
             return;
         }
-        balance = res.newBalance;
-        updateBalance();
+        const newBalance = res.newBalance;
         board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
+            balance = newBalance;
+            updateBalance();
             showResult(mult, profit);
             autoInFlight = false;
 
