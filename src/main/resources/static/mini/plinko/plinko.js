@@ -13,20 +13,33 @@
 const STEP_MS_NORMAL = 210;
 const STEP_MS_FAST   = 62;
 const BALL_R         = 7;
-const PEG_R          = 5;
+const PEG_R          = 4;
 const SLOT_H         = 44;
 const TRAIL_MAX      = 14;
 const LANDING_TTL    = 2400;
 
 const easeIn = t => t * t;
 
-/** Returns a rich gradient palette for a given multiplier. */
+/** Decode a 6-char hex colour → [r, g, b] */
+function hexRgb(hex) {
+    return [
+        parseInt(hex.slice(1, 3), 16),
+        parseInt(hex.slice(3, 5), 16),
+        parseInt(hex.slice(5, 7), 16),
+    ];
+}
+
+/**
+ * Professional dark-theme palette.
+ * Each slot: near-black body, 3 px coloured accent on top, white-ish label.
+ * No pastel fills — only the accent line and glow carry the colour.
+ */
 function slotPalette(mult) {
-    if (mult >= 15) return { top: '#fde68a', bot: '#92400e', glow: '#f59e0b' };
-    if (mult >= 5)  return { top: '#6ee7b7', bot: '#065f46', glow: '#10b981' };
-    if (mult >= 2)  return { top: '#93c5fd', bot: '#1e3a8a', glow: '#3b82f6' };
-    if (mult >= 0.8)return { top: '#cbd5e1', bot: '#1e293b', glow: '#64748b' };
-    return               { top: '#fca5a5', bot: '#7f1d1d', glow: '#ef4444' };
+    if (mult >= 15) return { bg: '#100800', border: '#d97706', text: '#fef08a', glow: '#f59e0b' };
+    if (mult >= 5)  return { bg: '#030e06', border: '#15803d', text: '#bbf7d0', glow: '#22c55e' };
+    if (mult >= 2)  return { bg: '#020812', border: '#1d4ed8', text: '#bfdbfe', glow: '#3b82f6' };
+    if (mult >= 0.8)return { bg: '#0c0e13', border: '#334155', text: '#64748b', glow: '#475569' };
+    return               { bg: '#100303', border: '#991b1b', text: '#fca5a5', glow: '#ef4444' };
 }
 
 const MULT = {
@@ -115,7 +128,10 @@ export class PlinkoBoard {
 
     // ── Offscreen sprite builders ─────────────────────────────────────────────
 
-    /** Static dot-grid background + vignette — rebuilt on resize. */
+    /**
+     * Static background: a single overhead spotlight fading to pitch black at edges.
+     * No patterns, no dots — clean and professional.
+     */
     _buildBgSprite() {
         const { canvas } = this;
         const c   = document.createElement('canvas');
@@ -123,26 +139,15 @@ export class PlinkoBoard {
         c.height  = canvas.height;
         const ctx = c.getContext('2d');
 
-        // Subtle dot grid
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.025)';
-        const sp = 22;
-        for (let x = sp / 2; x < c.width; x += sp) {
-            for (let y = sp / 2; y < c.height; y += sp) {
-                ctx.beginPath();
-                ctx.arc(x, y, 0.65, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-
-        // Radial vignette toward edges
-        const vig = ctx.createRadialGradient(
-            c.width / 2, c.height * 0.42, c.height * 0.18,
-            c.width / 2, c.height * 0.42, Math.max(c.width, c.height) * 0.82
+        // Overhead spotlight — cool blue-white source from top-centre
+        const spot = ctx.createRadialGradient(
+            c.width / 2, -c.height * 0.05, 0,
+            c.width / 2,  c.height * 0.10, c.height * 0.95
         );
-        vig.addColorStop(0, 'rgba(0,0,0,0)');
-        vig.addColorStop(0.65, 'rgba(0,0,0,0)');
-        vig.addColorStop(1,   'rgba(0,0,0,0.40)');
-        ctx.fillStyle = vig;
+        spot.addColorStop(0,    'rgba(18, 38, 90, 0.38)');
+        spot.addColorStop(0.45, 'rgba( 8, 18, 45, 0.18)');
+        spot.addColorStop(1,    'rgba( 0,  0,  0, 0.00)');
+        ctx.fillStyle = spot;
         ctx.fillRect(0, 0, c.width, c.height);
 
         this._bgSprite = c;
@@ -505,20 +510,22 @@ export class PlinkoBoard {
         const slotW = this.colSpacing - 4;
         const slotH = SLOT_H - 4;
         const slotY = canvas.height - SLOT_H + 1;
+        const BORDER = 3;   // px — coloured accent line height
 
-        // Collect live landings
         const landingMap = new Map();
         for (const b of this._balls) {
             if (b.landing) landingMap.set(b.landing.idx, b.landing);
         }
 
-        // Shared slot-tray background
-        const trayX = this._slotX(0) - slotW / 2 - 5;
-        const trayW = this._slotX(slots - 1) + slotW / 2 + 5 - trayX;
+        // Thin separator above slots zone
+        const sepX0 = this._slotX(0) - slotW / 2 - 2;
+        const sepX1 = this._slotX(slots - 1) + slotW / 2 + 2;
         ctx.beginPath();
-        this._rrect(ctx, trayX, slotY - 4, trayW, slotH + 7, 11);
-        ctx.fillStyle = 'rgba(0,0,0,0.28)';
-        ctx.fill();
+        ctx.moveTo(sepX0, slotY - 3);
+        ctx.lineTo(sepX1, slotY - 3);
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth   = 1;
+        ctx.stroke();
 
         for (let i = 0; i < slots; i++) {
             const cx  = this._slotX(i);
@@ -526,51 +533,50 @@ export class PlinkoBoard {
             const m   = mults[i];
             const pal = slotPalette(m);
             const lnd = landingMap.get(i);
+            const [gr, gg, gb] = hexRgb(pal.glow);
 
-            // Landing glow halo
+            // ── Landing outer glow ─────────────────────────────────────────
             if (lnd) {
-                const pulse = 0.5 + 0.5 * Math.sin(lnd.age / 95);
-                // Parse hex glow → rgba
-                const gr = parseInt(pal.glow.slice(1, 3), 16);
-                const gg = parseInt(pal.glow.slice(3, 5), 16);
-                const gb = parseInt(pal.glow.slice(5, 7), 16);
+                const pulse = 0.5 + 0.5 * Math.sin(lnd.age / 90);
+                const halo  = ctx.createRadialGradient(
+                    cx, slotY + slotH * 0.5, 0,
+                    cx, slotY + slotH * 0.5, slotW * 1.2
+                );
+                halo.addColorStop(0, `rgba(${gr},${gg},${gb},${0.30 * pulse})`);
+                halo.addColorStop(1, `rgba(${gr},${gg},${gb},0)`);
                 ctx.beginPath();
-                this._rrect(ctx, x - 5, slotY - 5, slotW + 10, slotH + 9, 11);
-                ctx.fillStyle = `rgba(${gr},${gg},${gb},${0.18 + 0.14 * pulse})`;
+                ctx.arc(cx, slotY + slotH * 0.5, slotW * 1.2, 0, Math.PI * 2);
+                ctx.fillStyle = halo;
                 ctx.fill();
             }
 
-            // Slot body gradient
-            const pulseFactor = lnd ? (0.86 + 0.14 * Math.sin(lnd.age / 85)) : 1;
-            const bgrad = ctx.createLinearGradient(cx, slotY, cx, slotY + slotH);
-            bgrad.addColorStop(0,   pal.top);
-            bgrad.addColorStop(0.6, pal.bot);
-            bgrad.addColorStop(1,   pal.bot);
-
-            ctx.globalAlpha = pulseFactor;
+            // ── Slot body — near-black ─────────────────────────────────────
             ctx.beginPath();
-            this._rrect(ctx, x, slotY, slotW, slotH, 7);
-            ctx.fillStyle = bgrad;
+            this._rrect(ctx, x, slotY, slotW, slotH, 6);
+            ctx.fillStyle = pal.bg;
             ctx.fill();
 
-            // Inner top-edge highlight (depth/inset illusion)
+            // ── Coloured accent line across the top ────────────────────────
+            const accentAlpha = lnd
+                ? (0.70 + 0.30 * Math.sin(lnd.age / 75))
+                : 0.90;
             ctx.beginPath();
-            this._rrect(ctx, x + 1, slotY + 1, slotW - 2, 3, 3);
-            ctx.fillStyle = 'rgba(255,255,255,0.20)';
+            this._rrect(ctx, x, slotY, slotW, BORDER, 3);
+            ctx.fillStyle = lnd
+                ? `rgba(${gr},${gg},${gb},${accentAlpha})`
+                : pal.border;
             ctx.fill();
 
-            ctx.globalAlpha = 1;
-
-            // Multiplier label with subtle text shadow
+            // ── Multiplier label — white on dark ───────────────────────────
             const lbl = m >= 10 ? `${m.toFixed(0)}x` : `${m.toFixed(1)}x`;
             const fs  = slotW > 34 ? 10 : 8;
-            ctx.font         = `800 ${fs}px Inter, system-ui, sans-serif`;
+            ctx.font         = `700 ${fs}px Inter, system-ui, sans-serif`;
             ctx.textAlign    = 'center';
             ctx.textBaseline = 'middle';
-            const midY = slotY + slotH / 2;
-            ctx.fillStyle = 'rgba(0,0,0,0.45)';
-            ctx.fillText(lbl, cx + 0.5, midY + 0.5);
-            ctx.fillStyle = '#060f20';
+            const midY = slotY + BORDER + (slotH - BORDER) / 2;
+            ctx.fillStyle = lnd
+                ? `rgba(${gr},${gg},${gb},1)`
+                : pal.text;
             ctx.fillText(lbl, cx, midY);
         }
     }
