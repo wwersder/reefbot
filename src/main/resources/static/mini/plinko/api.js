@@ -32,6 +32,8 @@ export async function postPlay(bet, rows, risk) {
         body: JSON.stringify({ bet, rows, risk })
     });
     if (r.status === 401) throw new Error('AUTH_FAILED');
+    // BUG-24: 500 responses don't have a valid play JSON body — throw before parsing
+    if (r.status >= 500) throw new Error('SERVER_ERROR');
     const data = await r.json();
     return data;  // includes error field on 400
 }

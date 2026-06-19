@@ -22,7 +22,10 @@ public class PlinkoController {
 
     @GetMapping("/state")
     public ResponseEntity<PlinkoStateResponse> state(
-            @RequestHeader(INIT_DATA_HEADER) String initData) {
+            @RequestHeader(value = INIT_DATA_HEADER, required = false) String initData) {
+        if (initData == null || initData.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         try {
             PlinkoStateResponse response = plinkoService.getState(initData);
             return ResponseEntity.ok(response);
@@ -39,8 +42,11 @@ public class PlinkoController {
 
     @PostMapping("/play")
     public ResponseEntity<PlinkoPlayResponse> play(
-            @RequestHeader(INIT_DATA_HEADER) String initData,
+            @RequestHeader(value = INIT_DATA_HEADER, required = false) String initData,
             @RequestBody PlinkoPlayRequest request) {
+        if (initData == null || initData.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         try {
             PlinkoPlayResponse response = plinkoService.play(initData, request);
             if (response.error() != null) {

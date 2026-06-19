@@ -83,16 +83,19 @@ export class PlinkoBoard {
      */
     dropBall(path, slot, multiplier, profit, onDone) {
         const ball = {
-            segs:    this._buildSegs(path, slot),
-            segIdx:  0,
-            t:       0,
-            x:       0, y: 0,
+            segs:       this._buildSegs(path, slot),
+            segIdx:     0,
+            t:          0,
+            x:          0, y: 0,
             multiplier, profit,
-            done:    false,
-            trail:   [],
-            particles: [],
-            landing: null,
-            onDone:  onDone || this._defaultOnDone
+            done:       false,
+            trail:      [],
+            particles:  [],
+            landing:    null,
+            onDone:     onDone || this._defaultOnDone,
+            // BUG-22: capture board config at throw time, not at landing time
+            rows:       this.rows,
+            risk:       this.risk,
         };
         this._balls.push(ball);
 
@@ -227,12 +230,15 @@ export class PlinkoBoard {
                 this._flashes.set(`${seg.pegRow},${seg.pegCol}`, 1.0);
                 ball.segIdx++;
             } else {
-                const pal = slotPalette(MULT[this.rows][this.risk][seg.slotIdx]);
+                // BUG-22: use rows/risk captured at ball creation time
+                const pal = slotPalette(MULT[ball.rows][ball.risk][seg.slotIdx]);
                 ball.landing = { idx: seg.slotIdx, pal, age: 0 };
                 this._spawnParticles(ball.particles, pos.x, pos.y, pal);
                 ball.done    = true;
                 ball.segIdx++;
-                ball.onDone(ball.multiplier, ball.profit);
+                // BUG-09: wrap callback so a throwing error doesn't break the RAF loop
+                try { ball.onDone(ball.multiplier, ball.profit); }
+                catch (e) { console.error('plinko onDone error', e); }
             }
         }
     }

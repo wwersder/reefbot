@@ -26,7 +26,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -59,14 +58,21 @@ public class PlinkoService {
     };
 
     /**
-     * 12 rows → 13 slots (indices 0..12). Only MEDIUM defined.
+     * 12 rows → 13 slots (indices 0..12).
+     * Risk tiers match the frontend MULT[12] tables in plinko.js.
      */
+    private static final double[][] MULT_12_LOW    = {
+            {20.0, 7.0, 2.5, 1.5, 1.0, 0.7, 0.5, 0.7, 1.0, 1.5, 2.5, 7.0, 20.0}
+    };
     private static final double[][] MULT_12_MEDIUM = {
+            {20.0, 7.0, 2.5, 1.5, 1.0, 0.7, 0.5, 0.7, 1.0, 1.5, 2.5, 7.0, 20.0}
+    };
+    private static final double[][] MULT_12_HIGH   = {
             {20.0, 7.0, 2.5, 1.5, 1.0, 0.7, 0.5, 0.7, 1.0, 1.5, 2.5, 7.0, 20.0}
     };
 
     private final SecureRandom secureRandom = new SecureRandom();
-    private final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     // ── Dependencies ──────────────────────────────────────────────────────────
 
@@ -126,7 +132,9 @@ public class PlinkoService {
                     "Ставка должна быть от " + MIN_BET + " до " + MAX_BET + " 🐚.");
         }
 
-        Island island = player.getIsland();
+        // Lock the island row before any check/write to prevent concurrent-request races.
+        Island island = islandRepository.findByPlayerForUpdate(player)
+                .orElse(null);
         if (island == null || island.getShells() < req.bet()) {
             return PlinkoPlayResponse.error("INSUFFICIENT_BALANCE",
                     "Недостаточно ракушек. Нужно " + req.bet() + " 🐚.");
@@ -194,16 +202,16 @@ public class PlinkoService {
     }
 
     /**
-     * Returns leaderboard (cached at HTTP layer via ResponseEntity or just plain).
+     * Returns leaderboard. Uses JOIN queries to avoid N+1 player lookups.
      */
     @Transactional(readOnly = true)
     public PlinkoLeaderboardResponse getLeaderboard() {
-        List<PlinkoLog> topWinLogs        = plinkoLogRepository.findTopByProfit();
-        List<PlinkoLog> topMultiplierLogs = plinkoLogRepository.findTopByMultiplier();
+        List<Object[]> topWinRows        = plinkoLogRepository.findTopByProfitWithPlayer();
+        List<Object[]> topMultiplierRows = plinkoLogRepository.findTopByMultiplierWithPlayer();
 
         return new PlinkoLeaderboardResponse(
-                topWinLogs.stream().map(this::toEntry).toList(),
-                topMultiplierLogs.stream().map(this::toEntry).toList()
+                topWinRows.stream().map(this::toEntry).toList(),
+                topMultiplierRows.stream().map(this::toEntry).toList()
         );
     }
 
@@ -233,7 +241,11 @@ public class PlinkoService {
     private double getMultiplier(int rows, PlinkoRisk risk, int slot) {
         double[] table;
         if (rows == 12) {
-            table = MULT_12_MEDIUM[0];
+            table = switch (risk) {
+                case LOW    -> MULT_12_LOW[0];
+                case MEDIUM -> MULT_12_MEDIUM[0];
+                case HIGH   -> MULT_12_HIGH[0];
+            };
         } else {
             table = switch (risk) {
                 case LOW    -> MULT_8_LOW[0];
@@ -261,11 +273,10 @@ public class PlinkoService {
         }
     }
 
-    private PlinkoLeaderboardResponse.LeaderboardEntry toEntry(PlinkoLog l) {
-        // Resolve username from player_id lazily — leaderboard is cached, acceptable
-        Optional<Player> p = playerRepository.findById(l.getPlayerId());
-        String username = p.map(pl -> pl.getUsername() != null ? pl.getUsername() : "ID " + pl.getId())
-                .orElse("?");
+    private PlinkoLeaderboardResponse.LeaderboardEntry toEntry(Object[] row) {
+        PlinkoLog l = (PlinkoLog) row[0];
+        Player    p = (Player)    row[1];
+        String username = p.getUsername() != null ? p.getUsername() : "ID " + p.getId();
         return new PlinkoLeaderboardResponse.LeaderboardEntry(
                 username,
                 l.getWon() - l.getBet(),

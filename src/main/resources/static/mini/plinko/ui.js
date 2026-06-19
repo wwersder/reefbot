@@ -18,14 +18,18 @@ const AUTO_MAX = 100;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-let balance     = 0;
-let betValue    = 25;    // current bet amount (free integer)
-let rows        = 8;
-let risk        = 'MEDIUM';
-let autoRunning = false;
-let autoCount   = 0;
-let autoInFlight = false;  // one auto-ball in flight at a time
-let board       = null;
+let balance         = 0;
+let betValue        = 25;    // current bet amount (free integer)
+let rows            = 8;
+let risk            = 'MEDIUM';
+let autoRunning     = false;
+let autoCount       = 0;
+let autoInFlight    = false;  // one auto-ball in flight at a time
+let manualInFlight  = false;  // guard against rapid manual clicks (BUG-05)
+let board           = null;
+
+let _syncTimer      = null;   // debounce handle for balance sync
+let _syncSeq        = 0;      // sequence counter — prevents stale sync from overwriting newer balance (BUG-14)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -92,9 +96,10 @@ export async function init() {
 // ── Events ────────────────────────────────────────────────────────────────────
 
 function bindEvents() {
-    // ── Dismiss keyboard on tap-outside ──────────────────────────────────────
-    document.addEventListener('touchstart', () => {
-        if (document.activeElement?.id === 'bet-input') {
+    // ── Dismiss keyboard on tap-outside (BUG-08: skip when tapping within the input itself) ──
+    document.addEventListener('touchstart', e => {
+        if (document.activeElement?.id === 'bet-input' &&
+            !e.target.closest('#bet-input')) {
             document.activeElement.blur();
         }
     }, { passive: true });
@@ -129,12 +134,17 @@ function bindEvents() {
         setBet(parseInt($('bet-input').value) || MIN_BET);
     });
 
-    // Multiplier chips
+    // Multiplier chips (BUG-07: handle MAX when balance < MIN_BET)
     $$('.mult-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const m = btn.dataset.mult;
             if (m === 'max') {
-                setBet(Math.min(MAX_BET, balance));
+                const maxBet = Math.min(MAX_BET, balance);
+                if (maxBet < MIN_BET) {
+                    setResult('Недостаточно ракушек 🐚', 'loss');
+                    return;
+                }
+                setBet(maxBet);
             } else {
                 setBet(Math.round(betValue * parseFloat(m)));
             }
@@ -169,20 +179,24 @@ function handleThrow() {
 }
 
 async function doManualThrow() {
-    if (!board) return;
+    if (!board || manualInFlight) return;  // BUG-05: guard rapid clicks
+    manualInFlight = true;
     const bet = betValue;
     try {
         const res = await postPlay(bet, rows, risk);
         if (res.error) { setResult(res.message || res.error, 'loss'); return; }
         const newBalance = res.newBalance;
         board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
-            balance = newBalance;
+            balance = newBalance;   // optimistic: instant feedback
             updateBalance();
             showResult(mult, profit);
+            scheduleBalanceSync();  // verify against server ~500ms later
         });
     } catch (e) {
         console.error('Play error', e);
         setResult('Ошибка сети 🌊', 'loss');
+    } finally {
+        manualInFlight = false;
     }
 }
 
@@ -198,15 +212,22 @@ async function doAutoThrow() {
         }
         const newBalance = res.newBalance;
         board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
-            balance = newBalance;
+            balance = newBalance;   // optimistic
             updateBalance();
             showResult(mult, profit);
             autoInFlight = false;
 
-            if (!autoRunning) return;
+            if (!autoRunning) {
+                scheduleBalanceSync();  // sync when auto is interrupted
+                return;
+            }
             autoCount--;
             updateThrowBtn();
-            if (autoCount <= 0) { stopAuto(); return; }
+            if (autoCount <= 0) {
+                stopAuto();
+                scheduleBalanceSync();  // sync after auto-spin finishes
+                return;
+            }
             setTimeout(doAutoThrow, 900);
         });
     } catch (e) {
@@ -261,6 +282,26 @@ function setBet(v) {
 function updateBalance() {
     $('balance-num').textContent  = balance;
     $('balance-hint').textContent = balance;
+}
+
+/**
+ * Debounced server sync — corrects balance after external changes.
+ * Uses a sequence counter (BUG-14) so a stale response can't overwrite
+ * a newer optimistic balance update that arrived after this sync was scheduled.
+ */
+function scheduleBalanceSync() {
+    clearTimeout(_syncTimer);
+    const seq = ++_syncSeq;
+    _syncTimer = setTimeout(async () => {
+        try {
+            const s = await fetchState();
+            // Only apply if no newer sync has been scheduled since this one fired
+            if (seq === _syncSeq && typeof s.balance === 'number' && s.balance !== balance) {
+                balance = s.balance;
+                updateBalance();
+            }
+        } catch { /* silent — sync is best-effort */ }
+    }, 500);
 }
 
 function updateThrowBtn() {
@@ -337,7 +378,12 @@ function renderLeaderboard(data, container) {
         </div>`;
     };
 
+    // BUG-21: guard against missing topMultiplier array
+    const multSection = data.topMultiplier?.length
+        ? section('🎯 Лучший множитель', data.topMultiplier, 'mult')
+        : '';
+
     container.innerHTML =
         section('💰 Лучший выигрыш', data.topWin, 'win') +
-        section('🎯 Лучший множитель', data.topMultiplier, 'mult');
+        multSection;
 }
