@@ -66,7 +66,8 @@ export async function init() {
         balance = state.balance;
 
         if (!state.rows12Unlocked) {
-            $('rows-select').querySelector('option[value="12"]')?.remove();
+            const btn12 = $('rows-btn-12');
+            if (btn12) { btn12.disabled = true; }
         }
 
         bindEvents();
@@ -91,26 +92,39 @@ export async function init() {
 // ── Events ────────────────────────────────────────────────────────────────────
 
 function bindEvents() {
-    $('risk-select').addEventListener('change', e => {
-        risk = e.target.value;
-        board?.setRisk(risk);
+    // ── Dismiss keyboard on tap-outside ──────────────────────────────────────
+    document.addEventListener('touchstart', () => {
+        if (document.activeElement?.id === 'bet-input') {
+            document.activeElement.blur();
+        }
+    }, { passive: true });
+
+    // ── Segmented risk control ────────────────────────────────────────────────
+    $$('#risk-seg .seg-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            $$('#risk-seg .seg-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            risk = btn.dataset.val;
+            board?.setRisk(risk);
+        });
     });
 
-    $('rows-select').addEventListener('change', e => {
-        rows = parseInt(e.target.value);
-        board?.setRows(rows);
+    // ── Segmented rows control ────────────────────────────────────────────────
+    $$('#rows-seg .seg-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.disabled) return;
+            $$('#rows-seg .seg-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            rows = parseInt(btn.dataset.val);
+            board?.setRows(rows);
+        });
     });
 
     // Bet: +/- buttons (step by BET_STEP)
     $('bet-minus').addEventListener('click', () => setBet(betValue - BET_STEP));
     $('bet-plus').addEventListener('click',  () => setBet(betValue + BET_STEP));
 
-    // Bet: free input
-    $('bet-input').addEventListener('input', e => {
-        const v = parseInt(e.target.value) || MIN_BET;
-        betValue = Math.max(MIN_BET, Math.min(MAX_BET, v));
-        // Don't clamp display while typing — clamp on blur
-    });
+    // Bet: free input — sanitize on blur only, allow free typing
     $('bet-input').addEventListener('blur', () => {
         setBet(parseInt($('bet-input').value) || MIN_BET);
     });

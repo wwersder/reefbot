@@ -12,9 +12,7 @@
 <body>
 
 <!-- Loading -->
-<div id="screen-loading">
-    <div class="spinner"></div>
-</div>
+<div id="screen-loading"><div class="spinner"></div></div>
 
 <!-- Onboarding / error -->
 <div id="screen-onboarding">
@@ -23,34 +21,31 @@
     <p id="ob-text">Сначала заверши регистрацию в боте — напиши /start</p>
 </div>
 
-<!-- Main app -->
+<!-- App -->
 <div id="app">
 
-    <!-- Header -->
     <div id="topbar">
         <span id="game-title">🪷 Reef Plinko</span>
         <span id="balance-display">🐚 <span id="balance-num">0</span></span>
     </div>
 
-    <!-- Plinko board -->
     <div id="canvas-wrap">
         <canvas id="plinko-canvas"></canvas>
     </div>
 
-    <!-- Result line -->
     <div id="result-bar">
         <span id="result-text" class="neutral">Выбери ставку и бросай</span>
     </div>
 
-    <!-- Controls -->
     <div id="controls">
 
-        <!-- Bet -->
-        <div class="section">
-            <div class="section-label">Ставка <span class="hint">(баланс: <span id="balance-hint">0</span> 🐚)</span></div>
+        <!-- Bet card -->
+        <div class="ctrl-card">
+            <div class="card-label">Ставка <span class="card-hint">баланс: <span id="balance-hint">0</span> 🐚</span></div>
             <div id="bet-row">
                 <button class="adj-btn" id="bet-minus">−</button>
-                <input type="number" id="bet-input" value="25" min="5" max="500" inputmode="numeric">
+                <input type="number" id="bet-input" value="25" min="5" max="500"
+                       inputmode="numeric" enterkeyhint="done" autocomplete="off">
                 <span class="bet-unit">🐚</span>
                 <button class="adj-btn" id="bet-plus">+</button>
             </div>
@@ -63,46 +58,51 @@
             </div>
         </div>
 
-        <div class="divider"></div>
-
-        <!-- Risk + rows -->
-        <div class="section selects-row">
-            <select id="risk-select">
-                <option value="LOW">🟢 Низкий риск</option>
-                <option value="MEDIUM" selected>🟡 Средний</option>
-                <option value="HIGH">🔴 Высокий</option>
-            </select>
-            <select id="rows-select">
-                <option value="8" selected>8 рядов</option>
-                <option value="12">12 рядов 🔓</option>
-            </select>
+        <!-- Settings card: risk + rows -->
+        <div class="ctrl-card">
+            <div class="card-label">Риск</div>
+            <div class="seg-ctrl" id="risk-seg">
+                <button class="seg-btn" data-val="LOW">🟢 Низкий</button>
+                <button class="seg-btn active" data-val="MEDIUM">🟡 Средний</button>
+                <button class="seg-btn" data-val="HIGH">🔴 Высокий</button>
+            </div>
+            <div class="card-label" style="margin-top:12px">Доска</div>
+            <div class="seg-ctrl" id="rows-seg">
+                <button class="seg-btn active" data-val="8">8 рядов</button>
+                <button class="seg-btn" data-val="12" id="rows-btn-12">12 рядов 🔓</button>
+            </div>
         </div>
 
         <!-- Throw button -->
-        <div class="section">
-            <button id="throw-btn">БРОСИТЬ</button>
-        </div>
+        <button id="throw-btn">БРОСИТЬ</button>
 
-        <!-- Checkboxes -->
-        <div class="section checks-row">
-            <label class="check-lbl">
-                <input type="checkbox" id="auto-check">
-                <span>Авто-спин (100x)</span>
-            </label>
-            <label class="check-lbl">
-                <input type="checkbox" id="turbo-check">
-                <span>Турбо ⚡</span>
-            </label>
+        <!-- Toggles card -->
+        <div class="ctrl-card toggles-card">
+            <div class="toggle-row">
+                <span class="toggle-label">Авто-спин (100x)</span>
+                <label class="toggle">
+                    <input type="checkbox" id="auto-check">
+                    <span class="toggle-track"></span>
+                </label>
+            </div>
+            <div class="toggle-divider"></div>
+            <div class="toggle-row">
+                <span class="toggle-label">Турбо режим ⚡</span>
+                <label class="toggle">
+                    <input type="checkbox" id="turbo-check">
+                    <span class="toggle-track"></span>
+                </label>
+            </div>
         </div>
 
         <!-- Leaderboard link -->
-        <div class="section lb-footer">
+        <div class="lb-footer">
             <button id="lb-btn" class="link-btn">🏆 Рекорды</button>
         </div>
 
-    </div><!-- /controls -->
+    </div>
 
-</div><!-- /app -->
+</div>
 
 <!-- Leaderboard bottom sheet -->
 <div id="lb-overlay">
