@@ -38,6 +38,7 @@ let _hapticTs      = 0;      // timestamp of last peg haptic (throttle)
 
 let _syncTimer     = null;
 let _syncSeq       = 0;
+let _resultTimer   = null;  // auto-hide result bar
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -314,7 +315,7 @@ function updateUI() {
     $('balance-num').textContent  = balance;
     $('balance-hint').textContent = balance;
     _shownBal = balance;
-    setResult('Выбери ставку и бросай', 'neutral');
+    // result bar starts hidden
     updateThrowBtn();
     updateAutoProgress();
 }
@@ -404,9 +405,23 @@ function scheduleBalanceSync() {
 }
 
 function setResult(text, type) {
-    const el = $('result-text');
+    const el  = $('result-text');
+    const bar = $('result-bar');
     el.textContent = text;
     el.className   = type;
+
+    // Colored border glow on bar
+    bar.classList.remove('bar-win', 'bar-loss', 'bar-jackpot');
+    if (type === 'win')     bar.classList.add('bar-win');
+    if (type === 'loss')    bar.classList.add('bar-loss');
+    if (type === 'jackpot') bar.classList.add('bar-jackpot');
+
+    // Show pill, then auto-hide after 2.5 s
+    bar.classList.add('visible');
+    clearTimeout(_resultTimer);
+    if (type !== 'neutral') {
+        _resultTimer = setTimeout(() => bar.classList.remove('visible'), 2500);
+    }
 }
 
 function showScreen(name) {
