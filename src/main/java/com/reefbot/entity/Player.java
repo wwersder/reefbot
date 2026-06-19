@@ -3,6 +3,9 @@ package com.reefbot.entity;
 import com.reefbot.enums.OnboardingStep;
 import com.reefbot.enums.PlayerStatus;
 import jakarta.persistence.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import lombok.*;
 
 import java.util.ArrayList;
@@ -65,4 +68,16 @@ public class Player {
     /** When true, player cannot create new support tickets. */
     @Builder.Default
     private boolean supportBlocked = false;
+
+    // ── Plinko state ─────────────────────────────────────────────────────────
+
+    /** Shells lost today (resets daily). */
+    @Builder.Default
+    private Integer plinkoDailyLost = 0;
+
+    /** The date plinkoDailyLost was last accumulated (null = never played). */
+    private LocalDate plinkoDailyDate;
+
+    /** Timestamp of the last plinko throw (for cooldown enforcement). */
+    private LocalDateTime plinkoLastPlay;
 }

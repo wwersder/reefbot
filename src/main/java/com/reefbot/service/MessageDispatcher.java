@@ -4,6 +4,7 @@ import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Player;
 import com.reefbot.enums.PlayerStatus;
 import com.reefbot.service.game.GameService;
+import com.reefbot.service.plinko.PlinkoBotService;
 import com.reefbot.service.registration.OnboardingService;
 import com.reefbot.service.support.SupportService;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class MessageDispatcher {
     private final OnboardingService onboardingService;
     private final GameService gameService;
     private final SupportService supportService;
+    private final PlinkoBotService plinkoBotService;
 
     public BotResponse dispatch(Long telegramId, String username, String text, boolean isPrivate) {
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -73,6 +75,11 @@ public class MessageDispatcher {
                 return supportService.handlePlayerCommand(player, text);
             }
 
+            // Plinko commands available for ACTIVE players
+            if (isPlinkoCommand(text) && status == PlayerStatus.ACTIVE) {
+                return plinkoBotService.handle(player, text);
+            }
+
             return switch (status) {
                 case ONBOARDING -> onboardingService.process(player, text);
                 case ACTIVE     -> gameService.handle(player, text);
@@ -99,5 +106,9 @@ public class MessageDispatcher {
         return text.startsWith("/support")
             || "/myticket".equals(text)
             || "/closeticket".equals(text);
+    }
+
+    private boolean isPlinkoCommand(String text) {
+        return text.startsWith("/plinko");
     }
 }

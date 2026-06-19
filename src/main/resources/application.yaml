@@ -38,3 +38,5 @@ reefbot:
   admin:
     username: admin
     password: admin
+  plinko:
+    mini-app-url: https://reefbot.online/mini/plinko/

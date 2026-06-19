@@ -25,8 +25,13 @@ public class WebSecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            // Disable CSRF for the stateless Mini App API
+            .csrf(csrf -> csrf
+                .ignoringRequestMatchers("/api/mini/**")
+            )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/admin/login", "/css/**", "/js/**").permitAll()
+                .requestMatchers("/api/mini/**", "/mini/**").permitAll()
                 .requestMatchers("/admin/**").authenticated()
                 .anyRequest().permitAll()
             )
