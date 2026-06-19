@@ -129,8 +129,8 @@ export class PlinkoBoard {
     // ── Offscreen sprite builders ─────────────────────────────────────────────
 
     /**
-     * Static background: a single overhead spotlight fading to pitch black at edges.
-     * No patterns, no dots — clean and professional.
+     * Background: plain white — canvas matches the light app theme.
+     * No gradients, no overlays — just fill #ffffff so pegs/ball pop on white.
      */
     _buildBgSprite() {
         const { canvas } = this;
@@ -138,28 +138,17 @@ export class PlinkoBoard {
         c.width   = canvas.width;
         c.height  = canvas.height;
         const ctx = c.getContext('2d');
-
-        // Overhead spotlight — cool blue-white source from top-centre
-        const spot = ctx.createRadialGradient(
-            c.width / 2, -c.height * 0.05, 0,
-            c.width / 2,  c.height * 0.10, c.height * 0.95
-        );
-        spot.addColorStop(0,    'rgba(18, 38, 90, 0.38)');
-        spot.addColorStop(0.45, 'rgba( 8, 18, 45, 0.18)');
-        spot.addColorStop(1,    'rgba( 0,  0,  0, 0.00)');
-        ctx.fillStyle = spot;
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, c.width, c.height);
-
         this._bgSprite = c;
     }
 
     /**
-     * Pre-rendered peg — clean white metallic sphere.
-     * Monochrome: bright white highlight → silver mid → dark grey edge.
-     * Reads clearly on the dark background without any colour noise.
+     * Pre-rendered peg — dark slate sphere on white canvas.
+     * Same visual language as iOS dark system icons: charcoal body, soft shadow, white highlight.
      */
     _buildPegSprite() {
-        const PAD  = 10;
+        const PAD  = 8;
         const size = (PEG_R + PAD) * 2;
         const c    = document.createElement('canvas');
         c.width    = c.height = size;
@@ -167,24 +156,29 @@ export class PlinkoBoard {
         const cx   = size / 2;
         const cy   = size / 2;
 
-        // Subtle drop shadow
+        // Soft drop shadow
         ctx.beginPath();
-        ctx.arc(cx + 0.5, cy + 1.5, PEG_R * 0.88, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.arc(cx + 0.5, cy + 1.2, PEG_R * 0.90, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.14)';
         ctx.fill();
 
-        // White metallic body
+        // Dark slate body — light source from top-left
         const g = ctx.createRadialGradient(
-            cx - PEG_R * 0.36, cy - PEG_R * 0.36, 0,
+            cx - PEG_R * 0.38, cy - PEG_R * 0.38, 0,
             cx, cy, PEG_R
         );
-        g.addColorStop(0,    'rgba(255, 255, 255, 1.00)');
-        g.addColorStop(0.38, 'rgba(195, 205, 215, 0.96)');
-        g.addColorStop(0.75, 'rgba(110, 125, 140, 0.88)');
-        g.addColorStop(1,    'rgba(45,  55,  70,  0.80)');
+        g.addColorStop(0,    '#6b7280');   // lighter at highlight
+        g.addColorStop(0.45, '#374151');   // mid slate
+        g.addColorStop(1,    '#111827');   // near-black edge
         ctx.beginPath();
         ctx.arc(cx, cy, PEG_R, 0, Math.PI * 2);
         ctx.fillStyle = g;
+        ctx.fill();
+
+        // Tiny white specular dot
+        ctx.beginPath();
+        ctx.arc(cx - PEG_R * 0.28, cy - PEG_R * 0.30, PEG_R * 0.24, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.70)';
         ctx.fill();
 
         this._pegSprite       = c;
@@ -192,12 +186,12 @@ export class PlinkoBoard {
     }
 
     /**
-     * Pre-rendered ball — clean white sphere, same language as the pegs.
-     * Slightly larger than pegs so it reads as the active element,
-     * but same monochrome palette so everything feels unified.
+     * Pre-rendered ball — accent blue sphere (#007aff).
+     * Pops clearly on the white canvas without introducing any extra colour palette.
+     * Light source from top-left; soft drop shadow; white specular.
      */
     _buildBallSprite() {
-        const PAD  = 14;
+        const PAD  = 12;
         const size = (BALL_R + PAD) * 2;
         const c    = document.createElement('canvas');
         c.width    = c.height = size;
@@ -205,46 +199,32 @@ export class PlinkoBoard {
         const cx   = size / 2;
         const cy   = size / 2;
 
-        // Subtle white ambient glow so ball reads against dark background
-        const aura = ctx.createRadialGradient(cx, cy, BALL_R * 0.5, cx, cy, BALL_R * 2.4);
-        aura.addColorStop(0, 'rgba(255,255,255,0.10)');
-        aura.addColorStop(1, 'transparent');
+        // Soft drop shadow
         ctx.beginPath();
-        ctx.arc(cx, cy, BALL_R * 2.4, 0, Math.PI * 2);
-        ctx.fillStyle = aura;
+        ctx.arc(cx + 0.6, cy + 1.8, BALL_R * 0.90, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,122,255,0.18)';
         ctx.fill();
 
-        // Drop shadow
-        ctx.beginPath();
-        ctx.arc(cx + 0.6, cy + 2.0, BALL_R * 0.88, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        ctx.fill();
-
-        // White metallic body — same grammar as pegs, just bigger
+        // Blue body — light from top-left
         const g = ctx.createRadialGradient(
-            cx - BALL_R * 0.34, cy - BALL_R * 0.36, 0,
+            cx - BALL_R * 0.36, cy - BALL_R * 0.36, 0,
             cx, cy, BALL_R
         );
-        g.addColorStop(0,    'rgba(255, 255, 255, 1.00)');
-        g.addColorStop(0.22, 'rgba(230, 235, 240, 0.98)');
-        g.addColorStop(0.55, 'rgba(155, 168, 182, 0.92)');
-        g.addColorStop(0.82, 'rgba(75,  88,  104, 0.88)');
-        g.addColorStop(1,    'rgba(28,  36,  50,  0.85)');
+        g.addColorStop(0,    '#60a5fa');   // light blue at highlight
+        g.addColorStop(0.40, '#2563eb');   // mid blue
+        g.addColorStop(1,    '#1e3a8a');   // deep blue edge
         ctx.beginPath();
         ctx.arc(cx, cy, BALL_R, 0, Math.PI * 2);
         ctx.fillStyle = g;
-        ctx.shadowColor = 'rgba(200,215,230,0.40)';
-        ctx.shadowBlur  = 8;
         ctx.fill();
-        ctx.shadowBlur = 0;
 
         // Wide soft specular
         const h1 = ctx.createRadialGradient(
             cx - BALL_R * 0.28, cy - BALL_R * 0.30, 0,
-            cx - BALL_R * 0.08, cy - BALL_R * 0.08, BALL_R * 0.52
+            cx - BALL_R * 0.08, cy - BALL_R * 0.08, BALL_R * 0.50
         );
-        h1.addColorStop(0,   'rgba(255,255,255,0.88)');
-        h1.addColorStop(0.5, 'rgba(255,255,255,0.20)');
+        h1.addColorStop(0,   'rgba(255,255,255,0.80)');
+        h1.addColorStop(0.5, 'rgba(255,255,255,0.18)');
         h1.addColorStop(1,   'rgba(255,255,255,0)');
         ctx.beginPath();
         ctx.arc(cx, cy, BALL_R, 0, Math.PI * 2);
@@ -254,7 +234,7 @@ export class PlinkoBoard {
         // Sharp specular dot
         ctx.beginPath();
         ctx.arc(cx - BALL_R * 0.30, cy - BALL_R * 0.36, BALL_R * 0.17, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.98)';
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
         ctx.fill();
 
         this._ballSprite       = c;
@@ -469,25 +449,17 @@ export class PlinkoBoard {
                 const { x, y } = this._pegPos(row, col);
                 const flash     = this._flashes.get(`${row},${col}`) || 0;
 
-                if (flash > 0) {
-                    // White radial burst on hit
-                    const halo = ctx.createRadialGradient(x, y, PEG_R * 0.5, x, y, PEG_R + 10);
-                    halo.addColorStop(0, `rgba(255,255,255,${flash * 0.38})`);
-                    halo.addColorStop(1, 'rgba(255,255,255,0)');
-                    ctx.beginPath();
-                    ctx.arc(x, y, PEG_R + 10, 0, Math.PI * 2);
-                    ctx.fillStyle = halo;
-                    ctx.fill();
-                }
-
-                // Pre-rendered white metallic peg
+                // Pre-rendered dark peg
                 ctx.drawImage(this._pegSprite, x - off, y - off);
 
                 if (flash > 0) {
-                    // Bright white flash overlay on hit
+                    // Blue ring burst on hit — matches ball colour
+                    const halo = ctx.createRadialGradient(x, y, PEG_R, x, y, PEG_R + 9);
+                    halo.addColorStop(0, `rgba(37,99,235,${flash * 0.30})`);
+                    halo.addColorStop(1, 'rgba(37,99,235,0)');
                     ctx.beginPath();
-                    ctx.arc(x, y, PEG_R, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255,255,255,${flash * 0.60})`;
+                    ctx.arc(x, y, PEG_R + 9, 0, Math.PI * 2);
+                    ctx.fillStyle = halo;
                     ctx.fill();
                 }
             }
@@ -584,10 +556,10 @@ export class PlinkoBoard {
             const { x, y } = trail[i];
             const frac = (1 - i / trail.length);
             if (frac < 0.06) continue;
-            const r = BALL_R * frac * 0.50;
+            const r = BALL_R * frac * 0.45;
             ctx.beginPath();
             ctx.arc(x, y, r, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255,255,255,${frac * 0.18})`;
+            ctx.fillStyle = `rgba(37,99,235,${frac * 0.20})`;
             ctx.fill();
         }
     }
