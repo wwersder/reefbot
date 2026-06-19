@@ -1,4 +1,4 @@
-/* Reef Plinko — Light theme v2 */
+/* Reef Plinko — Immersive theme v3 */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -6,7 +6,7 @@
     --bg:      #f2f2f7;
     --surface: #ffffff;
     --border:  #e5e5ea;
-    --seg-bg:  #e5e5ea;   /* segmented control track */
+    --seg-bg:  #e5e5ea;
     --text:    #000000;
     --text2:   #8e8e93;
     --accent:  #007aff;
@@ -14,7 +14,8 @@
     --red:     #ff3b30;
     --orange:  #ff9500;
     --gold:    #ff9f0a;
-    --game-bg: #0a1628;
+    --game-bg: #080f1e;
+    --cyan:    #22d3ee;
 }
 
 html, body {
@@ -86,65 +87,124 @@ html, body {
     background: var(--bg);
 }
 
+/* ── Game Zone — unified dark immersive block ────────────────────────────── */
+
+#game-zone {
+    flex-shrink: 0;
+    height: min(62vh, 500px);
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(170deg, #060d1e 0%, #0a1628 55%, #0c1b32 100%);
+    position: relative;
+}
+
+/* Ambient deep-sea glow in opposite corners */
+#game-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 70% 55% at 10% 95%, rgba(14, 116, 144, 0.14) 0%, transparent 70%),
+        radial-gradient(ellipse 55% 40% at 90% 5%,  rgba(30,  64, 175, 0.10) 0%, transparent 65%);
+    pointer-events: none;
+}
+
 /* ── Header ─────────────────────────────────────────────────────────────── */
 
 #topbar {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px 10px;
-    background: var(--surface);
-    border-bottom: 0.5px solid var(--border);
+    background: transparent;
+    border-bottom: 1px solid rgba(34, 211, 238, 0.1);
     flex-shrink: 0;
 }
 
 #game-title {
     font-size: 16px;
     font-weight: 700;
+    color: #ffffff;
 }
 
 #balance-display {
     font-size: 15px;
     font-weight: 600;
+    color: rgba(255, 255, 255, 0.72);
 }
 
-#balance-num { color: var(--accent); }
+#balance-num {
+    color: var(--cyan);
+    text-shadow: 0 0 14px rgba(34, 211, 238, 0.55);
+}
 
 /* ── Canvas ─────────────────────────────────────────────────────────────── */
 
 #canvas-wrap {
-    flex-shrink: 0;
-    margin: 12px 12px 0;
-    border-radius: 16px;
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    min-height: 0;
+    margin: 8px 12px 12px;
+    border-radius: 20px;
     overflow: hidden;
     background: var(--game-bg);
-    height: calc(min(42vh, 360px));
-    min-height: 200px;
+    border: 1.5px solid rgba(34, 211, 238, 0.22);
+    animation: canvasGlow 5s ease-in-out infinite;
+}
+
+@keyframes canvasGlow {
+    0%, 100% {
+        box-shadow:
+            0 0 16px rgba(34, 211, 238, 0.08),
+            0 0 40px rgba(34, 211, 238, 0.04),
+            inset 0 0 32px rgba(0, 0, 0, 0.3);
+    }
+    50% {
+        box-shadow:
+            0 0 28px rgba(34, 211, 238, 0.16),
+            0 0 60px rgba(34, 211, 238, 0.07),
+            inset 0 0 32px rgba(0, 0, 0, 0.3);
+    }
 }
 
 #plinko-canvas { display: block; width: 100%; height: 100%; }
 
-/* ── Result ──────────────────────────────────────────────────────────────── */
+/* ── Result — glass pill floating over the canvas ────────────────────────── */
 
 #result-bar {
-    flex-shrink: 0;
-    text-align: center;
-    padding: 10px 16px 4px;
-    min-height: 40px;
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    pointer-events: none;
+    white-space: nowrap;
+    background: rgba(5, 12, 28, 0.68);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 20px;
+    padding: 7px 22px;
+    min-height: 34px;
+    min-width: 140px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 #result-text {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 700;
+    color: #ffffff;
     transition: color .2s;
 }
 
-#result-text.neutral { color: var(--text2); font-weight: 500; font-size: 14px; }
-#result-text.win     { color: var(--green); }
-#result-text.loss    { color: var(--red); }
+#result-text.neutral { color: rgba(255, 255, 255, 0.35); font-weight: 400; font-size: 13px; }
+#result-text.win     { color: #34d399; }
+#result-text.loss    { color: #f87171; }
 #result-text.jackpot { color: var(--gold); animation: pulse .4s infinite alternate; }
 
 @keyframes pulse { to { transform: scale(1.06); } }
@@ -158,7 +218,7 @@ html, body {
     scrollbar-width: none;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 7px;
     padding: 8px 12px env(safe-area-inset-bottom, 12px);
 }
 
@@ -169,12 +229,12 @@ html, body {
 .ctrl-card {
     background: var(--surface);
     border-radius: 14px;
-    padding: 14px;
+    padding: 13px 14px;
     box-shadow: 0 1px 4px rgba(0,0,0,.06);
 }
 
 .card-label {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text2);
     text-transform: uppercase;
@@ -196,12 +256,12 @@ html, body {
     background: var(--bg);
     border-radius: 10px;
     overflow: hidden;
-    margin-bottom: 10px;
+    margin-bottom: 9px;
 }
 
 .adj-btn {
     width: 44px;
-    height: 46px;
+    height: 44px;
     background: none;
     border: none;
     font-size: 24px;
@@ -229,7 +289,7 @@ html, body {
     background: none;
     border: none;
     outline: none;
-    padding: 8px 0;
+    padding: 6px 0;
     -moz-appearance: textfield;
     letter-spacing: -0.5px;
 }
@@ -248,12 +308,12 @@ html, body {
 
 #mult-btns {
     display: flex;
-    gap: 6px;
+    gap: 5px;
 }
 
 .mult-btn {
     flex: 1;
-    padding: 8px 0;
+    padding: 7px 0;
     background: var(--bg);
     border: none;
     border-radius: 9px;
@@ -282,7 +342,7 @@ html, body {
 
 .seg-btn {
     flex: 1;
-    padding: 8px 4px;
+    padding: 7px 4px;
     background: transparent;
     border: none;
     border-radius: 8px;
@@ -313,7 +373,7 @@ html, body {
 #throw-btn {
     display: block;
     width: 100%;
-    padding: 17px;
+    padding: 16px;
     background: var(--red);
     border: none;
     border-radius: 14px;
@@ -325,25 +385,25 @@ html, body {
     transition: opacity .15s, transform .1s;
     font-family: inherit;
     flex-shrink: 0;
-    box-shadow: 0 3px 12px rgba(255,59,48,.35);
+    box-shadow: 0 4px 18px rgba(255, 59, 48, .40);
 }
 
 #throw-btn:active { transform: scale(.98); opacity: .9; }
 
 #throw-btn.auto-running {
     background: var(--orange);
-    box-shadow: 0 3px 12px rgba(255,149,0,.35);
+    box-shadow: 0 4px 18px rgba(255, 149, 0, .40);
 }
 
 /* ── Toggle rows ─────────────────────────────────────────────────────────── */
 
-.toggles-card { padding: 4px 14px; }
+.toggles-card { padding: 2px 14px; }
 
 .toggle-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 13px 0;
+    padding: 12px 0;
 }
 
 .toggle-divider {

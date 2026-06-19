@@ -24,17 +24,20 @@
 <!-- App -->
 <div id="app">
 
-    <div id="topbar">
-        <span id="game-title">🪷 Reef Plinko</span>
-        <span id="balance-display">🐚 <span id="balance-num">0</span></span>
-    </div>
+    <!-- Unified dark game zone: topbar + canvas -->
+    <div id="game-zone">
+        <div id="topbar">
+            <span id="game-title">🪷 Reef Plinko</span>
+            <span id="balance-display">🐚 <span id="balance-num">0</span></span>
+        </div>
 
-    <div id="canvas-wrap">
-        <canvas id="plinko-canvas"></canvas>
-    </div>
-
-    <div id="result-bar">
-        <span id="result-text" class="neutral">Выбери ставку и бросай</span>
+        <div id="canvas-wrap">
+            <canvas id="plinko-canvas"></canvas>
+            <!-- Result floats as a glass pill over the canvas -->
+            <div id="result-bar">
+                <span id="result-text" class="neutral">Выбери ставку и бросай</span>
+            </div>
+        </div>
     </div>
 
     <div id="controls">
