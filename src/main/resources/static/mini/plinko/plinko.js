@@ -88,9 +88,19 @@ export class PlinkoBoard {
     setFast(f) { this.fast = f; }
 
     resize() {
-        const p = this.canvas.parentElement;
-        this.canvas.width  = p.clientWidth;
-        this.canvas.height = p.clientHeight;
+        const p   = this.canvas.parentElement;
+        // Respect device pixel ratio so canvas pixels map 1:1 to physical pixels.
+        // Without this, every circle and glyph looks blurry on retina screens.
+        const dpr  = Math.min(window.devicePixelRatio || 1, 3);
+        const cssW = p.clientWidth;
+        const cssH = p.clientHeight;
+        this._dpr  = dpr;
+        this._cssW = cssW;
+        this._cssH = cssH;
+        this.canvas.width  = Math.round(cssW * dpr);
+        this.canvas.height = Math.round(cssH * dpr);
+        this.canvas.style.width  = cssW + 'px';
+        this.canvas.style.height = cssH + 'px';
         // Rebuild all offscreen caches
         this._buildBgSprite();
         this._buildPegSprite();
@@ -132,14 +142,13 @@ export class PlinkoBoard {
     // ── Offscreen sprite builders ─────────────────────────────────────────────
 
     /**
-     * Background: plain white — canvas matches the light app theme.
-     * No gradients, no overlays — just fill #ffffff so pegs/ball pop on white.
+     * Background: plain white at full physical resolution.
      */
     _buildBgSprite() {
-        const { canvas } = this;
+        const { _cssW: W, _cssH: H, _dpr: dpr } = this;
         const c   = document.createElement('canvas');
-        c.width   = canvas.width;
-        c.height  = canvas.height;
+        c.width   = Math.round(W * dpr);
+        c.height  = Math.round(H * dpr);
         const ctx = c.getContext('2d');
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, c.width, c.height);
@@ -147,17 +156,19 @@ export class PlinkoBoard {
     }
 
     /**
-     * Pre-rendered peg — dark slate sphere on white canvas.
-     * Same visual language as iOS dark system icons: charcoal body, soft shadow, white highlight.
+     * Pre-rendered peg — dark slate sphere, built at physical pixel resolution.
+     * Rendered with ctx.scale(dpr) inside so all coordinates stay in CSS units.
      */
     _buildPegSprite() {
-        const PAD  = 8;
-        const size = (PEG_R + PAD) * 2;
-        const c    = document.createElement('canvas');
-        c.width    = c.height = size;
-        const ctx  = c.getContext('2d');
-        const cx   = size / 2;
-        const cy   = size / 2;
+        const dpr    = this._dpr;
+        const PAD    = 8;
+        const cssOff = PEG_R + PAD;
+        const cssS   = cssOff * 2;
+        const c      = document.createElement('canvas');
+        c.width      = c.height = Math.round(cssS * dpr);
+        const ctx    = c.getContext('2d');
+        ctx.scale(dpr, dpr);
+        const cx = cssOff, cy = cssOff;
 
         // Soft drop shadow
         ctx.beginPath();
@@ -165,42 +176,43 @@ export class PlinkoBoard {
         ctx.fillStyle = 'rgba(0,0,0,0.14)';
         ctx.fill();
 
-        // Dark slate body — light source from top-left
+        // Dark slate body
         const g = ctx.createRadialGradient(
             cx - PEG_R * 0.38, cy - PEG_R * 0.38, 0,
             cx, cy, PEG_R
         );
-        g.addColorStop(0,    '#6b7280');   // lighter at highlight
-        g.addColorStop(0.45, '#374151');   // mid slate
-        g.addColorStop(1,    '#111827');   // near-black edge
+        g.addColorStop(0,    '#6b7280');
+        g.addColorStop(0.45, '#374151');
+        g.addColorStop(1,    '#111827');
         ctx.beginPath();
         ctx.arc(cx, cy, PEG_R, 0, Math.PI * 2);
         ctx.fillStyle = g;
         ctx.fill();
 
-        // Tiny white specular dot
+        // White specular dot
         ctx.beginPath();
         ctx.arc(cx - PEG_R * 0.28, cy - PEG_R * 0.30, PEG_R * 0.24, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255,255,255,0.70)';
         ctx.fill();
 
-        this._pegSprite       = c;
-        this._pegSpriteOffset = size / 2;
+        this._pegSprite    = c;
+        this._pegSpriteOff = cssOff;   // CSS offset for drawImage positioning
+        this._pegSpriteCss = cssS;     // CSS draw size
     }
 
     /**
-     * Pre-rendered ball — accent blue sphere (#007aff).
-     * Pops clearly on the white canvas without introducing any extra colour palette.
-     * Light source from top-left; soft drop shadow; white specular.
+     * Pre-rendered ball — accent blue sphere, built at physical pixel resolution.
      */
     _buildBallSprite() {
-        const PAD  = 12;
-        const size = (BALL_R + PAD) * 2;
-        const c    = document.createElement('canvas');
-        c.width    = c.height = size;
-        const ctx  = c.getContext('2d');
-        const cx   = size / 2;
-        const cy   = size / 2;
+        const dpr    = this._dpr;
+        const PAD    = 12;
+        const cssOff = BALL_R + PAD;
+        const cssS   = cssOff * 2;
+        const c      = document.createElement('canvas');
+        c.width      = c.height = Math.round(cssS * dpr);
+        const ctx    = c.getContext('2d');
+        ctx.scale(dpr, dpr);
+        const cx = cssOff, cy = cssOff;
 
         // Soft drop shadow
         ctx.beginPath();
@@ -213,9 +225,9 @@ export class PlinkoBoard {
             cx - BALL_R * 0.36, cy - BALL_R * 0.36, 0,
             cx, cy, BALL_R
         );
-        g.addColorStop(0,    '#60a5fa');   // light blue at highlight
-        g.addColorStop(0.40, '#2563eb');   // mid blue
-        g.addColorStop(1,    '#1e3a8a');   // deep blue edge
+        g.addColorStop(0,    '#60a5fa');
+        g.addColorStop(0.40, '#2563eb');
+        g.addColorStop(1,    '#1e3a8a');
         ctx.beginPath();
         ctx.arc(cx, cy, BALL_R, 0, Math.PI * 2);
         ctx.fillStyle = g;
@@ -240,15 +252,17 @@ export class PlinkoBoard {
         ctx.fillStyle = 'rgba(255,255,255,0.95)';
         ctx.fill();
 
-        this._ballSprite       = c;
-        this._ballSpriteOffset = size / 2;
+        this._ballSprite    = c;
+        this._ballSpriteOff = cssOff;
+        this._ballSpriteCss = cssS;
     }
 
     // ── Layout ────────────────────────────────────────────────────────────────
 
     _layout() {
-        const W = this.canvas.width;
-        const H = this.canvas.height;
+        // Always use CSS pixels for layout — DPR scaling is applied in _frame()
+        const W = this._cssW;
+        const H = this._cssH;
         const topPad = 20;
         const botPad = SLOT_H + 10;
         this.rowSpacing = (H - topPad - botPad) / (this.rows + 1);
@@ -292,7 +306,7 @@ export class PlinkoBoard {
         }
 
         const sx = this._slotX(slotIdx);
-        const sy = this.canvas.height - SLOT_H / 2 - 2;
+        const sy = this._cssH - SLOT_H / 2 - 2;
         segs.push({
             x0, y0,
             x1: sx, y1: sy,
@@ -421,10 +435,14 @@ export class PlinkoBoard {
 
     _frame() {
         const { ctx, canvas } = this;
+        // Clear at physical pixel size (before any transform)
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Scale to device pixels — all subsequent drawing uses CSS coordinates
+        ctx.save();
+        ctx.scale(this._dpr, this._dpr);
 
-        // 1. Pre-rendered background (dot grid + vignette)
-        if (this._bgSprite) ctx.drawImage(this._bgSprite, 0, 0);
+        // 1. Background
+        if (this._bgSprite) ctx.drawImage(this._bgSprite, 0, 0, this._cssW, this._cssH);
 
         // 2. Slots (drawn before pegs so pegs sit on top)
         this._drawSlots();
@@ -440,23 +458,25 @@ export class PlinkoBoard {
                 this._drawBall(ball.x, ball.y);
             }
         }
+
+        ctx.restore();
     }
 
     _drawPegs() {
         const { ctx } = this;
         if (!this._pegSprite) return;
-        const off = this._pegSpriteOffset;
+        const off = this._pegSpriteOff;
+        const css = this._pegSpriteCss;
 
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < row + 2; col++) {
                 const { x, y } = this._pegPos(row, col);
                 const flash     = this._flashes.get(`${row},${col}`) || 0;
 
-                // Pre-rendered dark peg
-                ctx.drawImage(this._pegSprite, x - off, y - off);
+                // Draw at explicit CSS size so DPR-scaled sprite renders at 1:1
+                ctx.drawImage(this._pegSprite, x - off, y - off, css, css);
 
                 if (flash > 0) {
-                    // Blue ring burst on hit — matches ball colour
                     const halo = ctx.createRadialGradient(x, y, PEG_R, x, y, PEG_R + 9);
                     halo.addColorStop(0, `rgba(37,99,235,${flash * 0.30})`);
                     halo.addColorStop(1, 'rgba(37,99,235,0)');
@@ -470,13 +490,13 @@ export class PlinkoBoard {
     }
 
     _drawSlots() {
-        const { ctx, canvas } = this;
+        const { ctx } = this;
         const slots  = this.rows + 1;
         const mults  = MULT[this.rows][this.risk];
         const gap    = 3;
         const slotW  = this.colSpacing - gap;
         const slotH  = SLOT_H - 4;
-        const slotY  = canvas.height - SLOT_H + 2;
+        const slotY  = this._cssH - SLOT_H + 2;
         const BORDER = 3;   // coloured top bar height
         const RADIUS = 7;
 
@@ -525,8 +545,9 @@ export class PlinkoBoard {
 
     _drawBall(x, y) {
         if (!this._ballSprite) return;
-        const off = this._ballSpriteOffset;
-        this.ctx.drawImage(this._ballSprite, x - off, y - off);
+        this.ctx.drawImage(this._ballSprite,
+            x - this._ballSpriteOff, y - this._ballSpriteOff,
+            this._ballSpriteCss, this._ballSpriteCss);
     }
 
     _drawTrail(trail) {
