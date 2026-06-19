@@ -1,4 +1,4 @@
-/* Reef Plinko — Immersive theme v3 */
+/* Reef Plinko — Immersive theme v4 */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -451,22 +451,46 @@ html, body {
 .toggle input:checked + .toggle-track { background: var(--green); }
 .toggle input:checked + .toggle-track::after { transform: translateX(20px); }
 
-/* ── Leaderboard link ────────────────────────────────────────────────────── */
+/* ── Leaderboard button ──────────────────────────────────────────────────── */
 
 .lb-footer {
-    text-align: center;
-    padding: 2px 0 4px;
+    padding: 0;
 }
 
 .link-btn {
-    background: none;
-    border: none;
-    color: var(--accent);
-    font-size: 14px;
-    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 14px;
     font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
     cursor: pointer;
-    padding: 6px 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    transition: opacity .12s, transform .1s;
+}
+
+.link-btn::before {
+    content: '🏆  Таблица рекордов';
+    font-size: 15px;
+}
+
+.link-btn::after {
+    content: '›';
+    font-size: 20px;
+    font-weight: 300;
+    color: var(--text2);
+    line-height: 1;
+}
+
+.link-btn:active {
+    opacity: .7;
+    transform: scale(.98);
 }
 
 /* ── Leaderboard bottom sheet ────────────────────────────────────────────── */
