@@ -19,6 +19,9 @@ const BET_STEP   = 5;
 const AUTO_MAX   = 100;
 const RESULTS_MAX= 10;
 
+// ── Demo mode: force jackpot every throw (for recording). Set false when done.
+const DEMO_JACKPOT = true;
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 let _tg            = null;   // Telegram WebApp
@@ -191,6 +194,12 @@ async function doManualThrow() {
     try {
         const res = await postPlay(bet, rows, risk);
         if (res.error) { setResult(res.message || res.error, 'loss'); return; }
+        if (DEMO_JACKPOT) {
+            res.path = Array(rows).fill(false);  // all left → slot 0
+            res.slot = 0;
+            res.multiplier = rows === 12 ? 20 : 18;
+            res.profit = Math.round(bet * res.multiplier) - bet;
+        }
         const newBalance = res.newBalance;
         board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
             balance = newBalance;
@@ -215,6 +224,12 @@ async function doAutoThrow() {
         if (res.error) {
             setResult(res.message || res.error, 'loss');
             stopAuto(); return;
+        }
+        if (DEMO_JACKPOT) {
+            res.path = Array(rows).fill(false);
+            res.slot = 0;
+            res.multiplier = rows === 12 ? 20 : 18;
+            res.profit = Math.round(betValue * res.multiplier) - betValue;
         }
         const newBalance = res.newBalance;
         board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
