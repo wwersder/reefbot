@@ -30,16 +30,19 @@ function hexRgb(hex) {
 }
 
 /**
- * Professional dark-theme palette.
- * Each slot: near-black body, 3 px coloured accent on top, white-ish label.
- * No pastel fills — only the accent line and glow carry the colour.
+ * Light-theme slot palette.
+ * Matches the white iOS card aesthetic: light tinted body, bold coloured top border, dark text.
+ *   bg      — subtle tint fill (near-white)
+ *   bgLand  — slightly stronger tint on landing
+ *   border  — vivid accent colour for the top bar
+ *   text    — dark shade of the same colour, readable on light bg
  */
 function slotPalette(mult) {
-    if (mult >= 15) return { bg: '#100800', border: '#d97706', text: '#fef08a', glow: '#f59e0b' };
-    if (mult >= 5)  return { bg: '#030e06', border: '#15803d', text: '#bbf7d0', glow: '#22c55e' };
-    if (mult >= 2)  return { bg: '#020812', border: '#1d4ed8', text: '#bfdbfe', glow: '#3b82f6' };
-    if (mult >= 0.8)return { bg: '#0c0e13', border: '#334155', text: '#64748b', glow: '#475569' };
-    return               { bg: '#100303', border: '#991b1b', text: '#fca5a5', glow: '#ef4444' };
+    if (mult >= 15) return { bg: '#fffbeb', bgLand: '#fef3c7', border: '#f59e0b', text: '#92400e' };
+    if (mult >= 5)  return { bg: '#f0fdf4', bgLand: '#dcfce7', border: '#22c55e', text: '#14532d' };
+    if (mult >= 2)  return { bg: '#eff6ff', bgLand: '#dbeafe', border: '#3b82f6', text: '#1e3a8a' };
+    if (mult >= 0.8)return { bg: '#f9fafb', bgLand: '#f3f4f6', border: '#9ca3af', text: '#6b7280' };
+    return               { bg: '#fff1f2', bgLand: '#ffe4e6', border: '#f87171', text: '#991b1b' };
 }
 
 const MULT = {
@@ -468,27 +471,19 @@ export class PlinkoBoard {
 
     _drawSlots() {
         const { ctx, canvas } = this;
-        const slots = this.rows + 1;
-        const mults = MULT[this.rows][this.risk];
-        const slotW = this.colSpacing - 4;
-        const slotH = SLOT_H - 4;
-        const slotY = canvas.height - SLOT_H + 1;
-        const BORDER = 3;   // px — coloured accent line height
+        const slots  = this.rows + 1;
+        const mults  = MULT[this.rows][this.risk];
+        const gap    = 3;
+        const slotW  = this.colSpacing - gap;
+        const slotH  = SLOT_H - 4;
+        const slotY  = canvas.height - SLOT_H + 2;
+        const BORDER = 3;   // coloured top bar height
+        const RADIUS = 7;
 
         const landingMap = new Map();
         for (const b of this._balls) {
             if (b.landing) landingMap.set(b.landing.idx, b.landing);
         }
-
-        // Thin separator above slots zone
-        const sepX0 = this._slotX(0) - slotW / 2 - 2;
-        const sepX1 = this._slotX(slots - 1) + slotW / 2 + 2;
-        ctx.beginPath();
-        ctx.moveTo(sepX0, slotY - 3);
-        ctx.lineTo(sepX1, slotY - 3);
-        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-        ctx.lineWidth   = 1;
-        ctx.stroke();
 
         for (let i = 0; i < slots; i++) {
             const cx  = this._slotX(i);
@@ -496,51 +491,35 @@ export class PlinkoBoard {
             const m   = mults[i];
             const pal = slotPalette(m);
             const lnd = landingMap.get(i);
-            const [gr, gg, gb] = hexRgb(pal.glow);
 
-            // ── Landing outer glow ─────────────────────────────────────────
-            if (lnd) {
-                const pulse = 0.5 + 0.5 * Math.sin(lnd.age / 90);
-                const halo  = ctx.createRadialGradient(
-                    cx, slotY + slotH * 0.5, 0,
-                    cx, slotY + slotH * 0.5, slotW * 1.2
-                );
-                halo.addColorStop(0, `rgba(${gr},${gg},${gb},${0.30 * pulse})`);
-                halo.addColorStop(1, `rgba(${gr},${gg},${gb},0)`);
-                ctx.beginPath();
-                ctx.arc(cx, slotY + slotH * 0.5, slotW * 1.2, 0, Math.PI * 2);
-                ctx.fillStyle = halo;
-                ctx.fill();
-            }
-
-            // ── Slot body — near-black ─────────────────────────────────────
+            // ── Body fill — tinted white, deeper on landing ────────────────
             ctx.beginPath();
-            this._rrect(ctx, x, slotY, slotW, slotH, 6);
-            ctx.fillStyle = pal.bg;
+            this._rrect(ctx, x, slotY, slotW, slotH, RADIUS);
+            ctx.fillStyle = lnd ? pal.bgLand : pal.bg;
             ctx.fill();
 
-            // ── Coloured accent line across the top ────────────────────────
-            const accentAlpha = lnd
-                ? (0.70 + 0.30 * Math.sin(lnd.age / 75))
-                : 0.90;
+            // ── Coloured top border bar ────────────────────────────────────
+            // clip to slot shape so the bar corners match the card
+            ctx.save();
             ctx.beginPath();
-            this._rrect(ctx, x, slotY, slotW, BORDER, 3);
-            ctx.fillStyle = lnd
-                ? `rgba(${gr},${gg},${gb},${accentAlpha})`
-                : pal.border;
-            ctx.fill();
+            this._rrect(ctx, x, slotY, slotW, slotH, RADIUS);
+            ctx.clip();
+            ctx.fillStyle = pal.border;
+            ctx.globalAlpha = lnd
+                ? (0.85 + 0.15 * Math.sin(lnd.age / 70))
+                : 1;
+            ctx.fillRect(x, slotY, slotW, BORDER);
+            ctx.globalAlpha = 1;
+            ctx.restore();
 
-            // ── Multiplier label — white on dark ───────────────────────────
+            // ── Multiplier label ───────────────────────────────────────────
             const lbl = m >= 10 ? `${m.toFixed(0)}x` : `${m.toFixed(1)}x`;
-            const fs  = slotW > 34 ? 10 : 8;
+            const fs  = slotW > 32 ? 10 : 8;
             ctx.font         = `700 ${fs}px Inter, system-ui, sans-serif`;
             ctx.textAlign    = 'center';
             ctx.textBaseline = 'middle';
-            const midY = slotY + BORDER + (slotH - BORDER) / 2;
-            ctx.fillStyle = lnd
-                ? `rgba(${gr},${gg},${gb},1)`
-                : pal.text;
-            ctx.fillText(lbl, cx, midY);
+            ctx.fillStyle    = pal.text;
+            ctx.fillText(lbl, cx, slotY + BORDER + (slotH - BORDER) / 2);
         }
     }
 
