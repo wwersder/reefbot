@@ -1,24 +1,35 @@
 /**
- * Reef Plinko — Canvas board & ball animation.
+ * Reef Plinko — Canvas board & ball animation v2.
  *
- * Coordinate system:
- *   - Board is centered inside the canvas.
- *   - Pegs are arranged in a triangular pattern: row i has (i+2) pegs.
- *   - Slots are below the last row.
- *
- * Ball animation:
- *   - path[] from server (array of booleans: false=left, true=right).
- *   - Ball moves peg-by-peg; each step takes STEP_MS milliseconds.
- *   - After reaching the slot, a flash animation plays.
+ * Physics-based ball drop:
+ *   - Quadratic Bezier arcs between pegs (horizontal sweep then fall)
+ *   - Ease-in per segment (gravity acceleration)
+ *   - Glowing trail behind ball
+ *   - Peg flash on hit
+ *   - Particle burst on slot landing
+ *   - Winning slot pulse animation
  */
 
-const STEP_MS_NORMAL = 160;
-const STEP_MS_FAST   = 45;
-const BALL_RADIUS    = 7;
-const PEG_RADIUS     = 5;
-const SLOT_HEIGHT    = 36;
+const STEP_MS_NORMAL = 210;
+const STEP_MS_FAST   = 62;
+const BALL_R         = 8;
+const PEG_R          = 6;
+const SLOT_H         = 42;
+const TRAIL_MAX      = 16;
 
-// Multiplier tables (must match PlinkoService.java)
+// Ease-in: simulates gravitational acceleration per segment
+const easeIn = t => t * t;
+
+// Slot visual palette by multiplier
+function slotPalette(mult) {
+    if (mult >= 15) return { top: '#fcd34d', bot: '#b45309', glow: '#fbbf24' }; // jackpot gold
+    if (mult >= 5)  return { top: '#6ee7b7', bot: '#047857', glow: '#34d399' }; // emerald
+    if (mult >= 2)  return { top: '#67e8f9', bot: '#0e7490', glow: '#22d3ee' }; // cyan
+    if (mult >= 0.8)return { top: '#94a3b8', bot: '#334155', glow: '#64748b' }; // slate
+    return             { top: '#fca5a5', bot: '#991b1b', glow: '#ef4444' };      // red loss
+}
+
+// Multiplier tables — MUST match PlinkoService.java
 const MULT = {
     8: {
         LOW:    [1.5, 1.2, 1.1, 1.0, 0.5, 1.0, 1.1, 1.2, 1.5],
@@ -32,130 +43,294 @@ const MULT = {
     }
 };
 
-function slotColor(mult) {
-    if (mult >= 15)  return '#fbbf24'; // gold — jackpot
-    if (mult >= 5)   return '#34d399'; // green
-    if (mult >= 1.5) return '#22d3ee'; // cyan
-    if (mult >= 0.6) return '#64748b'; // grey — near break-even
-    return '#f87171';                  // red — loss
-}
-
 export class PlinkoBoard {
     /**
      * @param {HTMLCanvasElement} canvas
-     * @param {Function} onAnimDone - called when ball animation completes
+     * @param {Function} onAnimDone(multiplier, profit) — called when ball lands
      */
     constructor(canvas, onAnimDone) {
-        this.canvas = canvas;
-        this.ctx    = canvas.getContext('2d');
+        this.canvas     = canvas;
+        this.ctx        = canvas.getContext('2d');
         this.onAnimDone = onAnimDone;
 
-        this.rows   = 8;
-        this.risk   = 'MEDIUM';
-        this.fast   = false;
+        this.rows = 8;
+        this.risk = 'MEDIUM';
+        this.fast = false;
 
-        this._animFrame = null;
-        this._ball = null;  // { x, y, stepIdx, waypoints }
+        this._raf       = null;
+        this._ball      = null;
+        this._flashes   = new Map(); // `${row},${col}` → brightness [0..1]
+        this._trail     = [];        // [{x, y}] newest first
+        this._particles = [];
+        this._landing   = null;      // {idx, pal, age}
+        this._lastTs    = null;
 
         this.resize();
     }
 
-    // ── Public ────────────────────────────────────────────────────────────────
+    // ── Public API ────────────────────────────────────────────────────────────
 
-    setRows(rows) { this.rows = rows; this.redraw(); }
-    setRisk(risk) { this.risk = risk; this.redraw(); }
-    setFast(fast) { this.fast = fast; }
+    setRows(r) { this.rows = r; this._staticRedraw(); }
+    setRisk(r) { this.risk = r; this._staticRedraw(); }
+    setFast(f) { this.fast = f; }
 
     resize() {
-        const wrap = this.canvas.parentElement;
-        const w    = wrap.clientWidth;
-        const h    = wrap.clientHeight;
-        this.canvas.width  = w;
-        this.canvas.height = h;
-        this._computeLayout();
-        this.redraw();
+        const p = this.canvas.parentElement;
+        this.canvas.width  = p.clientWidth;
+        this.canvas.height = p.clientHeight;
+        this._layout();
+        this._staticRedraw();
     }
 
     /**
-     * Animates a ball drop along the given path.
-     * @param {boolean[]} path
-     * @param {number}    slot   - destination slot
-     * @param {number}    multiplier
-     * @param {number}    profit - signed shell amount
+     * Animate a ball drop.
+     * @param {boolean[]} path       server-provided path (false=left, true=right)
+     * @param {number}    slot       destination slot index
+     * @param {number}    multiplier result multiplier
+     * @param {number}    profit     signed shell delta
      */
     dropBall(path, slot, multiplier, profit) {
-        if (this._animFrame) cancelAnimationFrame(this._animFrame);
+        if (this._raf) cancelAnimationFrame(this._raf);
+        this._flashes.clear();
+        this._trail     = [];
+        this._particles = [];
+        this._landing   = null;
+        this._lastTs    = null;
 
-        const waypoints = this._computeWaypoints(path, slot);
-        this._ball = { stepIdx: 0, waypoints, t: 0, multiplier, profit };
-        this._animate();
+        this._ball = {
+            segs: this._buildSegs(path, slot),
+            segIdx: 0, t: 0,
+            multiplier, profit,
+            done: false
+        };
+
+        this._raf = requestAnimationFrame(ts => this._tick(ts));
     }
 
     // ── Layout ────────────────────────────────────────────────────────────────
 
-    _computeLayout() {
+    _layout() {
         const W = this.canvas.width;
         const H = this.canvas.height;
-        const rows  = this.rows;
-        const slots = rows + 1;
+        const topPad = 20;
+        const botPad = SLOT_H + 12;
+        this.rowSpacing = (H - topPad - botPad) / (this.rows + 1);
+        this.colSpacing = Math.min((W - 28) / (this.rows + 1), 42);
+        this.ox = W / 2;
+        this.oy = topPad + this.rowSpacing;
+    }
 
-        // Available vertical space minus slot area and top padding
-        const topPad    = 24;
-        const boardH    = H - SLOT_HEIGHT - topPad - 8;
-        this.rowSpacing  = boardH / (rows + 1);
-        this.colSpacing  = Math.min((W - 32) / (slots), 38);
+    _pegPos(row, col) {
+        const n = row + 2;
+        return {
+            x: this.ox - (n - 1) * this.colSpacing / 2 + col * this.colSpacing,
+            y: this.oy + row * this.rowSpacing
+        };
+    }
 
-        // Starting X: center of the board
-        this.originX = W / 2;
-        this.originY = topPad + this.rowSpacing; // first row of pegs
+    _slotX(i) {
+        return this.ox - this.rows * this.colSpacing / 2 + i * this.colSpacing;
+    }
+
+    // ── Path building ─────────────────────────────────────────────────────────
+
+    _buildSegs(path, slotIdx) {
+        const segs = [];
+        let col  = 0;
+        // Entry: appear directly above first peg
+        const p0 = this._pegPos(0, 0);
+        let x0   = p0.x;
+        let y0   = p0.y - this.rowSpacing * 1.6;
+
+        for (let row = 0; row < this.rows; row++) {
+            const peg = this._pegPos(row, col);
+            segs.push({
+                x0, y0,
+                x1: peg.x, y1: peg.y,
+                // Control point: jump to target X first, then fall (plinko arc)
+                cx: peg.x, cy: y0,
+                pegRow: row, pegCol: col
+            });
+            x0 = peg.x;
+            y0 = peg.y;
+            if (path[row]) col++;
+        }
+
+        // Final arc from last peg down to slot
+        const sx = this._slotX(slotIdx);
+        const sy = this.canvas.height - SLOT_H / 2 - 2;
+        segs.push({
+            x0, y0,
+            x1: sx, y1: sy,
+            cx: sx, cy: y0,
+            isSlot: true, slotIdx
+        });
+
+        return segs;
+    }
+
+    // Quadratic Bézier position at parameter t
+    _bez(seg, t) {
+        const u = 1 - t;
+        return {
+            x: u*u*seg.x0 + 2*u*t*seg.cx + t*t*seg.x1,
+            y: u*u*seg.y0 + 2*u*t*seg.cy + t*t*seg.y1
+        };
+    }
+
+    // ── Animation loop ────────────────────────────────────────────────────────
+
+    _tick(ts) {
+        if (!this._lastTs) this._lastTs = ts;
+        const dt = Math.min(ts - this._lastTs, 50);
+        this._lastTs = ts;
+
+        const b = this._ball;
+        let bx = null, by = null;
+
+        if (!b.done && b.segIdx < b.segs.length) {
+            const seg    = b.segs[b.segIdx];
+            const stepMs = (this.fast ? STEP_MS_FAST : STEP_MS_NORMAL)
+                         * (seg.isSlot ? 1.4 : 1);
+
+            b.t += dt / stepMs;
+            const te  = easeIn(Math.min(b.t, 1));
+            const pos = this._bez(seg, te);
+            bx = pos.x; by = pos.y;
+
+            // Accumulate trail
+            this._trail.unshift({ x: bx, y: by });
+            if (this._trail.length > TRAIL_MAX) this._trail.pop();
+
+            if (b.t >= 1) {
+                b.t = 0;
+                if (!seg.isSlot) {
+                    // Flash the hit peg
+                    this._flashes.set(`${seg.pegRow},${seg.pegCol}`, 1.0);
+                    b.segIdx++;
+                } else {
+                    // Ball landed
+                    const pal = slotPalette(MULT[this.rows][this.risk][seg.slotIdx]);
+                    this._landing = { idx: seg.slotIdx, pal, age: 0 };
+                    this._spawnParticles(bx, by, pal);
+                    b.done = true;
+                    b.segIdx++;
+                    this.onAnimDone(b.multiplier, b.profit);
+                }
+            }
+        }
+
+        // Decay peg flashes
+        for (const [k, v] of this._flashes) {
+            const nv = v - dt / 300;
+            nv <= 0 ? this._flashes.delete(k) : this._flashes.set(k, nv);
+        }
+
+        this._updateParticles(dt);
+        if (this._landing) this._landing.age += dt;
+
+        this._frame(bx, by);
+
+        if (!b.done || this._particles.length > 0 || this._flashes.size > 0) {
+            this._raf = requestAnimationFrame(ts => this._tick(ts));
+        } else {
+            this._ball = null;
+        }
+    }
+
+    // ── Particles ─────────────────────────────────────────────────────────────
+
+    _spawnParticles(x, y, pal) {
+        const count = 22;
+        for (let i = 0; i < count; i++) {
+            const a  = (Math.PI * 2 * i / count) - Math.PI / 2;
+            const sp = 1.5 + Math.random() * 2.8;
+            this._particles.push({
+                x, y,
+                vx: Math.cos(a) * sp,
+                vy: Math.sin(a) * sp - 2,
+                color: pal.glow,
+                life: 650 + Math.random() * 400,
+                age: 0
+            });
+        }
+        // Extra sparkles: small fast ones
+        for (let i = 0; i < 8; i++) {
+            const a  = Math.random() * Math.PI * 2;
+            this._particles.push({
+                x: x + (Math.random() - 0.5) * 12,
+                y: y + (Math.random() - 0.5) * 8,
+                vx: Math.cos(a) * (3 + Math.random() * 2),
+                vy: Math.sin(a) * (3 + Math.random() * 2) - 3,
+                color: '#ffffff',
+                life: 300 + Math.random() * 200,
+                age: 0
+            });
+        }
+    }
+
+    _updateParticles(dt) {
+        for (let i = this._particles.length - 1; i >= 0; i--) {
+            const p = this._particles[i];
+            p.age += dt;
+            p.vy  += 0.07;   // gravity
+            p.vx  *= 0.97;   // air drag
+            p.x   += p.vx;
+            p.y   += p.vy;
+            if (p.age >= p.life) this._particles.splice(i, 1);
+        }
     }
 
     // ── Drawing ───────────────────────────────────────────────────────────────
 
-    redraw() {
-        this._computeLayout();
-        this._draw();
+    _staticRedraw() {
+        this._layout();
+        this._frame(null, null);
     }
 
-    _draw() {
+    _frame(bx, by) {
         const { ctx, canvas } = this;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
         this._drawPegs();
         this._drawSlots();
-
-        if (this._ball) {
-            const wp = this._ball.waypoints;
-            const si = this._ball.stepIdx;
-            const t  = this._ball.t;
-
-            if (si < wp.length - 1) {
-                // Interpolate between waypoints
-                const from = wp[si];
-                const to   = wp[si + 1];
-                const bx   = from.x + (to.x - from.x) * t;
-                const by   = from.y + (to.y - from.y) * t;
-                this._drawBall(bx, by);
-            } else if (wp.length > 0) {
-                const last = wp[wp.length - 1];
-                this._drawBall(last.x, last.y);
-            }
+        this._drawParticles();
+        if (bx !== null) {
+            this._drawTrail();
+            this._drawBall(bx, by);
         }
     }
 
     _drawPegs() {
         const { ctx } = this;
         for (let row = 0; row < this.rows; row++) {
-            const numPegs = row + 2;
-            for (let col = 0; col < numPegs; col++) {
+            for (let col = 0; col < row + 2; col++) {
                 const { x, y } = this._pegPos(row, col);
+                const flash    = this._flashes.get(`${row},${col}`) || 0;
+
+                // Outer halo
+                const haloR = PEG_R + (flash > 0 ? 10 : 4);
+                const haloA = flash > 0 ? flash * 0.55 : 0.07;
                 ctx.beginPath();
-                ctx.arc(x, y, PEG_RADIUS, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(34, 211, 238, 0.75)';
+                ctx.arc(x, y, haloR, 0, Math.PI * 2);
+                ctx.fillStyle = flash > 0
+                    ? `rgba(255,255,255,${haloA})`
+                    : `rgba(34,211,238,${haloA})`;
                 ctx.fill();
-                // Glow
-                ctx.shadowColor = 'rgba(34,211,238,.5)';
-                ctx.shadowBlur  = 6;
+
+                // Peg body with 3D radial gradient
+                const grad = ctx.createRadialGradient(x - 2, y - 2, 0.5, x, y, PEG_R);
+                if (flash > 0) {
+                    grad.addColorStop(0, `rgba(255,255,255,1)`);
+                    grad.addColorStop(1, `rgba(140,230,255,${0.7 + flash * 0.3})`);
+                } else {
+                    grad.addColorStop(0, 'rgba(190,245,255,0.95)');
+                    grad.addColorStop(1, 'rgba(14,165,200,0.9)');
+                }
+                ctx.shadowColor = flash > 0 ? 'rgba(255,255,255,0.95)' : 'rgba(34,211,238,0.55)';
+                ctx.shadowBlur  = flash > 0 ? 22 : 6;
+                ctx.beginPath();
+                ctx.arc(x, y, PEG_R, 0, Math.PI * 2);
+                ctx.fillStyle = grad;
                 ctx.fill();
                 ctx.shadowBlur = 0;
             }
@@ -164,128 +339,116 @@ export class PlinkoBoard {
 
     _drawSlots() {
         const { ctx, canvas } = this;
-        const slots    = this.rows + 1;
-        const mults    = MULT[this.rows][this.risk];
-        const slotW    = this.colSpacing - 2;
-        const slotY    = canvas.height - SLOT_HEIGHT;
+        const slots  = this.rows + 1;
+        const mults  = MULT[this.rows][this.risk];
+        const slotW  = this.colSpacing - 3;
+        const slotY  = canvas.height - SLOT_H;
 
         for (let i = 0; i < slots; i++) {
-            const cx = this._slotX(i);
-            const x  = cx - slotW / 2;
+            const cx  = this._slotX(i);
+            const x   = cx - slotW / 2;
+            const pal = slotPalette(mults[i]);
+            const isLand = this._landing?.idx === i;
 
-            ctx.fillStyle = slotColor(mults[i]);
+            if (isLand) {
+                // Pulsing outer glow
+                const pulse = 0.5 + 0.5 * Math.sin(this._landing.age / 110);
+                ctx.beginPath();
+                this._rrect(ctx, x - 5, slotY - 7, slotW + 10, SLOT_H + 7, 9);
+                ctx.fillStyle = pal.glow + '40';
+                ctx.shadowColor = pal.glow;
+                ctx.shadowBlur  = 24 * pulse;
+                ctx.fill();
+                ctx.shadowBlur  = 0;
+            }
+
+            // Slot body: linear gradient (bright top → dark base)
+            const grad = ctx.createLinearGradient(cx, slotY, cx, slotY + SLOT_H);
+            grad.addColorStop(0, pal.top);
+            grad.addColorStop(1, pal.bot);
+
+            const alpha = isLand
+                ? 0.78 + 0.22 * Math.sin(this._landing.age / 100)
+                : 1;
             ctx.beginPath();
-            this._roundRect(ctx, x, slotY, slotW, SLOT_HEIGHT - 4, 6);
+            this._rrect(ctx, x, slotY, slotW, SLOT_H - 4, 6);
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle   = grad;
             ctx.fill();
+            ctx.globalAlpha = 1;
 
             // Multiplier label
-            ctx.fillStyle = '#0a1628';
-            ctx.font = `bold ${slotW > 30 ? 11 : 9}px Inter, system-ui`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            const label = mults[i] >= 10 ? mults[i].toFixed(0) + 'x'
-                        : mults[i] >= 1  ? mults[i].toFixed(1) + 'x'
-                        :                  mults[i].toFixed(1) + 'x';
-            ctx.fillText(label, cx, slotY + SLOT_HEIGHT / 2 - 2);
+            const m   = mults[i];
+            const lbl = m >= 10 ? `${m.toFixed(0)}x` : `${m.toFixed(1)}x`;
+            const fs  = slotW > 34 ? 11 : 9;
+            ctx.font          = `bold ${fs}px Inter, system-ui`;
+            ctx.textAlign     = 'center';
+            ctx.textBaseline  = 'middle';
+            ctx.fillStyle     = '#050e1d';
+            ctx.fillText(lbl, cx, slotY + (SLOT_H - 4) / 2);
+        }
+    }
+
+    _drawTrail() {
+        const { ctx } = this;
+        for (let i = 0; i < this._trail.length; i++) {
+            const { x, y } = this._trail[i];
+            const frac = 1 - i / this._trail.length;
+            ctx.beginPath();
+            ctx.arc(x, y, BALL_R * frac * 0.55, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(180,210,255,${frac * 0.32})`;
+            ctx.fill();
         }
     }
 
     _drawBall(x, y) {
         const { ctx } = this;
-        // Outer glow
-        ctx.shadowColor = 'rgba(255,255,255,.6)';
-        ctx.shadowBlur  = 12;
-        // Ball
-        const grad = ctx.createRadialGradient(x - 2, y - 2, 1, x, y, BALL_RADIUS);
-        grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(1, '#94a3b8');
+
+        // Diffuse outer glow ring
         ctx.beginPath();
-        ctx.arc(x, y, BALL_RADIUS, 0, Math.PI * 2);
-        ctx.fillStyle = grad;
+        ctx.arc(x, y, BALL_R + 8, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.fill();
+
+        // Main ball — radial gradient (lit from top-left)
+        ctx.shadowColor = 'rgba(210,230,255,0.65)';
+        ctx.shadowBlur  = 18;
+        const g = ctx.createRadialGradient(x - 2.5, y - 2.5, 0.5, x, y, BALL_R);
+        g.addColorStop(0,   '#ffffff');
+        g.addColorStop(0.35,'#ddeeff');
+        g.addColorStop(0.75,'#a0b8cc');
+        g.addColorStop(1,   '#5c7284');
+        ctx.beginPath();
+        ctx.arc(x, y, BALL_R, 0, Math.PI * 2);
+        ctx.fillStyle = g;
         ctx.fill();
         ctx.shadowBlur = 0;
+
+        // Sharp specular highlight
+        ctx.beginPath();
+        ctx.arc(x - 2.5, y - 2.5, BALL_R * 0.36, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.82)';
+        ctx.fill();
     }
 
-    // ── Waypoints ─────────────────────────────────────────────────────────────
-
-    _computeWaypoints(path, slot) {
-        const wps = [];
-        // Start: top center, above first row
-        const startX = this.originX;
-        const startY = this.originY - this.rowSpacing;
-        wps.push({ x: startX, y: startY });
-
-        // Track column position (which peg within each row)
-        let col = 0;
-
-        for (let row = 0; row < this.rows; row++) {
-            const { x, y } = this._pegPos(row, col);
-            wps.push({ x, y });
-            if (path[row]) col++; // right
-            // else left (col stays)
+    _drawParticles() {
+        const { ctx } = this;
+        for (const p of this._particles) {
+            const a  = Math.max(0, 1 - p.age / p.life);
+            const r  = 3.5 * a;
+            if (r < 0.3) continue;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+            const ah = Math.floor(a * 255).toString(16).padStart(2, '0');
+            ctx.fillStyle = p.color + ah;
+            ctx.fill();
         }
-
-        // Slot
-        wps.push({ x: this._slotX(slot), y: this.canvas.height - SLOT_HEIGHT / 2 });
-        return wps;
     }
 
-    // ── Animation ─────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
-    _animate() {
-        if (!this._ball) return;
-
-        const stepMs = this.fast ? STEP_MS_FAST : STEP_MS_NORMAL;
-
-        let last = performance.now();
-        const tick = (now) => {
-            const dt  = now - last;
-            last = now;
-
-            if (!this._ball) return;
-
-            this._ball.t += dt / stepMs;
-
-            if (this._ball.t >= 1) {
-                this._ball.t = 0;
-                this._ball.stepIdx++;
-
-                if (this._ball.stepIdx >= this._ball.waypoints.length - 1) {
-                    // Done
-                    this._draw();
-                    const mult   = this._ball.multiplier;
-                    const profit = this._ball.profit;
-                    this._ball = null;
-                    this.onAnimDone(mult, profit);
-                    return;
-                }
-            }
-
-            this._draw();
-            this._animFrame = requestAnimationFrame(tick);
-        };
-
-        this._animFrame = requestAnimationFrame(tick);
-    }
-
-    // ── Geometry helpers ──────────────────────────────────────────────────────
-
-    _pegPos(row, col) {
-        // Row 0 has 2 pegs, row 1 has 3, ...
-        const numPegs = row + 2;
-        const totalW  = (numPegs - 1) * this.colSpacing;
-        const x = this.originX - totalW / 2 + col * this.colSpacing;
-        const y = this.originY + row * this.rowSpacing;
-        return { x, y };
-    }
-
-    _slotX(slotIdx) {
-        const slots  = this.rows + 1;
-        const totalW = (slots - 1) * this.colSpacing;
-        return this.originX - totalW / 2 + slotIdx * this.colSpacing;
-    }
-
-    _roundRect(ctx, x, y, w, h, r) {
+    _rrect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
         ctx.moveTo(x + r, y);
         ctx.lineTo(x + w - r, y);
         ctx.quadraticCurveTo(x + w, y, x + w, y + r);
