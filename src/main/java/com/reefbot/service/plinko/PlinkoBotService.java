@@ -4,7 +4,6 @@ import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
 import com.reefbot.entity.PlinkoLog;
-import com.reefbot.repository.PlayerRepository;
 import com.reefbot.repository.PlinkoLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,7 +28,6 @@ public class PlinkoBotService {
     private String miniAppUrl;
 
     private final PlinkoLogRepository plinkoLogRepository;
-    private final PlayerRepository    playerRepository;
 
     @Transactional(readOnly = true)
     public BotResponse handle(Player player, String text) {
@@ -55,11 +53,14 @@ public class PlinkoBotService {
 
                 Баланс: 🐚 %d""", balance);
 
+        // Append a timestamp so Telegram WebView never serves a cached version
+        String freshUrl = miniAppUrl + "?t=" + (System.currentTimeMillis() / 60_000);
+
         InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
                 .keyboardRow(new InlineKeyboardRow(List.of(
                         InlineKeyboardButton.builder()
                                 .text("🎰 Играть")
-                                .webApp(new WebAppInfo(miniAppUrl))
+                                .webApp(new WebAppInfo(freshUrl))
                                 .build()
                 )))
                 .build();
@@ -70,20 +71,22 @@ public class PlinkoBotService {
     // ── /plinko top ───────────────────────────────────────────────────────────
 
     private BotResponse handleTop() {
-        List<PlinkoLog> topWin  = plinkoLogRepository.findTopByProfit();
-        List<PlinkoLog> topMult = plinkoLogRepository.findTopByMultiplier();
+        List<Object[]> topWin  = plinkoLogRepository.findTopByProfitWithPlayer();
+        List<Object[]> topMult = plinkoLogRepository.findTopByMultiplierWithPlayer();
 
         if (topWin.isEmpty()) {
             return BotResponse.html("🏆 <b>Таблица рекордов Plinko</b>\n\nПока никто не играл. Стань первым! 🪷");
         }
 
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM.yy");
         StringBuilder sb = new StringBuilder("🏆 <b>Reef Plinko — Рекорды</b>\n\n");
 
         sb.append("💰 <b>Лучший выигрыш</b>\n");
         int rank = 1;
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd.MM.yy");
-        for (PlinkoLog l : topWin.subList(0, Math.min(5, topWin.size()))) {
-            String name = resolveUsername(l.getPlayerId());
+        for (Object[] row : topWin.subList(0, Math.min(5, topWin.size()))) {
+            PlinkoLog l = (PlinkoLog) row[0];
+            Player    p = (Player)    row[1];
+            String name = p.getUsername() != null ? "@" + p.getUsername() : "Игрок #" + p.getId();
             int profit  = l.getWon() - l.getBet();
             sb.append(String.format("%d. %s — <b>+%d 🐚</b> (×%.0f) %s\n",
                     rank++, name, profit, l.getMultiplier(), l.getPlayedAt().format(fmt)));
@@ -91,19 +94,15 @@ public class PlinkoBotService {
 
         sb.append("\n🎯 <b>Лучший множитель</b>\n");
         rank = 1;
-        for (PlinkoLog l : topMult.subList(0, Math.min(5, topMult.size()))) {
-            String name = resolveUsername(l.getPlayerId());
+        for (Object[] row : topMult.subList(0, Math.min(5, topMult.size()))) {
+            PlinkoLog l = (PlinkoLog) row[0];
+            Player    p = (Player)    row[1];
+            String name = p.getUsername() != null ? "@" + p.getUsername() : "Игрок #" + p.getId();
             sb.append(String.format("%d. %s — <b>×%.0f</b> (+%d 🐚) %s\n",
                     rank++, name, l.getMultiplier(), l.getWon() - l.getBet(),
                     l.getPlayedAt().format(fmt)));
         }
 
         return BotResponse.html(sb.toString());
-    }
-
-    private String resolveUsername(Long playerId) {
-        return playerRepository.findById(playerId)
-                .map(p -> p.getUsername() != null ? "@" + p.getUsername() : "Игрок #" + p.getId())
-                .orElse("?");
     }
 }
