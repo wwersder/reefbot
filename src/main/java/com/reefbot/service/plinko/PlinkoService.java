@@ -5,6 +5,7 @@ import com.reefbot.dto.plinko.*;
 import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
 import com.reefbot.entity.PlinkoLog;
+import com.reefbot.enums.OnboardingStep;
 import com.reefbot.enums.PlayerStatus;
 import com.reefbot.enums.PlinkoRisk;
 import com.reefbot.repository.IslandRepository;
@@ -226,7 +227,8 @@ public class PlinkoService {
 
     private boolean isOnboarded(Player player) {
         return player.getStatus() == PlayerStatus.ACTIVE
-                && player.getOnboardingStep() == null;
+                && (player.getOnboardingStep() == null
+                    || player.getOnboardingStep() == OnboardingStep.FINISHED);
     }
 
     private int currentDailyLost(Player player) {
