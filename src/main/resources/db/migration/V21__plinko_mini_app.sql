@@ -8,7 +8,7 @@ CREATE TABLE plinko_logs (
     slot        TINYINT NOT NULL,
     multiplier  DECIMAL(6,2) NOT NULL,
     won         INT NOT NULL,
-    rows        TINYINT NOT NULL,
+    board_rows  TINYINT NOT NULL,
     risk        VARCHAR(10) NOT NULL,
     played_at   DATETIME NOT NULL,
     INDEX idx_plinko_player_played (player_id, played_at),

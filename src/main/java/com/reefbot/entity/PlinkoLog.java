@@ -39,7 +39,8 @@ public class PlinkoLog {
     private Integer won;
 
     /** Number of rows on the board (8 or 12). */
-    private Integer rows;
+    @Column(name = "board_rows")
+    private Integer boardRows;
 
     @Enumerated(EnumType.STRING)
     private PlinkoRisk risk;

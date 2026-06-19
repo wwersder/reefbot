@@ -185,7 +185,7 @@ public class PlinkoService {
                 .slot(slot)
                 .multiplier(multiplier)
                 .won(won)
-                .rows(req.rows())
+                .boardRows(req.rows())
                 .risk(req.risk())
                 .playedAt(LocalDateTime.now())
                 .build();
