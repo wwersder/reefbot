@@ -28,17 +28,19 @@ public class PlinkoLog {
     /** Shells wagered. */
     private Integer bet;
 
-    /** Final slot index (0-based). */
+    /** Final slot index (0-based). DB: TINYINT */
+    @Column(columnDefinition = "TINYINT")
     private Integer slot;
 
-    /** Multiplier applied (e.g. 2.50). */
+    /** Multiplier applied (e.g. 2.50). DB: DECIMAL(6,2) */
+    @Column(columnDefinition = "DECIMAL(6,2)")
     private Double multiplier;
 
     /** Shells returned (bet × multiplier, rounded). */
     private Integer won;
 
-    /** Number of rows on the board (8 or 12). */
-    @Column(name = "board_rows")
+    /** Number of rows on the board (8 or 12). DB: TINYINT */
+    @Column(name = "board_rows", columnDefinition = "TINYINT")
     private Integer boardRows;
 
     @Enumerated(EnumType.STRING)
