@@ -48,7 +48,7 @@ public class TelegramInitDataVerifier {
 
         // Compute expected hash
         try {
-            byte[] secretKey = hmac("WebAppData", botToken.getBytes(StandardCharsets.UTF_8));
+            byte[] secretKey = hmac(botToken, "WebAppData".getBytes(StandardCharsets.UTF_8));
             byte[] expectedHashBytes = hmac(dataCheckString, secretKey);
             String expectedHash = bytesToHex(expectedHashBytes);
 
