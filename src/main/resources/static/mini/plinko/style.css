@@ -547,3 +547,87 @@ html, body {
 .lb-name { flex: 1; font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lb-val  { font-size: 14px; font-weight: 700; color: var(--green); }
 .lb-sub  { font-size: 12px; color: var(--text2); }
+
+/* ── Results strip ───────────────────────────────────────────────────────── */
+
+#results-strip {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    padding: 6px 16px 4px;
+    flex-shrink: 0;
+}
+
+.result-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: background .2s, transform .15s;
+}
+
+.result-dot.win     { background: var(--green); }
+.result-dot.loss    { background: var(--red); }
+.result-dot.jackpot { background: var(--gold); transform: scale(1.25); }
+.result-dot.push    { background: #b0b0b8; }
+.result-dot.empty   { background: var(--border); opacity: 0.4; }
+
+/* ── Jackpot flash ───────────────────────────────────────────────────────── */
+
+#jackpot-flash {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(ellipse at center,
+        rgba(255, 200, 50, 0.45) 0%,
+        rgba(255, 160, 0,  0.20) 45%,
+        transparent 72%);
+}
+
+#jackpot-flash.active {
+    animation: jackpotBurst .65s ease-out forwards;
+}
+
+@keyframes jackpotBurst {
+    0%   { opacity: 1; transform: scale(0.95); }
+    30%  { opacity: 1; transform: scale(1.02); }
+    100% { opacity: 0; transform: scale(1.06); }
+}
+
+/* ── Auto-spin progress bar ─────────────────────────────────────────────── */
+
+#auto-progress {
+    display: none;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: -5px;
+    flex-shrink: 0;
+}
+
+#auto-bar {
+    height: 100%;
+    width: 100%;
+    background: var(--orange);
+    border-radius: 2px;
+    transition: width .35s linear;
+    transform-origin: left;
+}
+
+/* ── Broke state ─────────────────────────────────────────────────────────── */
+
+#throw-btn.broke {
+    background: var(--seg-bg);
+    color: var(--text2);
+    box-shadow: none;
+}
+
+#throw-btn:disabled {
+    opacity: 1;
+    cursor: default;
+    transform: none !important;
+}

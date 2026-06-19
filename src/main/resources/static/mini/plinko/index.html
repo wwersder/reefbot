@@ -9,7 +9,7 @@
 <title>Reef Plinko</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -33,6 +33,9 @@
             <span id="game-title">🪷 Reef Plinko</span>
             <span id="balance-display">🐚 <span id="balance-num">0</span></span>
         </div>
+
+        <!-- Last 10 results strip -->
+        <div id="results-strip"></div>
 
         <div id="canvas-wrap">
             <canvas id="plinko-canvas"></canvas>
@@ -81,6 +84,7 @@
 
         <!-- Throw button -->
         <button id="throw-btn">БРОСИТЬ</button>
+        <div id="auto-progress"><div id="auto-bar"></div></div>
 
         <!-- Toggles card -->
         <div class="ctrl-card toggles-card">
@@ -110,6 +114,9 @@
 
 </div>
 
+<!-- Jackpot fullscreen flash -->
+<div id="jackpot-flash"></div>
+
 <!-- Leaderboard bottom sheet -->
 <div id="lb-overlay">
     <div id="lb-backdrop"></div>
@@ -126,7 +133,7 @@
 </div>
 
 <script type="module">
-    import { init } from './ui.js?v=10';
+    import { init } from './ui.js?v=11';
     init();
 </script>
 </body>

@@ -78,14 +78,17 @@ export class PlinkoBoard {
         this._pegSprite  = null;
         this._ballSprite = null;
 
+        this._onPegHit = null;   // optional haptic / sound callback
+
         this.resize();
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    setRows(r) { this.rows = r; this._staticRedraw(); }
-    setRisk(r) { this.risk = r; this._staticRedraw(); }
-    setFast(f) { this.fast = f; }
+    setRows(r)      { this.rows = r; this._staticRedraw(); }
+    setRisk(r)      { this.risk = r; this._staticRedraw(); }
+    setFast(f)      { this.fast = f; }
+    setOnPegHit(fn) { this._onPegHit = fn; }
 
     resize() {
         const p   = this.canvas.parentElement;
@@ -378,6 +381,7 @@ export class PlinkoBoard {
             ball.t = 0;
             if (!seg.isSlot) {
                 this._flashes.set(`${seg.pegRow},${seg.pegCol}`, 1.0);
+                try { this._onPegHit?.(); } catch {}
                 ball.segIdx++;
             } else {
                 const pal = slotPalette(MULT[ball.rows][ball.risk][seg.slotIdx]);

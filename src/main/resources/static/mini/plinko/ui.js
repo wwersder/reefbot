@@ -1,35 +1,43 @@
 /**
- * Reef Plinko — UI controller v3
+ * Reef Plinko — UI controller v4
  *
- * Multi-ball: throw button never freezes.
- * Free bet input + multiplier chips (½ ×2 ×5 ×10 MAX).
- * Auto-spin is sequential; manual throws are concurrent.
- * Leaderboard fetches fresh data every open.
- * No daily loss limit.
+ * New in v4:
+ *   - Haptic feedback (impact on throw/peg, notification on result)
+ *   - Balance count-up/down animation (ease-out cubic)
+ *   - Results strip: last 10 outcomes as coloured dots
+ *   - Jackpot screen flash on 15x+
+ *   - Auto-spin progress bar under throw button
+ *   - Broke state: disabled button when balance < MIN_BET
  */
 
-import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=10';
-import { PlinkoBoard } from './plinko.js?v=10';
+import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=11';
+import { PlinkoBoard } from './plinko.js?v=11';
 
-const MIN_BET  = 5;
-const MAX_BET  = 500;
-const BET_STEP = 5;   // +/- increment
-const AUTO_MAX = 100;
+const MIN_BET    = 5;
+const MAX_BET    = 500;
+const BET_STEP   = 5;
+const AUTO_MAX   = 100;
+const RESULTS_MAX= 10;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-let balance         = 0;
-let betValue        = 25;    // current bet amount (free integer)
-let rows            = 8;
-let risk            = 'MEDIUM';
-let autoRunning     = false;
-let autoCount       = 0;
-let autoInFlight    = false;  // one auto-ball in flight at a time
-let manualInFlight  = false;  // guard against rapid manual clicks (BUG-05)
-let board           = null;
+let _tg            = null;   // Telegram WebApp
+let balance        = 0;
+let _shownBal      = 0;      // currently displayed balance (for animation)
+let _balRaf        = null;   // rAF handle for balance animation
+let betValue       = 25;
+let rows           = 8;
+let risk           = 'MEDIUM';
+let autoRunning    = false;
+let autoCount      = 0;
+let autoInFlight   = false;
+let manualInFlight = false;
+let board          = null;
+let _results       = [];     // last RESULTS_MAX result types
+let _hapticTs      = 0;      // timestamp of last peg haptic (throttle)
 
-let _syncTimer      = null;   // debounce handle for balance sync
-let _syncSeq        = 0;      // sequence counter — prevents stale sync from overwriting newer balance (BUG-14)
+let _syncTimer     = null;
+let _syncSeq       = 0;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -44,17 +52,31 @@ function escHtml(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// ── Haptics ───────────────────────────────────────────────────────────────────
+
+function hapticImpact(style) {
+    try { _tg?.HapticFeedback?.impactOccurred(style || 'medium'); } catch {}
+}
+
+function hapticNotify(type) {
+    try { _tg?.HapticFeedback?.notificationOccurred(type || 'success'); } catch {}
+}
+
+/** Throttled peg-hit haptic — max once per 80 ms to avoid buzzing on fast boards */
+function hapticPeg() {
+    const now = Date.now();
+    if (now - _hapticTs < 80) return;
+    _hapticTs = now;
+    hapticImpact('light');
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 export async function init() {
     const tg = window.Telegram?.WebApp;
-    if (tg) {
-        tg.ready();
-        tg.expand();
-        setInitData(tg.initData);
-    } else {
-        setInitData('');
-    }
+    _tg = tg || null;
+    if (tg) { tg.ready(); tg.expand(); setInitData(tg.initData); }
+    else setInitData('');
 
     showScreen('loading');
 
@@ -67,19 +89,22 @@ export async function init() {
             return;
         }
 
-        balance = state.balance;
+        balance   = state.balance;
+        _shownBal = balance;
 
         if (!state.rows12Unlocked) {
             const btn12 = $('rows-btn-12');
-            if (btn12) { btn12.disabled = true; }
+            if (btn12) btn12.disabled = true;
         }
 
         bindEvents();
+        renderResultsStrip();
         updateUI();
         showScreen('app');
 
         requestAnimationFrame(() => {
             board = new PlinkoBoard($('plinko-canvas'), null);
+            board.setOnPegHit(hapticPeg);
             window.addEventListener('resize', () => board?.resize());
         });
 
@@ -96,7 +121,7 @@ export async function init() {
 // ── Events ────────────────────────────────────────────────────────────────────
 
 function bindEvents() {
-    // ── Dismiss keyboard on tap-outside (BUG-08: skip when tapping within the input itself) ──
+    // Dismiss keyboard on tap-outside (BUG-08)
     document.addEventListener('touchstart', e => {
         if (document.activeElement?.id === 'bet-input' &&
             !e.target.closest('#bet-input')) {
@@ -104,68 +129,46 @@ function bindEvents() {
         }
     }, { passive: true });
 
-    // ── Segmented risk control ────────────────────────────────────────────────
-    $$('#risk-seg .seg-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            $$('#risk-seg .seg-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            risk = btn.dataset.val;
-            board?.setRisk(risk);
-        });
-    });
+    // Risk
+    $$('#risk-seg .seg-btn').forEach(btn => btn.addEventListener('click', () => {
+        $$('#risk-seg .seg-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        risk = btn.dataset.val;
+        board?.setRisk(risk);
+    }));
 
-    // ── Segmented rows control ────────────────────────────────────────────────
-    $$('#rows-seg .seg-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (btn.disabled) return;
-            $$('#rows-seg .seg-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            rows = parseInt(btn.dataset.val);
-            board?.setRows(rows);
-        });
-    });
+    // Rows
+    $$('#rows-seg .seg-btn').forEach(btn => btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        $$('#rows-seg .seg-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        rows = parseInt(btn.dataset.val);
+        board?.setRows(rows);
+    }));
 
-    // Bet: +/- buttons (step by BET_STEP)
+    // Bet +/-
     $('bet-minus').addEventListener('click', () => setBet(betValue - BET_STEP));
     $('bet-plus').addEventListener('click',  () => setBet(betValue + BET_STEP));
 
-    // Bet: free input — sanitize on blur only, allow free typing
-    $('bet-input').addEventListener('blur', () => {
-        setBet(parseInt($('bet-input').value) || MIN_BET);
-    });
+    // Bet free input
+    $('bet-input').addEventListener('blur', () => setBet(parseInt($('bet-input').value) || MIN_BET));
 
-    // Multiplier chips (BUG-07: handle MAX when balance < MIN_BET)
-    $$('.mult-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const m = btn.dataset.mult;
-            if (m === 'max') {
-                const maxBet = Math.min(MAX_BET, balance);
-                if (maxBet < MIN_BET) {
-                    setResult('Недостаточно ракушек 🐚', 'loss');
-                    return;
-                }
-                setBet(maxBet);
-            } else {
-                setBet(Math.round(betValue * parseFloat(m)));
-            }
-        });
-    });
+    // Multiplier chips (BUG-07)
+    $$('.mult-btn').forEach(btn => btn.addEventListener('click', () => {
+        const m = btn.dataset.mult;
+        if (m === 'max') {
+            const maxBet = Math.min(MAX_BET, balance);
+            if (maxBet < MIN_BET) { setResult('Недостаточно ракушек 🐚', 'loss'); return; }
+            setBet(maxBet);
+        } else {
+            setBet(Math.round(betValue * parseFloat(m)));
+        }
+    }));
 
-    // Throw button
     $('throw-btn').addEventListener('click', handleThrow);
+    $('auto-check').addEventListener('change', e => { if (e.target.checked) startAuto(); else stopAuto(); });
+    $('turbo-check').addEventListener('change', e => board?.setFast(e.target.checked));
 
-    // Auto-spin checkbox
-    $('auto-check').addEventListener('change', e => {
-        if (e.target.checked) startAuto();
-        else stopAuto();
-    });
-
-    // Turbo checkbox
-    $('turbo-check').addEventListener('change', e => {
-        board?.setFast(e.target.checked);
-    });
-
-    // Leaderboard
     $('lb-btn').addEventListener('click', openLeaderboard);
     $('lb-close').addEventListener('click', closeLeaderboard);
     $('lb-backdrop').addEventListener('click', closeLeaderboard);
@@ -179,18 +182,20 @@ function handleThrow() {
 }
 
 async function doManualThrow() {
-    if (!board || manualInFlight) return;  // BUG-05: guard rapid clicks
+    if (!board || manualInFlight) return;
+    if (balance < MIN_BET) { updateThrowBtn(); return; }
     manualInFlight = true;
+    hapticImpact('medium');
     const bet = betValue;
     try {
         const res = await postPlay(bet, rows, risk);
         if (res.error) { setResult(res.message || res.error, 'loss'); return; }
         const newBalance = res.newBalance;
         board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
-            balance = newBalance;   // optimistic: instant feedback
+            balance = newBalance;
             updateBalance();
             showResult(mult, profit);
-            scheduleBalanceSync();  // verify against server ~500ms later
+            scheduleBalanceSync();
         });
     } catch (e) {
         console.error('Play error', e);
@@ -203,31 +208,25 @@ async function doManualThrow() {
 async function doAutoThrow() {
     if (!autoRunning || !board) return;
     autoInFlight = true;
+    hapticImpact('light');
     try {
         const res = await postPlay(betValue, rows, risk);
         if (res.error) {
             setResult(res.message || res.error, 'loss');
-            stopAuto();
-            return;
+            stopAuto(); return;
         }
         const newBalance = res.newBalance;
         board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
-            balance = newBalance;   // optimistic
+            balance = newBalance;
             updateBalance();
             showResult(mult, profit);
             autoInFlight = false;
 
-            if (!autoRunning) {
-                scheduleBalanceSync();  // sync when auto is interrupted
-                return;
-            }
+            if (!autoRunning) { scheduleBalanceSync(); return; }
             autoCount--;
             updateThrowBtn();
-            if (autoCount <= 0) {
-                stopAuto();
-                scheduleBalanceSync();  // sync after auto-spin finishes
-                return;
-            }
+            updateAutoProgress();
+            if (autoCount <= 0) { stopAuto(); scheduleBalanceSync(); return; }
             setTimeout(doAutoThrow, 900);
         });
     } catch (e) {
@@ -237,15 +236,25 @@ async function doAutoThrow() {
 }
 
 function showResult(multiplier, profit) {
+    let type;
     if (multiplier >= 15) {
+        type = 'jackpot';
         setResult(`🎰 ДЖЕКПОТ ×${multiplier.toFixed(0)}!`, 'jackpot');
+        hapticNotify('success');
+        triggerJackpotFlash();
     } else if (profit > 0) {
-        setResult(`+${profit} 🐚  (×${multiplier.toFixed(1)})`, 'win');
+        type = 'win';
+        setResult(`+${profit} 🐚  ×${multiplier.toFixed(1)}`, 'win');
+        hapticNotify('success');
     } else if (profit === 0) {
+        type = 'push';
         setResult(`Ничья ×${multiplier.toFixed(1)}`, 'neutral');
     } else {
+        type = 'loss';
         setResult(`НЕ ПОВЕЗЛО  ×${multiplier.toFixed(1)}`, 'loss');
+        hapticNotify('error');
     }
+    pushResult(type);
 }
 
 // ── Auto ──────────────────────────────────────────────────────────────────────
@@ -255,6 +264,7 @@ function startAuto() {
     autoCount    = AUTO_MAX;
     autoInFlight = false;
     updateThrowBtn();
+    updateAutoProgress();
     doAutoThrow();
 }
 
@@ -264,14 +274,49 @@ function stopAuto() {
     autoCount    = 0;
     $('auto-check').checked = false;
     updateThrowBtn();
+    updateAutoProgress();
+}
+
+// ── Results strip ─────────────────────────────────────────────────────────────
+
+function pushResult(type) {
+    _results.unshift(type);
+    if (_results.length > RESULTS_MAX) _results.pop();
+    renderResultsStrip();
+}
+
+function renderResultsStrip() {
+    const strip = $('results-strip');
+    if (!strip) return;
+    strip.innerHTML = '';
+    for (let i = 0; i < RESULTS_MAX; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'result-dot ' + (_results[i] || 'empty');
+        strip.appendChild(dot);
+    }
+}
+
+// ── Jackpot flash ─────────────────────────────────────────────────────────────
+
+function triggerJackpotFlash() {
+    const el = $('jackpot-flash');
+    if (!el) return;
+    el.classList.remove('active');
+    void el.offsetWidth;   // force reflow to restart animation
+    el.classList.add('active');
 }
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
 
 function updateUI() {
     setBet(betValue);
-    updateBalance();
+    // Set balance display directly (no animation on init)
+    $('balance-num').textContent  = balance;
+    $('balance-hint').textContent = balance;
+    _shownBal = balance;
     setResult('Выбери ставку и бросай', 'neutral');
+    updateThrowBtn();
+    updateAutoProgress();
 }
 
 function setBet(v) {
@@ -279,15 +324,70 @@ function setBet(v) {
     $('bet-input').value = betValue;
 }
 
+/**
+ * Animate balance display from _shownBal → balance over ~400 ms.
+ * Uses ease-out cubic so the number settles smoothly at the target.
+ */
 function updateBalance() {
-    $('balance-num').textContent  = balance;
-    $('balance-hint').textContent = balance;
+    const from = _shownBal;
+    const to   = balance;
+    if (from === to) { updateThrowBtn(); return; }
+    if (_balRaf) cancelAnimationFrame(_balRaf);
+    const dur   = Math.max(180, Math.min(500, Math.abs(to - from) * 1.2));
+    const start = performance.now();
+    function step(now) {
+        const t = Math.min((now - start) / dur, 1);
+        const e = 1 - Math.pow(1 - t, 3);
+        const v = Math.round(from + (to - from) * e);
+        $('balance-num').textContent  = v;
+        $('balance-hint').textContent = v;
+        _shownBal = v;
+        if (t < 1) {
+            _balRaf = requestAnimationFrame(step);
+        } else {
+            $('balance-num').textContent  = to;
+            $('balance-hint').textContent = to;
+            _shownBal = to;
+            updateThrowBtn();  // refresh broke state after balance settles
+        }
+    }
+    _balRaf = requestAnimationFrame(step);
+    updateThrowBtn();  // also refresh immediately (might cross MIN_BET)
+}
+
+function updateAutoProgress() {
+    const prog = $('auto-progress');
+    const bar  = $('auto-bar');
+    if (!prog || !bar) return;
+    if (autoRunning) {
+        prog.style.display = 'block';
+        bar.style.width = (autoCount / AUTO_MAX * 100) + '%';
+    } else {
+        prog.style.display = 'none';
+        bar.style.width = '100%';
+    }
+}
+
+function updateThrowBtn() {
+    const btn = $('throw-btn');
+    if (!btn) return;
+    if (autoRunning) {
+        btn.textContent = `■ СТОП (${autoCount}x)`;
+        btn.className   = 'auto-running';
+        btn.disabled    = false;
+    } else if (balance < MIN_BET) {
+        btn.textContent = 'Пополни баланс 🐚';
+        btn.className   = 'broke';
+        btn.disabled    = true;
+    } else {
+        btn.textContent = 'БРОСИТЬ';
+        btn.className   = '';
+        btn.disabled    = false;
+    }
 }
 
 /**
- * Debounced server sync — corrects balance after external changes.
- * Uses a sequence counter (BUG-14) so a stale response can't overwrite
- * a newer optimistic balance update that arrived after this sync was scheduled.
+ * Debounced balance sync (BUG-14: sequence counter prevents stale overwrites).
  */
 function scheduleBalanceSync() {
     clearTimeout(_syncTimer);
@@ -295,24 +395,12 @@ function scheduleBalanceSync() {
     _syncTimer = setTimeout(async () => {
         try {
             const s = await fetchState();
-            // Only apply if no newer sync has been scheduled since this one fired
             if (seq === _syncSeq && typeof s.balance === 'number' && s.balance !== balance) {
                 balance = s.balance;
                 updateBalance();
             }
-        } catch { /* silent — sync is best-effort */ }
+        } catch { /* silent — best-effort */ }
     }, 500);
-}
-
-function updateThrowBtn() {
-    const btn = $('throw-btn');
-    if (autoRunning) {
-        btn.textContent = `■ СТОП (${autoCount}x)`;
-        btn.className   = 'auto-running';
-    } else {
-        btn.textContent = 'БРОСИТЬ';
-        btn.className   = '';
-    }
 }
 
 function setResult(text, type) {
@@ -331,7 +419,7 @@ function showScreen(name) {
 
 function openLeaderboard() {
     $('lb-overlay').classList.add('open');
-    loadLeaderboard();   // always fetch fresh
+    loadLeaderboard();
 }
 
 function closeLeaderboard() {
@@ -358,7 +446,7 @@ function renderLeaderboard(data, container) {
     }
 
     const section = (title, entries, type) => {
-        const rows = entries.slice(0, 10).map((e, i) => {
+        const rowsHtml = entries.slice(0, 10).map((e, i) => {
             const val = type === 'win'
                 ? `<span class="lb-val">+${e.profit} 🐚</span>`
                 : `<span class="lb-val">×${(+e.multiplier).toFixed(0)}</span>`;
@@ -374,11 +462,11 @@ function renderLeaderboard(data, container) {
         }).join('');
         return `<div class="lb-section">
             <div class="lb-section-title">${title}</div>
-            ${rows}
+            ${rowsHtml}
         </div>`;
     };
 
-    // BUG-21: guard against missing topMultiplier array
+    // BUG-21: guard missing topMultiplier
     const multSection = data.topMultiplier?.length
         ? section('🎯 Лучший множитель', data.topMultiplier, 'mult')
         : '';
