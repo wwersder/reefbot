@@ -8,8 +8,8 @@
  * No daily loss limit.
  */
 
-import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=5';
-import { PlinkoBoard } from './plinko.js?v=5';
+import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=6';
+import { PlinkoBoard } from './plinko.js?v=6';
 
 const MIN_BET  = 5;
 const MAX_BET  = 500;

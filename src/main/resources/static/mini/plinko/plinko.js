@@ -12,8 +12,8 @@
 
 const STEP_MS_NORMAL = 210;
 const STEP_MS_FAST   = 62;
-const BALL_R         = 7;
-const PEG_R          = 4;
+const BALL_R         = 8;
+const PEG_R          = 5;
 const SLOT_H         = 44;
 const TRAIL_MAX      = 14;
 const LANDING_TTL    = 2400;
@@ -153,9 +153,13 @@ export class PlinkoBoard {
         this._bgSprite = c;
     }
 
-    /** Pre-rendered metallic peg — always PEG_R, never changes. */
+    /**
+     * Pre-rendered bioluminescent coral pin.
+     * Dark steel body with a bright cyan inner core and a subtle outer glow —
+     * pops clearly against the near-black canvas background.
+     */
     _buildPegSprite() {
-        const PAD  = 12;   // extra space for shadow
+        const PAD  = 16;
         const size = (PEG_R + PAD) * 2;
         const c    = document.createElement('canvas');
         c.width    = c.height = size;
@@ -163,38 +167,59 @@ export class PlinkoBoard {
         const cx   = size / 2;
         const cy   = size / 2;
 
+        // Outer ambient glow (bioluminescent halo)
+        const glow = ctx.createRadialGradient(cx, cy, PEG_R * 0.6, cx, cy, PEG_R * 3.0);
+        glow.addColorStop(0, 'rgba(34,211,238,0.22)');
+        glow.addColorStop(1, 'rgba(34,211,238,0)');
+        ctx.beginPath();
+        ctx.arc(cx, cy, PEG_R * 3.0, 0, Math.PI * 2);
+        ctx.fillStyle = glow;
+        ctx.fill();
+
         // Drop shadow
         ctx.beginPath();
-        ctx.arc(cx + 0.5, cy + 1.8, PEG_R * 0.88, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,0,0,0.50)';
+        ctx.arc(cx + 0.5, cy + 2.0, PEG_R * 0.90, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.60)';
         ctx.fill();
 
-        // Metallic body — radial gradient, light from top-left
-        const g = ctx.createRadialGradient(
-            cx - PEG_R * 0.38, cy - PEG_R * 0.38, PEG_R * 0.04,
+        // Body — dark steel with cyan-lit top
+        const body = ctx.createRadialGradient(
+            cx - PEG_R * 0.36, cy - PEG_R * 0.36, PEG_R * 0.02,
             cx, cy, PEG_R
         );
-        g.addColorStop(0,    'rgba(225, 238, 255, 0.96)');
-        g.addColorStop(0.40, 'rgba(130, 168, 215, 0.88)');
-        g.addColorStop(1,    'rgba(38,  68, 118, 0.82)');
+        body.addColorStop(0,    'rgba(210, 250, 255, 0.98)');  // bright cyan-white top
+        body.addColorStop(0.28, 'rgba(60,  195, 220, 0.94)');  // cyan mid
+        body.addColorStop(0.62, 'rgba(14,  80,  105, 0.90)');  // teal-steel
+        body.addColorStop(1,    'rgba(4,   22,  38,  0.88)');  // near-black edge
         ctx.beginPath();
         ctx.arc(cx, cy, PEG_R, 0, Math.PI * 2);
-        ctx.fillStyle = g;
+        ctx.fillStyle = body;
         ctx.fill();
 
-        // Sharp specular highlight — top-left bright dot
+        // Rim highlight ring — thin bright arc around top half
         ctx.beginPath();
-        ctx.arc(cx - PEG_R * 0.30, cy - PEG_R * 0.32, PEG_R * 0.27, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.88)';
+        ctx.arc(cx, cy, PEG_R - 0.8, Math.PI * 1.1, Math.PI * 1.9);
+        ctx.strokeStyle = 'rgba(160,240,255,0.55)';
+        ctx.lineWidth   = 1.0;
+        ctx.stroke();
+
+        // Sharp specular dot — top-left
+        ctx.beginPath();
+        ctx.arc(cx - PEG_R * 0.28, cy - PEG_R * 0.32, PEG_R * 0.28, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
         ctx.fill();
 
         this._pegSprite       = c;
         this._pegSpriteOffset = size / 2;
     }
 
-    /** Pre-rendered glass marble ball — rebuilt on resize for correct DPR. */
+    /**
+     * Pre-rendered golden pearl ball — warm amber/gold tone.
+     * Contrasts strongly with the cyan pegs and dark-blue background.
+     * Iridescent sheen layer gives the "real pearl" look.
+     */
     _buildBallSprite() {
-        const PAD  = 20;
+        const PAD  = 22;
         const size = (BALL_R + PAD) * 2;
         const c    = document.createElement('canvas');
         c.width    = c.height = size;
@@ -202,64 +227,79 @@ export class PlinkoBoard {
         const cx   = size / 2;
         const cy   = size / 2;
 
-        // Soft ambient glow
-        const aura = ctx.createRadialGradient(cx, cy, 0, cx, cy, BALL_R * 2.8);
-        aura.addColorStop(0, 'rgba(160,200,255,0.12)');
-        aura.addColorStop(1, 'transparent');
+        // Warm golden outer glow
+        const aura = ctx.createRadialGradient(cx, cy, BALL_R * 0.4, cx, cy, BALL_R * 3.2);
+        aura.addColorStop(0,   'rgba(255, 210, 90,  0.22)');
+        aura.addColorStop(0.5, 'rgba(255, 170, 30,  0.09)');
+        aura.addColorStop(1,   'transparent');
         ctx.beginPath();
-        ctx.arc(cx, cy, BALL_R * 2.8, 0, Math.PI * 2);
+        ctx.arc(cx, cy, BALL_R * 3.2, 0, Math.PI * 2);
         ctx.fillStyle = aura;
         ctx.fill();
 
         // Drop shadow
         ctx.beginPath();
-        ctx.arc(cx + 0.8, cy + 2.2, BALL_R * 0.88, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,0,0,0.44)';
+        ctx.arc(cx + 0.8, cy + 2.5, BALL_R * 0.90, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.48)';
         ctx.fill();
 
-        // Glass body — multi-stop radial, light from top-left
+        // Pearl body — warm cream to deep amber radial, light from top-left
         const g = ctx.createRadialGradient(
-            cx - BALL_R * 0.30, cy - BALL_R * 0.35, 0,
+            cx - BALL_R * 0.30, cy - BALL_R * 0.34, 0,
             cx, cy, BALL_R
         );
-        g.addColorStop(0,    '#eef4ff');
-        g.addColorStop(0.22, '#c4d9ee');
-        g.addColorStop(0.55, '#7898b4');
-        g.addColorStop(0.82, '#3c6080');
-        g.addColorStop(1,    '#1a3550');
+        g.addColorStop(0,    '#fffbe8');  // creamy white highlight
+        g.addColorStop(0.18, '#f5d97a');  // warm gold
+        g.addColorStop(0.45, '#d4a020');  // rich amber-gold
+        g.addColorStop(0.74, '#9a6a08');  // deep gold-brown
+        g.addColorStop(1,    '#4a3004');  // near-black shadow
+
         ctx.beginPath();
         ctx.arc(cx, cy, BALL_R, 0, Math.PI * 2);
         ctx.fillStyle = g;
-        ctx.shadowColor = 'rgba(140,190,255,0.50)';
-        ctx.shadowBlur  = 10;
+        ctx.shadowColor = 'rgba(255, 195, 50, 0.65)';
+        ctx.shadowBlur  = 14;
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        // Wide soft specular (covers ~50% of ball surface)
-        const h1 = ctx.createRadialGradient(
-            cx - BALL_R * 0.28, cy - BALL_R * 0.30, 0,
-            cx - BALL_R * 0.08, cy - BALL_R * 0.08, BALL_R * 0.54
+        // Iridescent sheen — rose-to-green shift (real pearl lustre)
+        const sheen = ctx.createRadialGradient(
+            cx + BALL_R * 0.18, cy + BALL_R * 0.12, 0,
+            cx, cy, BALL_R * 1.05
         );
-        h1.addColorStop(0,   'rgba(255,255,255,0.82)');
-        h1.addColorStop(0.5, 'rgba(255,255,255,0.18)');
+        sheen.addColorStop(0,   'rgba(255, 140, 180, 0.18)');
+        sheen.addColorStop(0.45,'rgba(120, 240, 180, 0.10)');
+        sheen.addColorStop(1,   'transparent');
+        ctx.beginPath();
+        ctx.arc(cx, cy, BALL_R, 0, Math.PI * 2);
+        ctx.fillStyle = sheen;
+        ctx.fill();
+
+        // Wide soft specular — covers upper-left quadrant
+        const h1 = ctx.createRadialGradient(
+            cx - BALL_R * 0.26, cy - BALL_R * 0.28, 0,
+            cx - BALL_R * 0.08, cy - BALL_R * 0.08, BALL_R * 0.56
+        );
+        h1.addColorStop(0,   'rgba(255,255,255,0.90)');
+        h1.addColorStop(0.5, 'rgba(255,255,255,0.22)');
         h1.addColorStop(1,   'rgba(255,255,255,0)');
         ctx.beginPath();
         ctx.arc(cx, cy, BALL_R, 0, Math.PI * 2);
         ctx.fillStyle = h1;
         ctx.fill();
 
-        // Sharp specular dot — crisp bright point
+        // Sharp specular dot
         ctx.beginPath();
-        ctx.arc(cx - BALL_R * 0.30, cy - BALL_R * 0.36, BALL_R * 0.17, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.96)';
+        ctx.arc(cx - BALL_R * 0.30, cy - BALL_R * 0.36, BALL_R * 0.18, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.98)';
         ctx.fill();
 
-        // Bottom blue inner reflection
+        // Bottom warm inner reflection
         const h2 = ctx.createRadialGradient(
-            cx + BALL_R * 0.14, cy + BALL_R * 0.50, 0,
+            cx + BALL_R * 0.12, cy + BALL_R * 0.48, 0,
             cx, cy, BALL_R
         );
-        h2.addColorStop(0, 'rgba(100,180,255,0.24)');
+        h2.addColorStop(0, 'rgba(255, 200, 80, 0.28)');
         h2.addColorStop(1, 'transparent');
         ctx.beginPath();
         ctx.arc(cx, cy, BALL_R, 0, Math.PI * 2);
@@ -479,24 +519,24 @@ export class PlinkoBoard {
                 const flash     = this._flashes.get(`${row},${col}`) || 0;
 
                 if (flash > 0) {
-                    // Radial glow behind peg
-                    const halo = ctx.createRadialGradient(x, y, PEG_R, x, y, PEG_R + 11);
-                    halo.addColorStop(0, `rgba(210,235,255,${flash * 0.40})`);
-                    halo.addColorStop(1, 'rgba(210,235,255,0)');
+                    // Cyan radial burst behind peg on hit
+                    const halo = ctx.createRadialGradient(x, y, PEG_R * 0.5, x, y, PEG_R + 14);
+                    halo.addColorStop(0, `rgba(34,211,238,${flash * 0.55})`);
+                    halo.addColorStop(1, 'rgba(34,211,238,0)');
                     ctx.beginPath();
-                    ctx.arc(x, y, PEG_R + 11, 0, Math.PI * 2);
+                    ctx.arc(x, y, PEG_R + 14, 0, Math.PI * 2);
                     ctx.fillStyle = halo;
                     ctx.fill();
                 }
 
-                // Pre-rendered metallic peg
+                // Pre-rendered bioluminescent peg
                 ctx.drawImage(this._pegSprite, x - off, y - off);
 
                 if (flash > 0) {
-                    // White flash overlay on top of sprite
+                    // Bright cyan-white flash overlay on hit
                     ctx.beginPath();
                     ctx.arc(x, y, PEG_R, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255,255,255,${flash * 0.55})`;
+                    ctx.fillStyle = `rgba(180,250,255,${flash * 0.65})`;
                     ctx.fill();
                 }
             }
@@ -593,12 +633,12 @@ export class PlinkoBoard {
             const { x, y } = trail[i];
             const frac = (1 - i / trail.length);
             if (frac < 0.06) continue;
-            const r = BALL_R * frac * 0.55;
-            const grad = ctx.createRadialGradient(x, y, 0, x, y, r * 2);
-            grad.addColorStop(0, `rgba(110,175,255,${frac * 0.22})`);
+            const r = BALL_R * frac * 0.60;
+            const grad = ctx.createRadialGradient(x, y, 0, x, y, r * 2.2);
+            grad.addColorStop(0, `rgba(255,195,50,${frac * 0.28})`);
             grad.addColorStop(1, 'transparent');
             ctx.beginPath();
-            ctx.arc(x, y, r * 2, 0, Math.PI * 2);
+            ctx.arc(x, y, r * 2.2, 0, Math.PI * 2);
             ctx.fillStyle = grad;
             ctx.fill();
         }
