@@ -32,7 +32,6 @@ public class PlinkoLog {
     private Integer slot;
 
     /** Multiplier applied (e.g. 2.50). */
-    @Column(precision = 6, scale = 2)
     private Double multiplier;
 
     /** Shells returned (bet × multiplier, rounded). */
