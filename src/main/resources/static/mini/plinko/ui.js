@@ -10,8 +10,8 @@
  *   - Broke state: disabled button when balance < MIN_BET
  */
 
-import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=15';
-import { PlinkoBoard } from './plinko.js?v=15';
+import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=16';
+import { PlinkoBoard } from './plinko.js?v=16';
 
 const MIN_BET    = 5;
 const BET_STEP   = 5;
@@ -507,10 +507,18 @@ function setResult(text, type) {
 // ── VIP ───────────────────────────────────────────────────────────────────────
 
 const VIP_TIERS = [
-    { id: 'NONE',  emoji: '',   name: 'Нет',    cb: 0,  threshold: 0,       color: '#9ca3af' },
-    { id: 'CORAL', emoji: '🪸', name: 'Коралл', cb: 3,  threshold: 5000,    color: '#e07857' },
-    { id: 'PEARL', emoji: '🦪', name: 'Жемчуг', cb: 6,  threshold: 25000,   color: '#7c6af5' },
-    { id: 'REEF',  emoji: '👑', name: 'Риф',    cb: 10, threshold: 100000,  color: '#d4a017' },
+    { id: 'NONE',  emoji: '',   name: 'Нет',    cb: 0,  threshold: 0,
+      color: '#9ca3af', heroBg: '#f5f5f7', heroBorder: '#e5e5ea',
+      heroGlow: 'transparent', heroShadow: 'rgba(0,0,0,.06)', heroText: '#1c1c1e' },
+    { id: 'CORAL', emoji: '🪸', name: 'Коралл', cb: 3,  threshold: 5000,
+      color: '#e07857', heroBg: '#fff5f2', heroBorder: '#f2c4b0',
+      heroGlow: '#f4a07a', heroShadow: 'rgba(224,120,87,.18)', heroText: '#c45a31' },
+    { id: 'PEARL', emoji: '🦪', name: 'Жемчуг', cb: 6,  threshold: 25000,
+      color: '#7c6af5', heroBg: '#f5f3ff', heroBorder: '#c4bafa',
+      heroGlow: '#a596f8', heroShadow: 'rgba(124,106,245,.20)', heroText: '#5b48d9' },
+    { id: 'REEF',  emoji: '👑', name: 'Риф',    cb: 10, threshold: 100000,
+      color: '#c8850a', heroBg: '#fffbf0', heroBorder: '#f0d080',
+      heroGlow: '#f0c040', heroShadow: 'rgba(200,133,10,.22)', heroText: '#a06a00' },
 ];
 
 function updateVipBadge() {
@@ -521,11 +529,11 @@ function updateVipBadge() {
     if (tier.id === 'NONE') {
         badge.textContent     = '🐚 VIP';
         badge.style.color     = '';
-        if (btnEl) btnEl.style.borderColor = '';
+        if (btnEl) { btnEl.style.borderColor = ''; btnEl.style.background = ''; }
     } else {
         badge.textContent     = `${tier.emoji} ${tier.name}`;
-        badge.style.color     = tier.color;
-        if (btnEl) btnEl.style.borderColor = `${tier.color}88`;
+        badge.style.color     = tier.heroText;
+        if (btnEl) { btnEl.style.borderColor = tier.heroBorder; btnEl.style.background = tier.heroBg; }
     }
 }
 
@@ -601,11 +609,19 @@ function renderVipSheet() {
         </div>`;
     }).join('');
 
+    const heroStyle = [
+        `--hero-bg:${tier.heroBg}`,
+        `--hero-border:${tier.heroBorder}`,
+        `--hero-glow:${tier.heroGlow}`,
+        `--hero-shadow:${tier.heroShadow}`,
+        `--hero-text:${tier.heroText}`,
+    ].join(';');
+
     content.innerHTML = `
-        <div class="vip-hero" style="border-color:${tier.color}44; background:${tier.color}11">
+        <div class="vip-hero" style="${heroStyle}">
             <div class="vip-hero-icon">${tier.emoji || '🐚'}</div>
-            <div class="vip-hero-name" style="color:${tier.color}">${tier.id === 'NONE' ? 'Нет статуса' : tier.name}</div>
-            <div class="vip-hero-wager">Оборот: ${wager.toLocaleString('ru')} 🐚</div>
+            <div class="vip-hero-name">${tier.id === 'NONE' ? 'Нет статуса' : tier.name}</div>
+            <div class="vip-hero-wager">оборот ${wager.toLocaleString('ru')} 🐚</div>
         </div>
         ${progressHtml}
         <div class="vip-section-title">Кешбэк периода</div>
