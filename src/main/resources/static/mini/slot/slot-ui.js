@@ -20,7 +20,7 @@ const SYM = {
     WILD:        { e: '🌊' }, SCATTER:     { e: '🏺' },
 };
 const SYM_KEYS      = Object.keys(SYM);
-const SYM_HEIGHT    = 76;
+const SYM_HEIGHT    = 88;
 const REEL_COUNT    = 5;
 const SPIN_ROWS     = 22;
 const STAGGER_MS    = 160;
@@ -311,16 +311,16 @@ function highlightWins(wins) {
     setTimeout(clearWinOverlay, 1500);
 }
 
-function clearWinOverlay() { $$('.slot-sym.winning').forEach(el => el.classList.remove('winning')); }
+function clearWinOverlay() {
+    $$('.slot-sym.winning').forEach(el => el.classList.remove('winning'));
+    showWin('', 'neutral');
+}
 
 function showWin(text, type = 'neutral') {
     const el = $('win-label'), bar = $('win-bar');
     if (!el || !bar) return;
     el.textContent = text;
     bar.className  = type;
-    bar.classList.add('visible');
-    clearTimeout(bar._t);
-    if (type !== 'neutral') bar._t = setTimeout(() => bar.classList.remove('visible'), 2500);
 }
 
 function showFsBanner(remaining, mult) {

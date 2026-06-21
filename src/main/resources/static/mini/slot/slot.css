@@ -17,7 +17,7 @@
     --gold:    #ff9f0a;
     --teal:    #30b0c7;
 
-    --sym-h:   76px;   /* must match SYM_HEIGHT in slot-ui.js */
+    --sym-h:   88px;   /* must match SYM_HEIGHT in slot-ui.js */
 }
 
 html, body {
@@ -189,34 +189,27 @@ html, body {
     max-height: 40px;
 }
 
-/* ── Slot zone ───────────────────────────────────────────────────────────── */
+/* ── Slot zone — clean, edge-to-edge ─────────────────────────────────────── */
 
 #slot-zone {
     flex-shrink: 0;
-    margin: 0 12px 10px;
-    border-radius: 20px;
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    box-shadow: 0 1px 6px rgba(0,0,0,.10),
-                inset 0 1px 0 rgba(255,255,255,1);
+    background: #fff;
+    border-top: 0.5px solid var(--border);
+    border-bottom: 0.5px solid var(--border);
     position: relative;
     overflow: hidden;
-    transition: box-shadow .3s;
+    transition: border-color .3s;
 }
 
 #slot-zone.free-spins {
-    box-shadow: 0 0 0 2px #30b0c7,
-                0 4px 20px rgba(48,176,199,.25),
-                inset 0 1px 0 rgba(255,255,255,1);
+    border-color: #30b0c7;
 }
 
 /* ── 5×3 grid ────────────────────────────────────────────────────────────── */
 
 #slot-grid {
     display: flex;
-    gap: 0;
-    padding: 12px 10px;
-    position: relative;
+    padding: 6px 0;
 }
 
 .reel {
@@ -226,20 +219,17 @@ html, body {
     position: relative;
 }
 
-/* Thin separator between reels */
-.reel + .reel {
-    border-left: 0.5px solid var(--border);
-}
-
 .reel-strip {
     display: flex;
     flex-direction: column;
     will-change: transform;
+    transition: filter .1s;
 }
 
-/* Fast-spin keyframe (used while waiting for server) */
+/* Motion blur while spinning */
 .reel-strip.spinning {
-    animation: reel-fast 0.12s steps(1, end) infinite;
+    animation: reel-fast 0.10s steps(1, end) infinite;
+    filter: blur(5px);
 }
 
 @keyframes reel-fast {
@@ -252,72 +242,54 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 36px;
+    font-size: 52px;
     flex-shrink: 0;
     position: relative;
-    transition: background .15s;
 }
 
 .slot-sym.winning {
-    background: rgba(255, 214, 0, 0.18);
-    border-radius: 8px;
+    background: rgba(255, 214, 0, 0.15);
+    border-radius: 10px;
 }
 
 .slot-sym.winning::after {
     content: '';
     position: absolute;
-    inset: 3px;
-    border: 2px solid var(--gold);
-    border-radius: 7px;
+    inset: 4px;
+    border: 2.5px solid var(--gold);
+    border-radius: 8px;
     animation: winPulse .4s ease-in-out infinite alternate;
 }
 
 @keyframes winPulse {
-    from { opacity: .5; transform: scale(.96); }
-    to   { opacity: 1;  transform: scale(1.02); }
+    from { opacity: .4; transform: scale(.96); }
+    to   { opacity: 1;  transform: scale(1.03); }
 }
 
-/* ── Payline marks ───────────────────────────────────────────────────────── */
-
-.payline-mark {
-    position: absolute;
-    left: 0; right: 0;
-    height: 1px;
-    background: rgba(0, 122, 255, 0.12);
-    pointer-events: none;
-}
-
-.payline-mark.top { top:  calc(12px + var(--sym-h)); }
-.payline-mark.mid { top:  calc(12px + var(--sym-h) * 2); }
-.payline-mark.bot { bottom: 12px; }
-
-/* ── Win bar ─────────────────────────────────────────────────────────────── */
+/* ── Result text (below grid) ────────────────────────────────────────────── */
 
 #win-bar {
-    position: absolute;
-    top: 8px;
-    right: 10px;
-    z-index: 10;
-    background: rgba(255,255,255,.92);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 4px 13px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text2);
-    box-shadow: 0 1px 6px rgba(0,0,0,.08),
-                inset 0 1px 0 rgba(255,255,255,1);
-    opacity: 0;
-    transform: translateY(-4px) scale(.92);
-    transition: opacity .18s, transform .18s, border-color .15s;
-    pointer-events: none;
-    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 10px 16px 8px;
+    text-align: center;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 0.5px solid var(--border);
 }
 
-#win-bar.visible { opacity: 1; transform: translateY(0) scale(1); }
-#win-bar.win     { border-color: var(--green); color: var(--green); }
-#win-bar.loss    { border-color: var(--border); color: var(--text2); }
-#win-bar.bonus   { border-color: var(--gold); color: #a06a00; box-shadow: 0 1px 10px rgba(255,159,10,.28), inset 0 1px 0 rgba(255,255,255,1); }
+#win-label {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text2);
+    letter-spacing: -.2px;
+    transition: color .2s;
+}
+
+#win-bar.win   #win-label { color: var(--green); }
+#win-bar.loss  #win-label { color: var(--text2); }
+#win-bar.bonus #win-label { color: #a06a00; }
 
 /* ── Controls ────────────────────────────────────────────────────────────── */
 
