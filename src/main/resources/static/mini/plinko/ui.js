@@ -10,8 +10,8 @@
  *   - Broke state: disabled button when balance < MIN_BET
  */
 
-import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=13';
-import { PlinkoBoard } from './plinko.js?v=13';
+import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=14';
+import { PlinkoBoard } from './plinko.js?v=14';
 
 const MIN_BET    = 5;
 const BET_STEP   = 5;
@@ -507,10 +507,10 @@ function setResult(text, type) {
 // ── VIP ───────────────────────────────────────────────────────────────────────
 
 const VIP_TIERS = [
-    { id: 'NONE',  emoji: '',   name: 'Нет',    cb: 0,  threshold: 0,       color: '#8e8e93' },
-    { id: 'CORAL', emoji: '🪸', name: 'Коралл', cb: 3,  threshold: 5000,    color: '#ff6b6b' },
-    { id: 'PEARL', emoji: '🦪', name: 'Жемчуг', cb: 6,  threshold: 25000,   color: '#5ac8fa' },
-    { id: 'REEF',  emoji: '👑', name: 'Риф',    cb: 10, threshold: 100000,  color: '#ffd700' },
+    { id: 'NONE',  emoji: '',   name: 'Нет',    cb: 0,  threshold: 0,       color: '#9ca3af' },
+    { id: 'CORAL', emoji: '🪸', name: 'Коралл', cb: 3,  threshold: 5000,    color: '#e07857' },
+    { id: 'PEARL', emoji: '🦪', name: 'Жемчуг', cb: 6,  threshold: 25000,   color: '#7c6af5' },
+    { id: 'REEF',  emoji: '👑', name: 'Риф',    cb: 10, threshold: 100000,  color: '#d4a017' },
 ];
 
 function updateVipBadge() {
