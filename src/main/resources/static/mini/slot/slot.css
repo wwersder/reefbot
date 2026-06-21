@@ -300,42 +300,31 @@ html, body {
     scrollbar-width: none;
     display: flex;
     flex-direction: column;
-    gap: 7px;
-    padding: 0 12px env(safe-area-inset-bottom, 12px);
+    gap: 8px;
+    padding: 12px 14px env(safe-area-inset-bottom, 16px);
+    background: #f2f2f7;
 }
 
 #controls::-webkit-scrollbar { display: none; }
 
-/* ── Cards ───────────────────────────────────────────────────────────────── */
+/* ── Bet card ────────────────────────────────────────────────────────────── */
 
 .ctrl-card {
-    background: var(--surface);
-    border-radius: 14px;
-    padding: 13px 14px;
-    border: 0.5px solid var(--border);
-    box-shadow: 0 1px 4px rgba(0,0,0,.06),
-                inset 0 1px 0 rgba(255,255,255,1);
-    position: relative;
-}
-
-.ctrl-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 12px; right: 12px;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,.9), transparent);
-    pointer-events: none;
+    background: #fff;
+    border-radius: 16px;
+    padding: 14px 16px 16px;
 }
 
 .card-label {
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 10px;
+    font-weight: 700;
     color: var(--text2);
     text-transform: uppercase;
-    letter-spacing: .4px;
-    margin-bottom: 8px;
+    letter-spacing: .7px;
+    margin-bottom: 4px;
     display: flex;
     justify-content: space-between;
+    align-items: center;
 }
 
 .card-hint {
@@ -344,6 +333,7 @@ html, body {
     text-transform: none;
     letter-spacing: 0;
     color: var(--text2);
+    opacity: .8;
 }
 
 /* ── Bet row ─────────────────────────────────────────────────────────────── */
@@ -351,16 +341,16 @@ html, body {
 #bet-row {
     display: flex;
     align-items: center;
-    background: var(--bg);
-    border-radius: 10px;
-    margin-bottom: 9px;
+    margin-bottom: 10px;
+    border-bottom: 1.5px solid #f2f2f7;
+    padding-bottom: 6px;
 }
 
 .adj-btn {
-    width: 44px; height: 44px;
+    width: 42px; height: 46px;
     background: none;
     border: none;
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 300;
     color: var(--accent);
     cursor: pointer;
@@ -369,40 +359,40 @@ html, body {
     justify-content: center;
     font-family: inherit;
     transition: opacity .1s;
+    flex-shrink: 0;
 }
-.adj-btn:active { opacity: .5; }
+.adj-btn:active { opacity: .4; }
 
 #bet-input {
     flex: 1;
     text-align: center;
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 800;
     font-family: inherit;
     color: var(--text);
     background: none;
     border: none;
     outline: none;
-    padding: 6px 0;
+    padding: 4px 0;
     -moz-appearance: textfield;
-    letter-spacing: -.5px;
+    letter-spacing: -.8px;
+    line-height: 1;
 }
 #bet-input::-webkit-outer-spin-button,
 #bet-input::-webkit-inner-spin-button { -webkit-appearance: none; }
 
-.bet-unit {
-    font-size: 20px;
-    padding-right: 14px;
-    color: var(--text2);
-}
+.bet-unit { display: none; }
 
-#mult-btns { display: flex; gap: 5px; }
+/* ── Multiplier buttons ──────────────────────────────────────────────────── */
+
+#mult-btns { display: flex; gap: 6px; }
 
 .mult-btn {
     flex: 1;
-    padding: 7px 0;
-    background: var(--bg);
+    padding: 8px 0;
+    background: #f2f2f7;
     border: none;
-    border-radius: 9px;
+    border-radius: 10px;
     font-size: 13px;
     font-weight: 700;
     font-family: inherit;
@@ -410,50 +400,36 @@ html, body {
     cursor: pointer;
     transition: background .12s, color .12s, transform .1s;
 }
-.mult-btn:active { background: var(--accent); color: #fff; transform: scale(.93); }
+.mult-btn:active { background: var(--accent); color: #fff; transform: scale(.94); }
 
 /* ── Spin button ─────────────────────────────────────────────────────────── */
 
 #spin-btn {
     display: block;
     width: 100%;
-    padding: 16px;
-    background: linear-gradient(180deg, #1a91ff 0%, #007aff 100%);
+    padding: 17px;
+    background: var(--accent);
     border: none;
-    border-radius: 14px;
+    border-radius: 16px;
     color: #fff;
     font-size: 16px;
     font-weight: 800;
-    letter-spacing: .8px;
+    letter-spacing: 1px;
     cursor: pointer;
     font-family: inherit;
-    box-shadow: 0 4px 20px rgba(0,122,255,.38),
-                inset 0 1px 0 rgba(255,255,255,.28);
-    position: relative;
-    overflow: hidden;
-    transition: background .2s, box-shadow .2s, opacity .15s, transform .1s;
+    box-shadow: 0 4px 18px rgba(0,122,255,.32);
+    transition: opacity .15s, transform .1s, background .2s, box-shadow .2s;
 }
-
-#spin-btn::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 15%; right: 15%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
-}
-
-#spin-btn:active  { transform: scale(.98); opacity: .9; }
+#spin-btn:active   { transform: scale(.98); opacity: .88; }
 #spin-btn:disabled { opacity: 1; cursor: default; transform: none !important; }
-
-/* Skip hint label inside btn during spin */
-#spin-btn.can-skip { letter-spacing: .2px; }
+#spin-btn.can-skip { letter-spacing: .3px; }
 
 /* ── Auto-progress bar ───────────────────────────────────────────────────── */
 
 #auto-progress {
     display: none;
     height: 3px;
-    background: var(--border);
+    background: rgba(0,0,0,.08);
     border-radius: 2px;
     overflow: hidden;
     margin-top: -4px;
@@ -476,9 +452,9 @@ html, body {
 
 .action-btn {
     flex: 1;
-    padding: 9px 4px;
-    background: var(--surface);
-    border: 0.5px solid var(--border);
+    padding: 10px 4px;
+    background: #fff;
+    border: none;
     border-radius: 12px;
     font-size: 11px;
     font-weight: 700;
@@ -486,33 +462,28 @@ html, body {
     color: var(--text2);
     cursor: pointer;
     letter-spacing: .2px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.05),
-                inset 0 1px 0 rgba(255,255,255,1);
-    transition: background .12s, color .12s, border-color .12s, transform .1s;
+    transition: background .12s, color .12s, transform .1s, opacity .1s;
 }
-
-.action-btn:active { transform: scale(.95); }
+.action-btn:active { transform: scale(.95); opacity: .75; }
 
 .action-btn.active {
     background: var(--accent);
     color: #fff;
-    border-color: var(--accent);
 }
 
 .action-btn--bonus {
     color: #a06a00;
-    border-color: rgba(255,159,10,.35);
-    background: #fffbf0;
+    background: #fff8e8;
 }
 
+/* Spin button states */
 #spin-btn.free {
-    background: linear-gradient(180deg, #26c6da 0%, #00acc1 100%);
-    box-shadow: 0 4px 20px rgba(0,172,193,.45),
-                inset 0 1px 0 rgba(255,255,255,.28);
+    background: #00acc1;
+    box-shadow: 0 4px 18px rgba(0,172,193,.35);
 }
 
 #spin-btn.broke {
-    background: var(--seg-bg);
+    background: rgba(0,0,0,.08);
     color: var(--text2);
     box-shadow: none;
 }
