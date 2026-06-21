@@ -75,6 +75,8 @@ public class SlotService {
     private final VipService          vipService;
     private final SecureRandom        rng = new SecureRandom();
 
+    public static final int BONUS_BUY_MULTIPLIER = 100; // cost = bet × 100
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     public SlotStateResponse getState(String initData) {
@@ -189,6 +191,37 @@ public class SlotService {
                 inFreeSpins,
                 player
         );
+    }
+
+    /** Buy 10 free spins for BONUS_BUY_MULTIPLIER × bet. */
+    @Transactional
+    public SlotSpinResponse buyBonus(String initData, SlotSpinRequest req) {
+        Player player = resolve(initData);
+        if (!isReady(player))                           return SlotSpinResponse.error("ONBOARDING_REQUIRED");
+        if (player.getSlotFreeSpinsRemaining() > 0)    return SlotSpinResponse.error("ALREADY_IN_BONUS");
+        if (req.bet() < MIN_BET)                        return SlotSpinResponse.error("INVALID_BET");
+
+        int cost = req.bet() * BONUS_BUY_MULTIPLIER;
+
+        Island island = islandRepository.findByPlayerForUpdate(player)
+                .orElseThrow(() -> new SecurityException("Island not found for player " + player.getId()));
+
+        if (island.getShells() < cost)                  return SlotSpinResponse.error("INSUFFICIENT_BALANCE");
+
+        island.setShells(island.getShells() - cost);
+        islandRepository.save(island);
+
+        // VIP: bonus buy counts as wager
+        player.setVipLifetimeWager(player.getVipLifetimeWager() + cost);
+        player.setVipPeriodNetLoss(player.getVipPeriodNetLoss() + cost);
+
+        player.setSlotFreeSpinsRemaining(10);
+        player.setSlotMultiplier(1);
+
+        vipService.updateTier(player);
+        playerRepository.save(player);
+
+        return SlotSpinResponse.ok(new String[5][3], List.of(), 0, 0, 0, false, false, player);
     }
 
     // ── Grid generation ───────────────────────────────────────────────────────

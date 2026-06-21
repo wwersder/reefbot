@@ -7,7 +7,7 @@
 <title>The Reef House</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="slot.css?v=1">
+<link rel="stylesheet" href="slot.css?v=3">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -25,10 +25,11 @@
 <!-- App -->
 <div id="app">
 
-    <!-- Topbar -->
+    <!-- Topbar — matches Plinko layout -->
     <div id="topbar">
         <button id="back-btn" class="back-btn">‹</button>
         <span id="game-title">🎰 The Reef House</span>
+        <button id="vip-btn" class="vip-badge-btn"><span id="vip-badge">🐚 VIP</span></button>
         <span id="balance-display">🐚 <span id="balance-num">0</span></span>
     </div>
 
@@ -40,26 +41,19 @@
 
     <!-- Slot zone: 5×3 grid -->
     <div id="slot-zone">
-
-        <!-- Win overlay pill -->
-        <div id="win-bar" class="win-bar">
+        <div id="win-bar">
             <span id="win-label">Крути и выигрывай!</span>
         </div>
-
         <div id="slot-grid">
-            <!-- 5 reels -->
             <div class="reel"><div class="reel-strip" id="strip-0"></div></div>
             <div class="reel"><div class="reel-strip" id="strip-1"></div></div>
             <div class="reel"><div class="reel-strip" id="strip-2"></div></div>
             <div class="reel"><div class="reel-strip" id="strip-3"></div></div>
             <div class="reel"><div class="reel-strip" id="strip-4"></div></div>
         </div>
-
-        <!-- Payline indicator lines (decorative) -->
         <div class="payline-mark top"></div>
         <div class="payline-mark mid"></div>
         <div class="payline-mark bot"></div>
-
     </div>
 
     <!-- Controls -->
@@ -86,28 +80,93 @@
 
         <!-- Spin button -->
         <button id="spin-btn">КРУТИТЬ</button>
+        <div id="auto-progress"><div id="auto-bar"></div></div>
 
-        <!-- Paytable card -->
-        <div class="ctrl-card paytable-card">
-            <div class="card-label">Таблица выплат <span class="card-hint">× ставку</span></div>
-            <div class="paytable">
-                <div class="pt-row"><span>🌊 Wild</span><span class="pt-val">замена</span></div>
-                <div class="pt-row"><span>🏺 Scatter ×3</span><span class="pt-val">+2× + 10 FS</span></div>
-                <div class="pt-sep"></div>
-                <div class="pt-row"><span>🦈 ×3/4/5</span><span class="pt-val shark">30 / 80 / 250</span></div>
-                <div class="pt-row"><span>🦑 ×3/4/5</span><span class="pt-val squid">15 / 40 / 100</span></div>
-                <div class="pt-row"><span>🐙 ×3/4/5</span><span class="pt-val">8 / 20 / 60</span></div>
-                <div class="pt-row"><span>🦀 ×3/4/5</span><span class="pt-val">5 / 12 / 35</span></div>
-                <div class="pt-row"><span>🐟 ×3/4/5</span><span class="pt-val">3 / 8 / 20</span></div>
-                <div class="pt-row pt-low"><span>🦐🐡🐠 ×3–5</span><span class="pt-val">1–15</span></div>
-            </div>
+        <!-- Action row -->
+        <div class="action-row">
+            <button class="action-btn" id="auto-btn">⟳ АВТО</button>
+            <button class="action-btn" id="turbo-btn">⚡ ТУРБО</button>
+            <button class="action-btn" id="paytable-btn">📋 ВЫПЛАТЫ</button>
+            <button class="action-btn action-btn--bonus" id="bonus-btn">🏺 <span id="bonus-cost">×100</span></button>
         </div>
 
     </div>
 </div>
 
+<!-- Paytable bottom sheet -->
+<div id="pt-overlay">
+    <div id="pt-backdrop"></div>
+    <div id="pt-sheet">
+        <div id="pt-handle"></div>
+        <div id="pt-header">
+            <span>📋 Таблица выплат</span>
+            <button id="pt-close">✕</button>
+        </div>
+        <div id="pt-content">
+
+            <div class="pt-section">
+                <div class="pt-section-title">Специальные символы</div>
+                <div class="pt-sym-row">
+                    <span class="pt-sym-icon">🌊</span>
+                    <div class="pt-sym-body">
+                        <div class="pt-sym-name">Wild</div>
+                        <div class="pt-sym-desc">Заменяет любой платный символ на линии</div>
+                    </div>
+                </div>
+                <div class="pt-sym-row">
+                    <span class="pt-sym-icon">🏺</span>
+                    <div class="pt-sym-body">
+                        <div class="pt-sym-name">Scatter</div>
+                        <div class="pt-sym-desc">
+                            3 шт → +2× ставку + 10 Free Spins<br>
+                            4 шт → +5× ставку + 15 Free Spins<br>
+                            5 шт → +20× ставку + 20 Free Spins
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-section">
+                <div class="pt-section-title">Free Spins — бонусный раунд</div>
+                <div class="pt-info-card">
+                    Каждый 🌊 Wild в бонусном раунде удваивает множитель (до ×32). Ставка не списывается.
+                    Выигрыши умножаются на текущий множитель.
+                </div>
+            </div>
+
+            <div class="pt-section">
+                <div class="pt-section-title">Покупка бонуса</div>
+                <div class="pt-info-card">
+                    Кнопка <b>🏺 БОНУС</b> стоит 100× ставку и мгновенно запускает 10 Free Spins.
+                </div>
+            </div>
+
+            <div class="pt-section">
+                <div class="pt-section-title">Выплаты <span class="pt-section-sub">× ставку</span></div>
+                <div class="pt-pay-table">
+                    <div class="pt-pay-row"><span class="pt-pay-sym">🦈</span><span class="pt-pay-name">Акула</span><span class="pt-pay-vals shark">×3→30  ×4→80  ×5→250</span></div>
+                    <div class="pt-pay-row"><span class="pt-pay-sym">🦑</span><span class="pt-pay-name">Кальмар</span><span class="pt-pay-vals squid">×3→15  ×4→40  ×5→100</span></div>
+                    <div class="pt-pay-row"><span class="pt-pay-sym">🐙</span><span class="pt-pay-name">Осьминог</span><span class="pt-pay-vals">×3→8  ×4→20  ×5→60</span></div>
+                    <div class="pt-pay-row"><span class="pt-pay-sym">🦀</span><span class="pt-pay-name">Краб</span><span class="pt-pay-vals">×3→5  ×4→12  ×5→35</span></div>
+                    <div class="pt-pay-row pt-pay-row--dim"><span class="pt-pay-sym">🐟</span><span class="pt-pay-name">Рыба</span><span class="pt-pay-vals">×3→3  ×4→8  ×5→20</span></div>
+                    <div class="pt-pay-row pt-pay-row--dim"><span class="pt-pay-sym">🦐🐡🐠</span><span class="pt-pay-name">Малая рыба</span><span class="pt-pay-vals">×3→1–2.5  ×5→6–15</span></div>
+                </div>
+            </div>
+
+            <div class="pt-section">
+                <div class="pt-section-title">Линии выплат</div>
+                <div class="pt-info-card">
+                    9 линий — горизонталь ×3, два V-образных, два ступенчатых, два зигзага.
+                    Оплачиваются совпадения слева направо от 1-го барабана.
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 <script type="module">
-    import { init } from './slot-ui.js?v=1';
+    import { init } from './slot-ui.js?v=3';
     init();
 </script>
 </body>

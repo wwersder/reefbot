@@ -18,5 +18,6 @@ async function req(method, path, body) {
     return r.json();
 }
 
-export const fetchState = ()          => req('GET',  '/state');
-export const postSpin   = (bet)       => req('POST', '/spin', { bet });
+export const fetchState   = ()    => req('GET',  '/state');
+export const postSpin     = (bet) => req('POST', '/spin',      { bet });
+export const postBuyBonus = (bet) => req('POST', '/buy-bonus', { bet });

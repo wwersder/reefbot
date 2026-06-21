@@ -39,6 +39,28 @@ public class SlotController {
         }
     }
 
+    // ── POST /api/mini/slot/buy-bonus ────────────────────────────────────────
+
+    @PostMapping("/buy-bonus")
+    public ResponseEntity<SlotSpinResponse> buyBonus(
+            @RequestHeader(value = INIT_DATA_HEADER, required = false) String initData,
+            @RequestBody SlotSpinRequest request) {
+        if (initData == null || initData.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            SlotSpinResponse response = slotService.buyBonus(initData, request);
+            if (response.error() != null) return ResponseEntity.badRequest().body(response);
+            return ResponseEntity.ok(response);
+        } catch (SecurityException e) {
+            log.warn("slot /buy-bonus auth failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        } catch (Exception e) {
+            log.error("slot /buy-bonus error", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     // ── POST /api/mini/slot/spin ──────────────────────────────────────────────
 
     @PostMapping("/spin")
