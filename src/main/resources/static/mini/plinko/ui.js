@@ -18,6 +18,11 @@ const BET_STEP   = 5;
 const AUTO_MAX   = 100;
 const RESULTS_MAX= 10;
 
+const RTP_TABLE = {
+    8:  { LOW: 97.5, MEDIUM: 95.7, HIGH: 90.0 },
+    12: { LOW: 95.0, MEDIUM: 92.0, HIGH: 88.0 },
+};
+
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -140,6 +145,7 @@ function bindEvents() {
         btn.classList.add('active');
         risk = btn.dataset.val;
         board?.setRisk(risk);
+        updateRtpLabel();
     }));
 
     // Rows
@@ -149,6 +155,7 @@ function bindEvents() {
         btn.classList.add('active');
         rows = parseInt(btn.dataset.val);
         board?.setRows(rows);
+        updateRtpLabel();
     }));
 
     // Bet +/-
@@ -314,13 +321,12 @@ function triggerJackpotFlash() {
 
 function updateUI() {
     setBet(betValue);
-    // Set balance display directly (no animation on init)
     $('balance-num').textContent  = balance;
     $('balance-hint').textContent = balance;
     _shownBal = balance;
-    // result bar starts hidden
     updateThrowBtn();
     updateAutoProgress();
+    updateRtpLabel();
 }
 
 function setBet(v, stepSnap = false) {
@@ -405,6 +411,13 @@ function scheduleBalanceSync() {
             }
         } catch { /* silent — best-effort */ }
     }, 500);
+}
+
+function updateRtpLabel() {
+    const el = $('rtp-label');
+    if (!el) return;
+    const rtp = RTP_TABLE[rows]?.[risk];
+    el.textContent = rtp ? `возврат ~${rtp}%` : '';
 }
 
 /** Maps server error codes to short, friendly messages. */

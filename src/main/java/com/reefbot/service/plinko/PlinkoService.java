@@ -42,29 +42,15 @@ public class PlinkoService {
      * Multiplier tables [risk][slot].
      * 8 rows → 9 slots (indices 0..8).
      */
-    private static final double[][] MULT_8_LOW = {
-            {1.5, 1.2, 1.1, 1.0, 0.5, 1.0, 1.1, 1.2, 1.5}
-    };
-    private static final double[][] MULT_8_MEDIUM = {
-            {6.0, 2.5, 1.3, 0.8, 0.4, 0.8, 1.3, 2.5, 6.0}
-    };
-    private static final double[][] MULT_8_HIGH = {
-            {18.0, 4.0, 1.3, 0.5, 0.1, 0.5, 1.3, 4.0, 18.0}
-    };
+    // 8 rows → 9 slots. RTP: LOW≈97.5%, MEDIUM≈95.7%, HIGH≈90%
+    private static final double[] MULT_8_LOW    = {3.0, 1.4, 1.2, 1.0, 0.6, 1.0, 1.2, 1.4, 3.0};
+    private static final double[] MULT_8_MEDIUM = {18.0, 3.0, 1.3, 0.6, 0.3, 0.6, 1.3, 3.0, 18.0};
+    private static final double[] MULT_8_HIGH   = {25.0, 4.0, 1.0, 0.4, 0.2, 0.4, 1.0, 4.0, 25.0};
 
-    /**
-     * 12 rows → 13 slots (indices 0..12).
-     * Risk tiers match the frontend MULT[12] tables in plinko.js.
-     */
-    private static final double[][] MULT_12_LOW    = {
-            {20.0, 7.0, 2.5, 1.5, 1.0, 0.7, 0.5, 0.7, 1.0, 1.5, 2.5, 7.0, 20.0}
-    };
-    private static final double[][] MULT_12_MEDIUM = {
-            {20.0, 7.0, 2.5, 1.5, 1.0, 0.7, 0.5, 0.7, 1.0, 1.5, 2.5, 7.0, 20.0}
-    };
-    private static final double[][] MULT_12_HIGH   = {
-            {20.0, 7.0, 2.5, 1.5, 1.0, 0.7, 0.5, 0.7, 1.0, 1.5, 2.5, 7.0, 20.0}
-    };
+    // 12 rows → 13 slots. RTP: LOW≈95%, MEDIUM≈92%, HIGH≈88%
+    private static final double[] MULT_12_LOW    = {20.0, 5.0, 2.0, 1.3, 1.0, 0.7, 0.5, 0.7, 1.0, 1.3, 2.0, 5.0, 20.0};
+    private static final double[] MULT_12_MEDIUM = {33.0, 10.0, 3.0, 1.5, 0.7, 0.4, 0.2, 0.4, 0.7, 1.5, 3.0, 10.0, 33.0};
+    private static final double[] MULT_12_HIGH   = {50.0, 12.0, 3.0, 1.0, 0.4, 0.2, 0.1, 0.2, 0.4, 1.0, 3.0, 12.0, 50.0};
 
     private final SecureRandom secureRandom = new SecureRandom();
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -234,20 +220,18 @@ public class PlinkoService {
     }
 
     private double getMultiplier(int rows, PlinkoRisk risk, int slot) {
-        double[] table;
-        if (rows == 12) {
-            table = switch (risk) {
-                case LOW    -> MULT_12_LOW[0];
-                case MEDIUM -> MULT_12_MEDIUM[0];
-                case HIGH   -> MULT_12_HIGH[0];
+        double[] table = switch (rows) {
+            case 12 -> switch (risk) {
+                case LOW    -> MULT_12_LOW;
+                case MEDIUM -> MULT_12_MEDIUM;
+                case HIGH   -> MULT_12_HIGH;
             };
-        } else {
-            table = switch (risk) {
-                case LOW    -> MULT_8_LOW[0];
-                case MEDIUM -> MULT_8_MEDIUM[0];
-                case HIGH   -> MULT_8_HIGH[0];
+            default -> switch (risk) {
+                case LOW    -> MULT_8_LOW;
+                case MEDIUM -> MULT_8_MEDIUM;
+                case HIGH   -> MULT_8_HIGH;
             };
-        }
+        };
         return table[Math.min(slot, table.length - 1)];
     }
 
