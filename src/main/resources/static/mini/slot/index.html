@@ -93,6 +93,35 @@
     </div>
 </div>
 
+<!-- Bonus buy confirmation sheet -->
+<div id="bc-overlay">
+    <div id="bc-backdrop"></div>
+    <div id="bc-sheet">
+        <div id="bc-handle"></div>
+        <div id="bc-header">
+            <span>🏺 Покупка бонуса</span>
+            <button id="bc-close">✕</button>
+        </div>
+        <div id="bc-content">
+            <div class="bc-hero">
+                <div class="bc-hero-icon">🌊🌊🌊</div>
+                <div class="bc-hero-title">10 Free Spins</div>
+                <div class="bc-hero-desc">Волны (Wild) прилипают к барабанам и накапливают множители. Все выигрыши умножаются на сумму множителей всех прилипших Wildов.</div>
+            </div>
+            <div class="bc-cost-row">
+                <div class="bc-cost-label">Стоимость</div>
+                <div class="bc-cost-value"><span id="bc-cost-num">—</span> 🐚</div>
+            </div>
+            <div class="bc-cost-row bc-cost-row--sub">
+                <div class="bc-cost-label">Ставка</div>
+                <div class="bc-cost-value" id="bc-bet-num">—</div>
+            </div>
+            <button id="bc-confirm">Купить за <span id="bc-confirm-cost">—</span> 🐚</button>
+            <button id="bc-cancel">Отмена</button>
+        </div>
+    </div>
+</div>
+
 <!-- Paytable bottom sheet -->
 <div id="pt-overlay">
     <div id="pt-backdrop"></div>

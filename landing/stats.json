@@ -3,6 +3,6 @@
   "resourceTypes": 5,
   "islandZones": 6,
   "roadmapPhases": 4,
-  "dbMigrations": 23,
-  "generatedAt": "2026-06-21T15:20:05.891803Z"
+  "dbMigrations": 24,
+  "generatedAt": "2026-06-21T15:33:18.383002Z"
 }

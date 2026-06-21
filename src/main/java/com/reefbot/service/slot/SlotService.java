@@ -21,11 +21,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.reefbot.dto.slot.StickyWild;
+
 import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -112,11 +112,32 @@ public class SlotService {
             island.setShells(island.getShells() - bet);
         }
 
-        // Current multiplier (from free spins accumulation)
-        int multiplier = inFreeSpins ? player.getSlotMultiplier() : 1;
+        // ── Sticky wilds (Dog House mechanic) ────────────────────────────────
+        List<StickyWild> stickyWilds = parseStickyWilds(player.getStickyWildsJson());
 
         // ── Generate grid ─────────────────────────────────────────────────────
         SlotSymbol[][] grid = generateGrid();
+
+        // During free spins: overlay existing sticky wilds (force WILD)
+        if (inFreeSpins) {
+            for (StickyWild sw : stickyWilds) {
+                grid[sw.col()][sw.row()] = SlotSymbol.WILD;
+            }
+            // Detect new wilds (not already sticky) and stick them with a random mult
+            for (int col = 0; col < 5; col++) {
+                for (int row = 0; row < 3; row++) {
+                    if (grid[col][row] == SlotSymbol.WILD && !isSticky(stickyWilds, col, row)) {
+                        stickyWilds.add(new StickyWild(col, row, randomMult()));
+                    }
+                }
+            }
+        }
+
+        // Total multiplier = sum of all sticky wild multipliers (min 1)
+        int totalMult = stickyWilds.stream().mapToInt(StickyWild::mult).sum();
+        if (totalMult == 0) totalMult = 1;
+
+        int multiplier = inFreeSpins ? totalMult : 1;
 
         // ── Check paylines ────────────────────────────────────────────────────
         List<WinLine> wins = checkPaylines(grid, bet, multiplier);
@@ -131,7 +152,7 @@ public class SlotService {
             scatterAmount = bet * switch (scatterCount) {
                 case 3  -> 2;
                 case 4  -> 5;
-                default -> 20; // 5+
+                default -> 20;
             };
             totalWin += scatterAmount;
         }
@@ -145,15 +166,20 @@ public class SlotService {
             };
             player.setSlotFreeSpinsRemaining(bonusSpins);
             player.setSlotMultiplier(1);
+            player.setStickyWildsJson(null); // fresh bonus round
+            stickyWilds = new ArrayList<>();
         } else if (inFreeSpins) {
             int remaining = player.getSlotFreeSpinsRemaining() - 1;
             player.setSlotFreeSpinsRemaining(Math.max(0, remaining));
+            player.setSlotMultiplier(totalMult);
 
-            // Each wild in free spins doubles the multiplier (cap at 32×)
-            int wilds   = countSymbol(grid, SlotSymbol.WILD);
-            if (wilds > 0) {
-                int newMult = player.getSlotMultiplier() * (int) Math.pow(2, wilds);
-                player.setSlotMultiplier(Math.min(32, newMult));
+            if (remaining <= 0) {
+                // Bonus round ended — clear sticky wilds
+                player.setStickyWildsJson(null);
+                player.setSlotMultiplier(1);
+                stickyWilds = new ArrayList<>(); // don't send stale data
+            } else {
+                player.setStickyWildsJson(toStickyWildsJson(stickyWilds));
             }
         }
 
@@ -189,6 +215,7 @@ public class SlotService {
                 scatterAmount,
                 triggerFreeSpins,
                 inFreeSpins,
+                stickyWilds,
                 player
         );
     }
@@ -217,11 +244,12 @@ public class SlotService {
 
         player.setSlotFreeSpinsRemaining(10);
         player.setSlotMultiplier(1);
+        player.setStickyWildsJson(null); // fresh round
 
         vipService.updateTier(player);
         playerRepository.save(player);
 
-        return SlotSpinResponse.ok(new String[5][3], List.of(), 0, 0, 0, false, false, player);
+        return SlotSpinResponse.ok(new String[5][3], List.of(), 0, 0, 0, false, false, List.of(), player);
     }
 
     // ── Grid generation ───────────────────────────────────────────────────────
@@ -316,6 +344,61 @@ public class SlotService {
             }
             sb.append(']');
             if (r < 4) sb.append(',');
+        }
+        sb.append(']');
+        return sb.toString();
+    }
+
+    // ── Sticky wilds helpers ──────────────────────────────────────────────────
+
+    /** Random multiplier weights: ×1 50%, ×2 30%, ×3 15%, ×5 5% */
+    private int randomMult() {
+        double r = rng.nextDouble();
+        if (r < 0.50) return 1;
+        if (r < 0.80) return 2;
+        if (r < 0.95) return 3;
+        return 5;
+    }
+
+    private boolean isSticky(List<StickyWild> list, int col, int row) {
+        return list.stream().anyMatch(sw -> sw.col() == col && sw.row() == row);
+    }
+
+    /** Parse [[col,row,mult],...] JSON into list. Returns empty list on null/error. */
+    private List<StickyWild> parseStickyWilds(String json) {
+        List<StickyWild> result = new ArrayList<>();
+        if (json == null || json.isBlank() || json.equals("[]")) return result;
+        try {
+            // Strip outer brackets
+            String inner = json.trim().substring(1, json.trim().length() - 1);
+            if (inner.isBlank()) return result;
+            // Split by "]," to get each inner array
+            String[] parts = inner.split("],\\s*\\[");
+            for (String part : parts) {
+                part = part.replace("[", "").replace("]", "").trim();
+                String[] nums = part.split(",");
+                if (nums.length >= 3) {
+                    int col  = Integer.parseInt(nums[0].trim());
+                    int row  = Integer.parseInt(nums[1].trim());
+                    int mult = Integer.parseInt(nums[2].trim());
+                    result.add(new StickyWild(col, row, mult));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse stickyWildsJson: {}", json);
+        }
+        return result;
+    }
+
+    /** Serialize sticky wilds to [[col,row,mult],...] JSON. */
+    private String toStickyWildsJson(List<StickyWild> list) {
+        if (list.isEmpty()) return "[]";
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < list.size(); i++) {
+            StickyWild sw = list.get(i);
+            sb.append('[').append(sw.col()).append(',')
+              .append(sw.row()).append(',').append(sw.mult()).append(']');
+            if (i < list.size() - 1) sb.append(',');
         }
         sb.append(']');
         return sb.toString();

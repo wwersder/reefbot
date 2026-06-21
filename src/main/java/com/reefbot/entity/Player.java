@@ -112,7 +112,11 @@ public class Player {
     @Builder.Default
     private Integer slotFreeSpinsRemaining = 0;
 
-    /** Current wild multiplier accumulated during free spins (resets after bonus). */
+    /** Current total multiplier (sum of all sticky wild multipliers). */
     @Builder.Default
     private Integer slotMultiplier = 1;
+
+    /** Sticky wild positions as JSON [[col,row,mult],...]. Null when not in FS. */
+    @Column(name = "sticky_wilds_json", length = 500)
+    private String stickyWildsJson;
 }

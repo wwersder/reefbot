@@ -23,6 +23,9 @@ public record SlotSpinResponse(
         int            freeSpinsRemaining,
         int            multiplier,
 
+        // Sticky wilds (Dog House mechanic)
+        List<StickyWild> stickyWilds,
+
         int            newBalance,
 
         // VIP
@@ -38,7 +41,7 @@ public record SlotSpinResponse(
     public static SlotSpinResponse error(String code) {
         return new SlotSpinResponse(
                 code, null, null, 0, 0, 0,
-                false, false, 0, 1, 0,
+                false, false, 0, 1, List.of(), 0,
                 null, 0L, 0, 0, null, null);
     }
 
@@ -50,6 +53,7 @@ public record SlotSpinResponse(
             int scatterAmount,
             boolean isFreeSpinTrigger,
             boolean wasFreeSpins,
+            List<StickyWild> stickyWilds,
             Player player
     ) {
         var tier     = player.getVipTier();
@@ -68,6 +72,7 @@ public record SlotSpinResponse(
                 wasFreeSpins,
                 player.getSlotFreeSpinsRemaining(),
                 player.getSlotMultiplier(),
+                stickyWilds,
                 player.getIsland() != null ? player.getIsland().getShells() : 0,
                 tier.name(),
                 player.getVipLifetimeWager(),

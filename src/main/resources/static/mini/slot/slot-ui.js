@@ -58,6 +58,10 @@ let spinning = false, _serverResult = null, _skipRequested = false;
 let turboMode = false;
 let autoRunning = false, autoCount = 0, autoInFlight = false;
 
+// Sticky wilds (Dog House mechanic)
+let _stickyWilds = []; // [{col,row,mult}]
+let _fsAutoRunning = false; // auto-play free spins
+
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 
@@ -101,7 +105,11 @@ function bindEvents() {
     $('paytable-btn').addEventListener('click', openPaytable);
     $('pt-close')    .addEventListener('click', closePaytable);
     $('pt-backdrop') .addEventListener('click', closePaytable);
-    $('bonus-btn')      .addEventListener('click', handleBonusBuy);
+    $('bonus-btn')      .addEventListener('click', openBonusConfirm);
+    $('bc-close')       .addEventListener('click', closeBonusConfirm);
+    $('bc-backdrop')    .addEventListener('click', closeBonusConfirm);
+    $('bc-cancel')      .addEventListener('click', closeBonusConfirm);
+    $('bc-confirm')     .addEventListener('click', handleBonusBuy);
     $('game-title-btn') .addEventListener('click', openGameSelector);
     $('gs-close')       .addEventListener('click', closeGameSelector);
     $('gs-backdrop')    .addEventListener('click', closeGameSelector);
@@ -121,7 +129,8 @@ function bindEvents() {
 function handleSpin() {
     if (spinning && _serverResult) { _skipRequested = true; return; }
     if (spinning) return;
-    if (autoRunning) { stopAuto(); return; }
+    if (_fsAutoRunning) { stopFsAuto(); return; }
+    if (autoRunning)   { stopAuto(); return; }
     doSpin(false);
 }
 
@@ -171,26 +180,66 @@ async function doSpin(isAuto) {
 function applyResult(res) {
     balance = res.newBalance; _vipState = { ..._vipState, ...res };
     animateBalance(balance); updateVipBadge();
+
+    // Update sticky wilds
+    _stickyWilds = res.stickyWilds || [];
+    renderStickyWilds();
+
     showFsBanner(res.freeSpinsRemaining, res.multiplier);
+
     if (res.isFreeSpinTrigger) {
         haptic('success');
         const n = res.scatterCount === 3 ? 10 : res.scatterCount === 4 ? 15 : 20;
         showWin(`🏺 БОНУС! ${n} Free Spins!`, 'bonus');
+        _stickyWilds = [];
+        startFsAuto();
+    } else if (res.freeSpinsRemaining === 0 && res.wasFreeSpins) {
+        // Bonus ended
+        _stickyWilds = [];
+        renderStickyWilds();
+        _fsAutoRunning = false;
+        if (res.totalWin > 0) {
+            haptic('success');
+            showWin(`🏺 Бонус закончен! +${res.totalWin} 🐚`, 'bonus');
+        } else {
+            showWin('Бонус закончен', 'loss');
+        }
     } else if (res.totalWin > 0) {
         haptic('success');
-        const lbl = (res.wasFreeSpins && res.multiplier > 1)
-            ? `+${res.totalWin} 🐚  ×${res.multiplier}` : `+${res.totalWin} 🐚`;
-        showWin(lbl, 'win'); highlightWins(res.wins);
+        const mult = res.multiplier > 1 ? `  ×${res.multiplier}` : '';
+        showWin(`+${res.totalWin} 🐚${mult}`, 'win');
+        highlightWins(res.wins);
     } else {
         showWin('Не повезло', 'loss');
     }
+
+    // Continue auto-FS
+    if (_fsAutoRunning && res.freeSpinsRemaining > 0) {
+        setTimeout(() => { if (_fsAutoRunning && !spinning) doSpin(false); },
+                   turboMode ? 500 : 1200);
+    }
 }
 
-// ── Bonus buy ─────────────────────────────────────────────────────────────────
+// ── Bonus buy confirmation ────────────────────────────────────────────────────
 
-async function handleBonusBuy() {
+function openBonusConfirm() {
     if (spinning) return;
     if ((_vipState?.freeSpinsRemaining ?? 0) > 0) { showWin('Уже в бонусе 🏺'); return; }
+    const cost = betValue * BONUS_MULT;
+    $('bc-cost-num').textContent     = cost.toLocaleString('ru');
+    $('bc-bet-num').textContent      = `${betValue} 🐚`;
+    $('bc-confirm-cost').textContent = cost.toLocaleString('ru');
+    $('bc-overlay').classList.add('open');
+    haptic('light');
+}
+
+function closeBonusConfirm() {
+    $('bc-overlay').classList.remove('open');
+}
+
+async function handleBonusBuy() {
+    closeBonusConfirm();
+    if (spinning) return;
     const cost = betValue * BONUS_MULT;
     if (balance < cost) { showWin(`Нужно ${cost} 🐚`, 'loss'); return; }
     haptic('medium'); spinning = true; updateSpinBtn();
@@ -199,8 +248,10 @@ async function handleBonusBuy() {
         if (res.error) { showWin(errTxt(res.error)); return; }
         balance = res.newBalance; _vipState = { ..._vipState, ...res };
         animateBalance(balance); updateVipBadge();
+        _stickyWilds = [];
         showFsBanner(res.freeSpinsRemaining, res.multiplier);
         showWin('🏺 Куплено! 10 Free Spins', 'bonus');
+        startFsAuto();
     } catch (e) { console.error('Bonus buy', e); showWin('Ошибка сети 🌊'); }
     finally { spinning = false; updateSpinBtn(); updateBonusBtn(); }
 }
@@ -332,6 +383,43 @@ function showFsBanner(remaining, mult) {
         banner.classList.add('visible'); zone.classList.add('free-spins');
     } else {
         banner.classList.remove('visible'); zone.classList.remove('free-spins');
+    }
+}
+
+// ── Free spin auto-play ───────────────────────────────────────────────────────
+
+function startFsAuto() {
+    _fsAutoRunning = true;
+    updateSpinBtn();
+    setTimeout(() => { if (_fsAutoRunning && !spinning) doSpin(false); },
+               turboMode ? 400 : 900);
+}
+
+function stopFsAuto() {
+    _fsAutoRunning = false;
+    updateSpinBtn();
+}
+
+// ── Sticky wilds rendering ────────────────────────────────────────────────────
+
+function renderStickyWilds() {
+    // Clear all existing sticky badges and classes
+    $$('.sticky-badge').forEach(el => el.remove());
+    $$('.slot-sym.sticky').forEach(el => el.classList.remove('sticky'));
+
+    if (!_stickyWilds.length) return;
+
+    for (const sw of _stickyWilds) {
+        const strip = $(`strip-${sw.col}`);
+        if (!strip) continue;
+        const cells = strip.querySelectorAll('.slot-sym');
+        const cell  = cells[sw.row];
+        if (!cell) continue;
+        cell.classList.add('sticky');
+        const badge = document.createElement('div');
+        badge.className   = 'sticky-badge';
+        badge.textContent = `×${sw.mult}`;
+        cell.appendChild(badge);
     }
 }
 
@@ -523,6 +611,9 @@ function updateSpinBtn() {
     const inFS = (_vipState?.freeSpinsRemaining ?? 0) > 0;
     if (spinning && _serverResult) {
         btn.textContent = '⏭ ПРОПУСТИТЬ'; btn.className = ''; btn.disabled = false; return;
+    }
+    if (_fsAutoRunning) {
+        btn.textContent = '■ СТОП БОНУС'; btn.className = 'auto-running'; btn.disabled = false; return;
     }
     if (autoRunning) {
         btn.textContent = `■ СТОП (${autoCount}x)`; btn.className = 'auto-running'; btn.disabled = false; return;
