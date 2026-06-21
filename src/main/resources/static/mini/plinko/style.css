@@ -130,13 +130,12 @@ html, body {
     margin: 0 12px 12px;
     border-radius: 20px;
     overflow: hidden;
-    /* Liquid glass: frosted surface over the bg */
-    background: rgba(255, 255, 255, 0.60);
+    background: rgba(255, 255, 255, 0.72);
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
-    border: 1px solid rgba(255, 255, 255, 0.90);
+    border: 0.5px solid var(--border);
     box-shadow: 0 2px 16px rgba(0,0,0,0.08),
-                inset 0 1px 0 rgba(255,255,255,0.95);
+                inset 0 1px 0 rgba(255,255,255,1);
 }
 
 #plinko-canvas { display: block; width: 100%; height: 100%; }
@@ -238,14 +237,14 @@ html, body {
 /* ── Card — liquid glass ─────────────────────────────────────────────────── */
 
 .ctrl-card {
-    background: rgba(255, 255, 255, 0.68);
+    background: rgba(255, 255, 255, 0.72);
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
-    border: 1px solid rgba(255, 255, 255, 0.90);
+    border: 0.5px solid var(--border);
     border-radius: 20px;
     padding: 13px 14px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.06),
-                inset 0 1px 0 rgba(255,255,255,0.95);
+                inset 0 1px 0 rgba(255,255,255,1);
     position: relative;
     overflow: hidden;
 }
@@ -275,13 +274,10 @@ html, body {
 #bet-row {
     display: flex;
     align-items: center;
-    background: rgba(242, 242, 247, 0.70);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
+    background: var(--bg);
     border-radius: 12px;
     overflow: hidden;
     margin-bottom: 9px;
-    border: 1px solid rgba(255,255,255,0.80);
 }
 
 .adj-btn {
@@ -339,8 +335,8 @@ html, body {
 .mult-btn {
     flex: 1;
     padding: 7px 0;
-    background: rgba(242, 242, 247, 0.70);
-    border: 1px solid rgba(255,255,255,0.80);
+    background: var(--bg);
+    border: none;
     border-radius: 9px;
     font-size: 13px;
     font-weight: 700;
@@ -361,13 +357,10 @@ html, body {
 
 .seg-ctrl {
     display: flex;
-    background: rgba(229, 229, 234, 0.70);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
+    background: var(--seg-bg);
     border-radius: 12px;
     padding: 2px;
     gap: 2px;
-    border: 1px solid rgba(255,255,255,0.80);
 }
 
 .seg-btn {
@@ -387,13 +380,10 @@ html, body {
 }
 
 .seg-btn.active {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
+    background: var(--surface);
     color: var(--text);
     font-weight: 600;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.12),
-                inset 0 1px 0 rgba(255,255,255,0.95);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.14);
 }
 
 .seg-btn:disabled {
@@ -519,10 +509,10 @@ html, body {
     justify-content: space-between;
     width: 100%;
     padding: 14px 16px;
-    background: rgba(255, 255, 255, 0.68);
+    background: rgba(255, 255, 255, 0.72);
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
-    border: 1px solid rgba(255, 255, 255, 0.90);
+    border: 0.5px solid var(--border);
     border-radius: 18px;
     font-family: inherit;
     font-size: 15px;
@@ -656,10 +646,7 @@ html, body {
     display: flex;
     align-items: center;
     padding: 10px 12px;
-    background: rgba(242,242,247,0.70);
-    backdrop-filter: var(--blur);
-    -webkit-backdrop-filter: var(--blur);
-    border: 1px solid rgba(255,255,255,0.80);
+    background: var(--bg);
     border-radius: 12px;
     margin-bottom: 4px;
     gap: 10px;
