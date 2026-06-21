@@ -1,21 +1,21 @@
-/* Reef Plinko — Immersive theme v4 */
+/* Reef Plinko — Liquid Glass v1 */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-    --bg:      #f2f2f7;
-    --surface: #ffffff;
-    --border:  #e5e5ea;
-    --seg-bg:  #e5e5ea;
-    --text:    #000000;
-    --text2:   #8e8e93;
-    --accent:  #007aff;
-    --green:   #34c759;
-    --red:     #ff3b30;
-    --orange:  #ff9500;
-    --gold:    #ff9f0a;
-    --game-bg: #06090f;
-    --cyan:    #22d3ee;
+    --bg:       #07091a;
+    --glass:    rgba(255, 255, 255, 0.07);
+    --glass-hi: rgba(255, 255, 255, 0.13);
+    --border:   rgba(255, 255, 255, 0.13);
+    --shine:    rgba(255, 255, 255, 0.26);
+    --text:     #ffffff;
+    --text2:    rgba(255, 255, 255, 0.46);
+    --accent:   #38bdf8;
+    --green:    #34d399;
+    --red:      #f87171;
+    --orange:   #fb923c;
+    --gold:     #fbbf24;
+    --blur:     blur(24px) saturate(180%);
 }
 
 html, body {
@@ -28,19 +28,56 @@ html, body {
     -webkit-tap-highlight-color: transparent;
 }
 
-/* ── Loading ────────────────────────────────────────────────────────────── */
+/* ── Ambient orbs ────────────────────────────────────────────────────────── */
+
+#ambient {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.orb {
+    position: absolute;
+    border-radius: 50%;
+}
+
+.orb-1 {
+    width: 380px; height: 380px;
+    top: -120px; left: -100px;
+    background: radial-gradient(circle, rgba(99,102,241,0.55) 0%, transparent 68%);
+    filter: blur(55px);
+}
+
+.orb-2 {
+    width: 300px; height: 300px;
+    top: 38%; right: -100px;
+    background: radial-gradient(circle, rgba(6,182,212,0.45) 0%, transparent 68%);
+    filter: blur(50px);
+}
+
+.orb-3 {
+    width: 260px; height: 260px;
+    bottom: 18%; left: 15%;
+    background: radial-gradient(circle, rgba(168,85,247,0.38) 0%, transparent 68%);
+    filter: blur(48px);
+}
+
+/* ── Loading ─────────────────────────────────────────────────────────────── */
 
 #screen-loading {
     display: flex;
     align-items: center;
     justify-content: center;
     height: 100vh;
-    background: var(--bg);
+    position: relative;
+    z-index: 1;
 }
 
 .spinner {
     width: 36px; height: 36px;
-    border: 3px solid var(--border);
+    border: 2px solid rgba(255,255,255,0.12);
     border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin .8s linear infinite;
@@ -59,7 +96,8 @@ html, body {
     padding: 32px 24px;
     text-align: center;
     gap: 14px;
-    background: var(--surface);
+    position: relative;
+    z-index: 1;
 }
 
 .ob-emoji { font-size: 56px; }
@@ -84,17 +122,19 @@ html, body {
     height: 100vh;
     max-width: 480px;
     margin: 0 auto;
-    background: var(--bg);
+    background: transparent;
+    position: relative;
+    z-index: 1;
 }
 
-/* ── Game Zone — same light theme as controls ────────────────────────────── */
+/* ── Game zone ───────────────────────────────────────────────────────────── */
 
 #game-zone {
     flex-shrink: 0;
     height: min(62vh, 500px);
     display: flex;
     flex-direction: column;
-    background: var(--bg);
+    background: transparent;
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
@@ -117,13 +157,10 @@ html, body {
     font-size: 14px;
     font-weight: 600;
     color: var(--accent);
-    background: rgba(0, 122, 255, 0.09);
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.22);
     border-radius: 12px;
     padding: 4px 11px;
-}
-
-#balance-num {
-    font-weight: 700;
 }
 
 /* ── Canvas ─────────────────────────────────────────────────────────────── */
@@ -135,14 +172,17 @@ html, body {
     margin: 0 12px 12px;
     border-radius: 20px;
     overflow: hidden;
-    background: var(--surface);
-    box-shadow: 0 1px 6px rgba(0,0,0,0.10);
-    border: 0.5px solid var(--border);
+    background: rgba(8, 12, 28, 0.70);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.50),
+                inset 0 1px 0 var(--shine);
 }
 
 #plinko-canvas { display: block; width: 100%; height: 100%; }
 
-/* ── Result — pill floating over the canvas ──────────────────────────────── */
+/* ── Result pill ─────────────────────────────────────────────────────────── */
 
 #result-bar {
     position: absolute;
@@ -152,8 +192,10 @@ html, body {
     z-index: 10;
     pointer-events: none;
     white-space: nowrap;
-    background: var(--surface);
-    border: 1.5px solid var(--border);
+    background: rgba(255,255,255,0.09);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
     border-radius: 20px;
     padding: 7px 22px;
     min-height: 34px;
@@ -161,7 +203,8 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.30),
+                inset 0 1px 0 var(--shine);
     opacity: 0;
     transition: opacity .22s ease, transform .22s ease, border-color .2s, box-shadow .2s;
 }
@@ -171,20 +214,9 @@ html, body {
     transform: translateX(-50%) translateY(0);
 }
 
-#result-bar.bar-win {
-    border-color: var(--green);
-    box-shadow: 0 2px 14px rgba(52, 199, 89, .28);
-}
-
-#result-bar.bar-loss {
-    border-color: var(--red);
-    box-shadow: 0 2px 12px rgba(255, 59, 48, .22);
-}
-
-#result-bar.bar-jackpot {
-    border-color: var(--gold);
-    box-shadow: 0 2px 18px rgba(255, 159, 10, .40);
-}
+#result-bar.bar-win     { border-color: rgba(52,211,153,.5);  box-shadow: 0 4px 20px rgba(52,211,153,.30); }
+#result-bar.bar-loss    { border-color: rgba(248,113,113,.5); box-shadow: 0 4px 18px rgba(248,113,113,.25); }
+#result-bar.bar-jackpot { border-color: rgba(251,191,36,.6);  box-shadow: 0 4px 24px rgba(251,191,36,.40); }
 
 #result-text {
     font-size: 15px;
@@ -199,6 +231,34 @@ html, body {
 #result-text.jackpot { color: var(--gold); animation: pulse .4s infinite alternate; }
 
 @keyframes pulse { to { transform: scale(1.06); } }
+
+/* ── Results strip ───────────────────────────────────────────────────────── */
+
+#results-strip {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    padding: 6px 16px 4px;
+    flex-shrink: 0;
+}
+
+.result-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.14);
+    flex-shrink: 0;
+    transition: background .2s, transform .15s;
+}
+
+.result-dot.win     { background: var(--green); }
+.result-dot.loss    { background: var(--red); }
+.result-dot.jackpot { background: var(--gold); transform: scale(1.25); }
+.result-dot.push    { background: rgba(255,255,255,0.30); }
+.result-dot.empty   { background: rgba(255,255,255,0.10); }
+
+.result-dot:first-child:not(.empty) { transform: scale(1.4); }
+.result-dot:first-child.jackpot     { transform: scale(1.6); }
 
 /* ── Controls scroll ─────────────────────────────────────────────────────── */
 
@@ -215,14 +275,27 @@ html, body {
 
 #controls::-webkit-scrollbar { display: none; }
 
-/* ── Card ────────────────────────────────────────────────────────────────── */
+/* ── Glass card ──────────────────────────────────────────────────────────── */
 
 .ctrl-card {
-    background: var(--surface);
-    border-radius: 14px;
-    padding: 13px 14px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.06);
-    border: 0.5px solid var(--border);
+    background: var(--glass);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Shine line along top edge */
+.ctrl-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 10%; right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--shine), transparent);
+    pointer-events: none;
 }
 
 .card-label {
@@ -250,10 +323,11 @@ html, body {
 #bet-row {
     display: flex;
     align-items: center;
-    background: var(--bg);
-    border-radius: 10px;
+    background: rgba(0,0,0,0.20);
+    border-radius: 12px;
     overflow: hidden;
     margin-bottom: 9px;
+    border: 1px solid var(--border);
 }
 
 .adj-btn {
@@ -311,31 +385,33 @@ html, body {
 .mult-btn {
     flex: 1;
     padding: 7px 0;
-    background: var(--bg);
-    border: none;
+    background: rgba(0,0,0,0.20);
+    border: 1px solid var(--border);
     border-radius: 9px;
     font-size: 13px;
     font-weight: 700;
     font-family: inherit;
     color: var(--text2);
     cursor: pointer;
-    transition: background .12s, color .12s;
+    transition: background .12s, color .12s, transform .1s;
 }
 
 .mult-btn:active {
-    background: var(--accent);
-    color: #fff;
+    background: rgba(56,189,248,0.25);
+    color: var(--accent);
     transform: scale(0.93);
+    border-color: rgba(56,189,248,0.4);
 }
 
 /* ── Segmented control ───────────────────────────────────────────────────── */
 
 .seg-ctrl {
     display: flex;
-    background: var(--seg-bg);
-    border-radius: 10px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 12px;
     padding: 2px;
     gap: 2px;
+    border: 1px solid var(--border);
 }
 
 .seg-btn {
@@ -343,7 +419,7 @@ html, body {
     padding: 7px 4px;
     background: transparent;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     font-size: 12px;
     font-weight: 500;
     font-family: inherit;
@@ -355,26 +431,28 @@ html, body {
 }
 
 .seg-btn.active {
-    background: var(--surface);
+    background: var(--glass-hi);
     color: var(--text);
     font-weight: 600;
-    box-shadow: 0 1px 4px rgba(0,0,0,.14);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.18);
 }
 
 .seg-btn:disabled {
-    opacity: .35;
+    opacity: .28;
     cursor: default;
 }
 
-/* ── Throw button ───────────────────────────────────────────────────────── */
+/* ── Throw button ────────────────────────────────────────────────────────── */
 
 #throw-btn {
     display: block;
     width: 100%;
     padding: 16px;
-    background: linear-gradient(180deg, #ff453a 0%, #ff2d20 100%);
-    border: none;
-    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(99,102,241,0.88) 0%, rgba(139,92,246,0.88) 100%);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid rgba(139,92,246,0.45);
+    border-radius: 18px;
     color: #fff;
     font-size: 16px;
     font-weight: 800;
@@ -383,19 +461,33 @@ html, body {
     transition: opacity .15s, transform .1s;
     font-family: inherit;
     flex-shrink: 0;
-    box-shadow: 0 4px 20px rgba(255, 59, 48, .42), inset 0 1px 0 rgba(255,255,255,0.16);
+    box-shadow: 0 0 32px rgba(99,102,241,0.45),
+                inset 0 1px 0 rgba(255,255,255,0.22);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Shine line on throw button */
+#throw-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 15%; right: 15%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
 }
 
 #throw-btn:active { transform: scale(.98); opacity: .9; }
 
 #throw-btn.auto-running {
-    background: linear-gradient(180deg, #ff9f0a 0%, #ff8c00 100%);
-    box-shadow: 0 4px 18px rgba(255, 149, 0, .42), inset 0 1px 0 rgba(255,255,255,0.16);
+    background: linear-gradient(135deg, rgba(251,146,60,0.88) 0%, rgba(245,101,19,0.88) 100%);
+    border-color: rgba(251,146,60,0.45);
+    box-shadow: 0 0 28px rgba(251,146,60,0.42),
+                inset 0 1px 0 rgba(255,255,255,0.20);
 }
 
 /* ── Toggle rows ─────────────────────────────────────────────────────────── */
 
-.toggles-card { padding: 2px 14px; }
+.toggles-card { padding: 2px 16px; }
 
 .toggle-row {
     display: flex;
@@ -415,7 +507,7 @@ html, body {
     color: var(--text);
 }
 
-/* iOS-style toggle switch */
+/* iOS-style toggle */
 .toggle {
     position: relative;
     width: 51px;
@@ -434,26 +526,31 @@ html, body {
 .toggle-track {
     position: absolute;
     inset: 0;
-    background: var(--seg-bg);
+    background: rgba(255,255,255,0.12);
+    border: 1px solid var(--border);
     border-radius: 16px;
-    transition: background .22s;
+    transition: background .22s, border-color .22s;
     cursor: pointer;
 }
 
 .toggle-track::after {
     content: '';
     position: absolute;
-    width: 27px;
-    height: 27px;
+    width: 25px;
+    height: 25px;
     left: 2px;
     top: 2px;
-    background: #fff;
+    background: rgba(255,255,255,0.90);
     border-radius: 50%;
     transition: transform .22s;
-    box-shadow: 0 2px 6px rgba(0,0,0,.22);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
 }
 
-.toggle input:checked + .toggle-track { background: var(--green); }
+.toggle input:checked + .toggle-track {
+    background: rgba(52,211,153,0.55);
+    border-color: rgba(52,211,153,0.5);
+}
+
 .toggle input:checked + .toggle-track::after { transform: translateX(20px); }
 
 /* ── Leaderboard button ──────────────────────────────────────────────────── */
@@ -470,16 +567,20 @@ html, body {
     justify-content: space-between;
     width: 100%;
     padding: 14px 16px;
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: 14px;
+    background: var(--glass);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    border-radius: 18px;
     font-family: inherit;
     font-size: 15px;
     font-weight: 600;
     color: var(--text);
     cursor: pointer;
-    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    position: relative;
+    overflow: hidden;
     transition: opacity .12s, transform .1s;
+    box-shadow: inset 0 1px 0 var(--shine);
 }
 
 .link-btn::before {
@@ -516,7 +617,9 @@ html, body {
 #lb-backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,.45);
+    background: rgba(0,0,0,0.60);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     opacity: 0;
     transition: opacity .3s;
 }
@@ -527,19 +630,25 @@ html, body {
     position: relative;
     width: 100%;
     max-height: 72vh;
-    background: var(--surface);
-    border-radius: 20px 20px 0 0;
+    background: rgba(12, 16, 36, 0.92);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border-radius: 24px 24px 0 0;
+    border-top: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
     transform: translateY(100%);
     transition: transform .3s cubic-bezier(.32,0,.67,0);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.50), inset 0 1px 0 var(--shine);
 }
 
 #lb-overlay.open #lb-sheet { transform: translateY(0); }
 
 #lb-handle {
-    width: 40px; height: 4px;
+    width: 36px; height: 4px;
     background: var(--border);
     border-radius: 2px;
     margin: 10px auto 0;
@@ -551,19 +660,21 @@ html, body {
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    border-bottom: 0.5px solid var(--border);
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
     font-size: 16px;
     font-weight: 700;
 }
 
 #lb-close {
-    background: none;
-    border: none;
-    font-size: 18px;
+    background: rgba(255,255,255,0.10);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
     color: var(--text2);
     cursor: pointer;
-    padding: 0;
     line-height: 1;
 }
 
@@ -596,8 +707,9 @@ html, body {
     display: flex;
     align-items: center;
     padding: 10px 12px;
-    background: var(--bg);
-    border-radius: 10px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 12px;
     margin-bottom: 4px;
     gap: 10px;
 }
@@ -607,65 +719,12 @@ html, body {
 .lb-val  { font-size: 14px; font-weight: 700; color: var(--green); }
 .lb-sub  { font-size: 12px; color: var(--text2); }
 
-/* ── Results strip ───────────────────────────────────────────────────────── */
-
-#results-strip {
-    display: flex;
-    justify-content: center;
-    gap: 5px;
-    padding: 6px 16px 4px;
-    flex-shrink: 0;
-}
-
-.result-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--border);
-    flex-shrink: 0;
-    transition: background .2s, transform .15s;
-}
-
-.result-dot.win     { background: var(--green); }
-.result-dot.loss    { background: var(--red); }
-.result-dot.jackpot { background: var(--gold); transform: scale(1.25); }
-.result-dot.push    { background: #b0b0b8; }
-.result-dot.empty   { background: var(--border); opacity: 0.4; }
-
-/* Latest result pops slightly */
-.result-dot:first-child:not(.empty) { transform: scale(1.4); }
-.result-dot:first-child.jackpot     { transform: scale(1.6); }
-
-/* ── Jackpot flash ───────────────────────────────────────────────────────── */
-
-#jackpot-flash {
-    position: fixed;
-    inset: 0;
-    z-index: 999;
-    pointer-events: none;
-    opacity: 0;
-    background: radial-gradient(ellipse at center,
-        rgba(255, 200, 50, 0.45) 0%,
-        rgba(255, 160, 0,  0.20) 45%,
-        transparent 72%);
-}
-
-#jackpot-flash.active {
-    animation: jackpotBurst .65s ease-out forwards;
-}
-
-@keyframes jackpotBurst {
-    0%   { opacity: 1; transform: scale(0.95); }
-    30%  { opacity: 1; transform: scale(1.02); }
-    100% { opacity: 0; transform: scale(1.06); }
-}
-
 /* ── Auto-spin progress bar ─────────────────────────────────────────────── */
 
 #auto-progress {
     display: none;
     height: 3px;
-    background: var(--border);
+    background: rgba(255,255,255,0.10);
     border-radius: 2px;
     overflow: hidden;
     margin-top: -5px;
@@ -678,13 +737,14 @@ html, body {
     background: var(--orange);
     border-radius: 2px;
     transition: width .35s linear;
-    transform-origin: left;
+    box-shadow: 0 0 8px var(--orange);
 }
 
 /* ── Broke state ─────────────────────────────────────────────────────────── */
 
 #throw-btn.broke {
-    background: var(--seg-bg);
+    background: rgba(255,255,255,0.06);
+    border-color: var(--border);
     color: var(--text2);
     box-shadow: none;
 }
@@ -693,4 +753,28 @@ html, body {
     opacity: 1;
     cursor: default;
     transform: none !important;
+}
+
+/* ── Jackpot flash ───────────────────────────────────────────────────────── */
+
+#jackpot-flash {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(ellipse at center,
+        rgba(251, 191, 36, 0.50) 0%,
+        rgba(251, 146, 60, 0.22) 45%,
+        transparent 72%);
+}
+
+#jackpot-flash.active {
+    animation: jackpotBurst .65s ease-out forwards;
+}
+
+@keyframes jackpotBurst {
+    0%   { opacity: 1; transform: scale(0.95); }
+    30%  { opacity: 1; transform: scale(1.02); }
+    100% { opacity: 0; transform: scale(1.06); }
 }

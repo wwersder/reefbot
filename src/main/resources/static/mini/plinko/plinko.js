@@ -30,19 +30,19 @@ function hexRgb(hex) {
 }
 
 /**
- * Light-theme slot palette.
- * Matches the white iOS card aesthetic: light tinted body, bold coloured top border, dark text.
- *   bg      — subtle tint fill (near-white)
- *   bgLand  — slightly stronger tint on landing
- *   border  — vivid accent colour for the top bar
- *   text    — dark shade of the same colour, readable on light bg
+ * Liquid-glass slot palette — dark translucent cells with neon borders.
+ *   bg      — semi-transparent tinted fill
+ *   bgLand  — brighter on ball landing
+ *   border  — neon accent for top bar
+ *   text    — bright text readable on dark bg
+ *   glow    — particle / halo colour
  */
 function slotPalette(mult) {
-    if (mult >= 15) return { bg: '#fffbeb', bgLand: '#fef3c7', border: '#f59e0b', text: '#92400e' };
-    if (mult >= 5)  return { bg: '#f0fdf4', bgLand: '#dcfce7', border: '#22c55e', text: '#14532d' };
-    if (mult >= 2)  return { bg: '#eff6ff', bgLand: '#dbeafe', border: '#3b82f6', text: '#1e3a8a' };
-    if (mult >= 0.8)return { bg: '#f9fafb', bgLand: '#f3f4f6', border: '#9ca3af', text: '#6b7280' };
-    return               { bg: '#fff1f2', bgLand: '#ffe4e6', border: '#f87171', text: '#991b1b' };
+    if (mult >= 15) return { bg: 'rgba(251,191,36,0.10)',  bgLand: 'rgba(251,191,36,0.22)',  border: '#fbbf24', text: '#fde68a', glow: '#fbbf24' };
+    if (mult >= 5)  return { bg: 'rgba(52,211,153,0.09)',  bgLand: 'rgba(52,211,153,0.20)',  border: '#34d399', text: '#6ee7b7', glow: '#34d399' };
+    if (mult >= 2)  return { bg: 'rgba(56,189,248,0.09)',  bgLand: 'rgba(56,189,248,0.20)',  border: '#38bdf8', text: '#bae6fd', glow: '#38bdf8' };
+    if (mult >= 0.8)return { bg: 'rgba(148,163,184,0.07)', bgLand: 'rgba(148,163,184,0.14)', border: 'rgba(148,163,184,0.55)', text: '#94a3b8', glow: '#94a3b8' };
+    return               { bg: 'rgba(248,113,113,0.09)',  bgLand: 'rgba(248,113,113,0.20)',  border: '#f87171', text: '#fca5a5', glow: '#f87171' };
 }
 
 const MULT = {
@@ -145,7 +145,7 @@ export class PlinkoBoard {
     // ── Offscreen sprite builders ─────────────────────────────────────────────
 
     /**
-     * Background: plain white at full physical resolution.
+     * Background: deep dark with a soft radial glow at the top-centre.
      */
     _buildBgSprite() {
         const { _cssW: W, _cssH: H, _dpr: dpr } = this;
@@ -153,8 +153,20 @@ export class PlinkoBoard {
         c.width   = Math.round(W * dpr);
         c.height  = Math.round(H * dpr);
         const ctx = c.getContext('2d');
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.scale(dpr, dpr);
+
+        // Base dark fill
+        ctx.fillStyle = '#07091a';
+        ctx.fillRect(0, 0, W, H);
+
+        // Subtle indigo glow from top-centre (like ambient orb showing through)
+        const g = ctx.createRadialGradient(W / 2, H * 0.15, 0, W / 2, H * 0.15, W * 0.75);
+        g.addColorStop(0,   'rgba(99,102,241,0.22)');
+        g.addColorStop(0.5, 'rgba(6,182,212,0.08)');
+        g.addColorStop(1,   'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+
         this._bgSprite = c;
     }
 
@@ -173,29 +185,32 @@ export class PlinkoBoard {
         ctx.scale(dpr, dpr);
         const cx = cssOff, cy = cssOff;
 
-        // Soft drop shadow
+        // Outer glow ring
+        const glow = ctx.createRadialGradient(cx, cy, PEG_R * 0.7, cx, cy, PEG_R + 7);
+        glow.addColorStop(0,   'rgba(56,189,248,0.28)');
+        glow.addColorStop(1,   'rgba(56,189,248,0)');
         ctx.beginPath();
-        ctx.arc(cx + 0.5, cy + 1.2, PEG_R * 0.90, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,0,0,0.14)';
+        ctx.arc(cx, cy, PEG_R + 7, 0, Math.PI * 2);
+        ctx.fillStyle = glow;
         ctx.fill();
 
-        // Dark slate body
+        // Glass/pearl body — light from top-left
         const g = ctx.createRadialGradient(
             cx - PEG_R * 0.38, cy - PEG_R * 0.38, 0,
             cx, cy, PEG_R
         );
-        g.addColorStop(0,    '#6b7280');
-        g.addColorStop(0.45, '#374151');
-        g.addColorStop(1,    '#111827');
+        g.addColorStop(0,    'rgba(255,255,255,0.95)');
+        g.addColorStop(0.45, 'rgba(186,230,253,0.82)');
+        g.addColorStop(1,    'rgba(56,189,248,0.65)');
         ctx.beginPath();
         ctx.arc(cx, cy, PEG_R, 0, Math.PI * 2);
         ctx.fillStyle = g;
         ctx.fill();
 
-        // White specular dot
+        // Sharp specular dot
         ctx.beginPath();
-        ctx.arc(cx - PEG_R * 0.28, cy - PEG_R * 0.30, PEG_R * 0.24, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.70)';
+        ctx.arc(cx - PEG_R * 0.28, cy - PEG_R * 0.30, PEG_R * 0.22, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
         ctx.fill();
 
         this._pegSprite    = c;
@@ -217,20 +232,23 @@ export class PlinkoBoard {
         ctx.scale(dpr, dpr);
         const cx = cssOff, cy = cssOff;
 
-        // Soft drop shadow
+        // Outer glow
+        const outer = ctx.createRadialGradient(cx, cy, BALL_R * 0.6, cx, cy, BALL_R + 9);
+        outer.addColorStop(0,   'rgba(56,189,248,0.45)');
+        outer.addColorStop(1,   'rgba(56,189,248,0)');
         ctx.beginPath();
-        ctx.arc(cx + 0.6, cy + 1.8, BALL_R * 0.90, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,122,255,0.18)';
+        ctx.arc(cx, cy, BALL_R + 9, 0, Math.PI * 2);
+        ctx.fillStyle = outer;
         ctx.fill();
 
-        // Blue body — light from top-left
+        // Cyan body — light from top-left
         const g = ctx.createRadialGradient(
             cx - BALL_R * 0.36, cy - BALL_R * 0.36, 0,
             cx, cy, BALL_R
         );
-        g.addColorStop(0,    '#60a5fa');
-        g.addColorStop(0.40, '#2563eb');
-        g.addColorStop(1,    '#1e3a8a');
+        g.addColorStop(0,    '#e0f2fe');
+        g.addColorStop(0.38, '#38bdf8');
+        g.addColorStop(1,    '#0369a1');
         ctx.beginPath();
         ctx.arc(cx, cy, BALL_R, 0, Math.PI * 2);
         ctx.fillStyle = g;
@@ -481,11 +499,11 @@ export class PlinkoBoard {
                 ctx.drawImage(this._pegSprite, x - off, y - off, css, css);
 
                 if (flash > 0) {
-                    const halo = ctx.createRadialGradient(x, y, PEG_R, x, y, PEG_R + 9);
-                    halo.addColorStop(0, `rgba(37,99,235,${flash * 0.30})`);
-                    halo.addColorStop(1, 'rgba(37,99,235,0)');
+                    const halo = ctx.createRadialGradient(x, y, PEG_R, x, y, PEG_R + 12);
+                    halo.addColorStop(0, `rgba(56,189,248,${flash * 0.55})`);
+                    halo.addColorStop(1, 'rgba(56,189,248,0)');
                     ctx.beginPath();
-                    ctx.arc(x, y, PEG_R + 9, 0, Math.PI * 2);
+                    ctx.arc(x, y, PEG_R + 12, 0, Math.PI * 2);
                     ctx.fillStyle = halo;
                     ctx.fill();
                 }
@@ -563,7 +581,7 @@ export class PlinkoBoard {
             const r = BALL_R * frac * 0.45;
             ctx.beginPath();
             ctx.arc(x, y, r, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(37,99,235,${frac * 0.20})`;
+            ctx.fillStyle = `rgba(56,189,248,${frac * 0.28})`;
             ctx.fill();
         }
     }
