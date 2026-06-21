@@ -392,7 +392,7 @@ html, body {
     display: block;
     width: 100%;
     padding: 16px;
-    background: linear-gradient(180deg, #ff453a 0%, #ff2d20 100%);
+    background: linear-gradient(180deg, #1a91ff 0%, #007aff 100%);
     border: none;
     border-radius: 14px;
     color: #fff;
@@ -400,11 +400,10 @@ html, body {
     font-weight: 800;
     letter-spacing: .8px;
     cursor: pointer;
-    transition: opacity .15s, transform .1s;
+    transition: background .2s, box-shadow .2s, opacity .15s, transform .1s;
     font-family: inherit;
     flex-shrink: 0;
-    /* Glass: glow shadow + specular top highlight */
-    box-shadow: 0 4px 20px rgba(255,59,48,.42),
+    box-shadow: 0 4px 20px rgba(0,122,255,.38),
                 inset 0 1px 0 rgba(255,255,255,0.28);
     position: relative;
     overflow: hidden;
@@ -421,10 +420,11 @@ html, body {
 
 #throw-btn:active { transform: scale(.98); opacity: .9; }
 
+/* Auto-spin active → red = "tap to stop" */
 #throw-btn.auto-running {
-    background: linear-gradient(180deg, #ff9f0a 0%, #ff8c00 100%);
-    box-shadow: 0 4px 18px rgba(255,149,0,.42),
-                inset 0 1px 0 rgba(255,255,255,0.24);
+    background: linear-gradient(180deg, #ff453a 0%, #ff2d20 100%);
+    box-shadow: 0 4px 20px rgba(255,59,48,.42),
+                inset 0 1px 0 rgba(255,255,255,0.28);
 }
 
 /* ── Toggle rows ─────────────────────────────────────────────────────────── */
