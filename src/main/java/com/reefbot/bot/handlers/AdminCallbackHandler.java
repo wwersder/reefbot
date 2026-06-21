@@ -255,7 +255,18 @@ public class AdminCallbackHandler implements CallbackHandler {
                 Работает только если игрок в минусе.
 
                 <b>Пример:</b>
-                <code>/vip cashback 3</code>""";
+                <code>/vip cashback 3</code>
+
+                ━━━━━━━━━━━━━━━━
+                💥 <b>Полный снос профиля</b>
+
+                <code>/vip nuke &lt;id&gt;</code>
+                Обнуляет <b>всё</b>: тир → NONE, оборот → 0,
+                чистый минус → 0, дата периода и выплаты → null.
+                Кешбэк <b>не</b> выплачивается.
+
+                <b>Пример:</b>
+                <code>/vip nuke 3</code>""";
     }
 
     // ── Клавиатуры ────────────────────────────────────────────────────────

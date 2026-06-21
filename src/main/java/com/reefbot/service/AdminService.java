@@ -110,7 +110,8 @@ public class AdminService {
                     /vip tier <id> <TIER>   — установить тир
                     /vip wager <id> <delta> — изменить оборот
                     /vip reset <id>         — обнулить период
-                    /vip cashback <id>      — выплатить кешбэк сейчас""");
+                    /vip cashback <id>      — выплатить кешбэк сейчас
+                    /vip nuke <id>          — снести всё в ноль""");
         }
 
         String[] parts = args.split("\\s+");
@@ -121,6 +122,7 @@ public class AdminService {
             case "wager"    -> handleVipWager(parts);
             case "reset"    -> handleVipReset(parts);
             case "cashback" -> handleVipCashback(parts);
+            case "nuke"     -> handleVipNuke(parts);
             default         -> handleVipInfo(parts);  // /vip <id>
         };
     }
@@ -284,6 +286,40 @@ public class AdminService {
                 + "Выплачено: +%,d 🐚\n"
                 + "Период обнулён.",
                 player.getId(), tier.label(), (int)(tier.getCashbackRate() * 100), loss, cashback));
+    }
+
+    /** /vip nuke <id> — полный сброс VIP профиля в ноль. */
+    private BotResponse handleVipNuke(String[] parts) {
+        if (parts.length < 2)
+            return new BotResponse("Формат: /vip nuke <id>");
+
+        Player player = resolvePlayer(parts[1]);
+        if (player == null) return new BotResponse("Игрок #" + parts[1] + " не найден.");
+
+        VipTier oldTier  = safe(player.getVipTier());
+        long oldWager    = player.getVipLifetimeWager()  != null ? player.getVipLifetimeWager()  : 0L;
+        int oldLoss      = player.getVipPeriodNetLoss()  != null ? player.getVipPeriodNetLoss()  : 0;
+
+        player.setVipTier(VipTier.NONE);
+        player.setVipLifetimeWager(0L);
+        player.setVipPeriodNetLoss(0);
+        player.setVipPeriodStart(null);
+        player.setVipCashbackPaidAt(null);
+        playerRepository.save(player);
+
+        log.info("Admin vip nuke: player#{} — tier={} wager={} loss={} → all zeroed",
+                player.getId(), oldTier, oldWager, oldLoss);
+
+        return new BotResponse(String.format("""
+                💥 VIP профиль игрока #%d полностью обнулён.
+
+                Было:
+                  Тир:    %s
+                  Оборот: %,d 🐚
+                  Минус:  %,d 🐚
+
+                Стало: NONE / 0 / 0""",
+                player.getId(), oldTier.label(), oldWager, Math.max(0, oldLoss)));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
