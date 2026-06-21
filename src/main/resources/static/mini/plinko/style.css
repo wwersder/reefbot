@@ -688,192 +688,272 @@ html, body {
 .lb-sub  { font-size: 12px; color: var(--text2); }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   VIP bottom sheet — premium design
+   VIP bottom sheet — premium redesign
    ══════════════════════════════════════════════════════════════════════════ */
 
 #vip-content {
     overflow-y: auto;
     flex: 1;
-    padding: 16px;
+    padding: 14px 14px 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding-bottom: max(24px, env(safe-area-inset-bottom, 24px));
-    background: #f8f8fb;
+    gap: 10px;
+    padding-bottom: max(28px, env(safe-area-inset-bottom, 28px));
+    background: #f2f2f7;
 }
 
-/* Hero — tier card with radial glow background */
+/* ── Hero card ───────────────────────────────────────────────────────────── */
+
 .vip-hero {
     border-radius: 20px;
-    padding: 32px 20px 26px;
+    padding: 30px 20px 24px;
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0;
-    /* radial glow top-center fading into tier bg */
-    background: radial-gradient(ellipse 80% 80px at 50% -10px,
-                    var(--hero-glow, transparent),
-                    var(--hero-bg, #f5f5f7) 70%),
+    background: radial-gradient(ellipse 90% 100px at 50% 0%,
+                    var(--hero-glow, rgba(0,0,0,0)),
+                    var(--hero-bg, #f5f5f7) 68%),
                 var(--hero-bg, #f5f5f7);
     border: 1px solid var(--hero-border, #e5e5ea);
-    box-shadow: 0 2px 12px var(--hero-shadow, rgba(0,0,0,.06)),
-                inset 0 1px 0 rgba(255,255,255,.9);
+    box-shadow: 0 2px 16px var(--hero-shadow, rgba(0,0,0,.06)),
+                inset 0 1px 0 rgba(255,255,255,.95);
 }
 
 .vip-hero-icon {
-    font-size: 56px;
+    font-size: 60px;
     line-height: 1;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 .vip-hero-name {
-    font-size: 28px;
+    font-size: 30px;
     font-weight: 800;
-    letter-spacing: -.5px;
+    letter-spacing: -.8px;
+    line-height: 1;
     color: var(--hero-text, var(--text));
 }
 
 .vip-hero-wager {
     font-size: 13px;
+    font-weight: 500;
     color: var(--text2);
-    margin-top: 8px;
-    padding: 4px 14px;
-    background: rgba(255,255,255,.65);
+    margin-top: 10px;
+    padding: 5px 16px;
+    background: rgba(255,255,255,.7);
+    border: 0.5px solid rgba(0,0,0,.06);
     border-radius: 20px;
+    letter-spacing: .1px;
 }
 
-/* Section label */
-.vip-section-title {
+/* ── Section group header ────────────────────────────────────────────────── */
+
+.vip-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.vip-group-title {
     font-size: 11px;
     font-weight: 700;
     color: var(--text2);
     text-transform: uppercase;
-    letter-spacing: .6px;
-    padding: 0 2px;
+    letter-spacing: .7px;
+    padding: 0 4px;
+    margin-top: 4px;
 }
 
-/* Progress bar to next tier */
-.vip-progress-wrap {
-    background: #ffffff;
-    border-radius: 14px;
-    padding: 14px 16px;
+/* ── Progress card ───────────────────────────────────────────────────────── */
+
+.vip-progress-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
     border: 0.5px solid var(--border);
-    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    box-shadow: 0 1px 4px rgba(0,0,0,.05),
+                inset 0 1px 0 rgba(255,255,255,1);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
-.vip-progress-labels {
+.vip-progress-heads {
     display: flex;
     justify-content: space-between;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text2);
+    align-items: center;
 }
 
-.vip-progress-bar {
-    height: 7px;
+.vip-progress-tier {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.vip-progress-track {
+    height: 9px;
     background: var(--bg);
-    border-radius: 4px;
+    border-radius: 5px;
     overflow: hidden;
 }
 
 .vip-progress-fill {
     height: 100%;
-    border-radius: 4px;
-    transition: width .5s ease;
-    min-width: 5px;
+    border-radius: 5px;
+    min-width: 6px;
+    transition: width .6s cubic-bezier(.34,1.3,.64,1);
 }
 
-.vip-progress-sub {
+.vip-progress-meta {
     font-size: 12px;
     color: var(--text2);
     text-align: center;
+    font-weight: 500;
 }
 
-.vip-max-label {
+.vip-max-badge {
+    background: linear-gradient(135deg, #fffbf0, #fff8e0);
+    border: 1px solid #f0d080;
+    border-radius: 14px;
+    padding: 14px 16px;
     text-align: center;
     font-size: 14px;
-    font-weight: 600;
-    color: var(--gold);
-    padding: 6px 0;
+    font-weight: 700;
+    color: #a06a00;
+    box-shadow: 0 1px 4px rgba(200,133,10,.10),
+                inset 0 1px 0 rgba(255,255,255,1);
 }
 
-/* Cashback period block */
-.vip-cashback-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #ffffff;
-    border-radius: 14px;
-    padding: 16px;
+/* ── Cashback card ───────────────────────────────────────────────────────── */
+
+.vip-cb-card {
+    background: #fff;
+    border-radius: 16px;
     border: 0.5px solid var(--border);
-    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    box-shadow: 0 1px 4px rgba(0,0,0,.05),
+                inset 0 1px 0 rgba(255,255,255,1);
+    overflow: hidden;
 }
 
-.vip-cashback-cell { flex: 1; text-align: center; }
+.vip-cb-top {
+    display: flex;
+    align-items: stretch;
+}
 
-.vip-cashback-num {
+.vip-cb-col {
+    flex: 1;
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.vip-cb-col-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+
+.vip-cb-num {
     font-size: 22px;
     font-weight: 800;
-    color: var(--text);
-    letter-spacing: -.5px;
+    letter-spacing: -.6px;
     line-height: 1.1;
+    color: var(--text);
 }
 
-.vip-cashback-label {
-    font-size: 11px;
+.vip-cb-num.earn { color: var(--cb-color, var(--green)); }
+
+.vip-cb-sub {
+    font-size: 12px;
     color: var(--text2);
-    margin-top: 3px;
-    line-height: 1.4;
+    font-weight: 500;
 }
 
-.vip-cashback-arrow {
-    font-size: 16px;
-    color: var(--border);
+.vip-cb-divider {
+    width: 0.5px;
+    background: var(--border);
     flex-shrink: 0;
+    margin: 12px 0;
 }
 
-.vip-cashback-locked {
-    text-align: center;
-    font-size: 13px;
+.vip-cb-bottom {
+    border-top: 0.5px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.vip-cb-payout-label {
+    font-size: 12px;
     color: var(--text2);
-    padding: 12px 0;
+    font-weight: 500;
 }
 
-/* Tier rows */
-.vip-tiers-list { display: flex; flex-direction: column; gap: 6px; }
+.vip-cb-payout-date {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    background: var(--bg);
+    padding: 3px 10px;
+    border-radius: 8px;
+}
+
+.vip-cb-locked {
+    padding: 20px 16px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.5;
+}
+
+/* ── Tier list ───────────────────────────────────────────────────────────── */
+
+.vip-tiers-list { display: flex; flex-direction: column; gap: 5px; }
 
 .vip-tier-row {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 13px 14px;
-    background: #ffffff;
+    padding: 14px 14px 14px 16px;
+    background: #fff;
     border-radius: 14px;
     border: 1px solid transparent;
     box-shadow: 0 1px 3px rgba(0,0,0,.04);
-    transition: border-color .2s;
     position: relative;
-    overflow: hidden;
 }
 
-/* Subtle tinted left strip for reached tiers */
+/* Left accent strip for reached tiers */
+.vip-tier-row.reached {
+    border-color: rgba(0,0,0,.04);
+}
+
 .vip-tier-row.reached::before {
     content: '';
     position: absolute;
-    left: 0; top: 0; bottom: 0;
+    left: 0; top: 8px; bottom: 8px;
     width: 3px;
-    background: var(--tier-color, transparent);
-    border-radius: 0 2px 2px 0;
+    background: var(--tier-accent);
+    border-radius: 0 3px 3px 0;
+}
+
+/* Active tier — solid fill */
+.vip-tier-row.active {
+    background: var(--tier-bg);
+    border-color: var(--tier-border);
+    box-shadow: 0 2px 12px var(--tier-shadow),
+                inset 0 1px 0 rgba(255,255,255,.3);
 }
 
 .vip-tier-icon {
-    font-size: 24px;
+    font-size: 26px;
     flex-shrink: 0;
-    width: 30px;
+    width: 32px;
     text-align: center;
 }
 
@@ -883,26 +963,44 @@ html, body {
     font-size: 15px;
     font-weight: 700;
     line-height: 1.2;
+    color: var(--tier-text, var(--text));
 }
 
 .vip-tier-req {
     font-size: 12px;
-    color: var(--text2);
-    margin-top: 1px;
+    color: var(--tier-sub, var(--text2));
+    margin-top: 2px;
+    font-weight: 500;
+}
+
+.vip-tier-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
 }
 
 .vip-tier-cb {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 800;
-    flex-shrink: 0;
-    letter-spacing: -.5px;
+    letter-spacing: -.4px;
+    color: var(--tier-text, var(--text));
 }
 
-/* Footer note */
+.vip-tier-check {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--tier-text, var(--text2));
+    opacity: .7;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+
 .vip-footer-note {
     font-size: 12px;
     color: var(--text2);
     text-align: center;
-    line-height: 1.6;
-    padding: 2px 8px 4px;
+    line-height: 1.65;
+    padding: 4px 12px 8px;
 }

@@ -10,8 +10,8 @@
  *   - Broke state: disabled button when balance < MIN_BET
  */
 
-import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=16';
-import { PlinkoBoard } from './plinko.js?v=16';
+import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=17';
+import { PlinkoBoard } from './plinko.js?v=17';
 
 const MIN_BET    = 5;
 const BET_STEP   = 5;
@@ -552,63 +552,10 @@ function renderVipSheet() {
 
     const v      = _vipState;
     const tier   = VIP_TIERS.find(t => t.id === v.vipTier) || VIP_TIERS[0];
-    const wager  = v.vipLifetimeWager || 0;
+    const tierIdx = VIP_TIERS.indexOf(tier);
+    const wager   = v.vipLifetimeWager || 0;
 
-    // Progress to next tier
-    let progressHtml = '';
-    const nextTier = VIP_TIERS[tier === VIP_TIERS[3] ? 3 : VIP_TIERS.indexOf(tier) + 1];
-    if (tier.id !== 'REEF') {
-        const prev  = tier.threshold;
-        const gap   = nextTier.threshold - prev;
-        const done  = Math.min(wager - prev, gap);
-        const pct   = Math.max(0, Math.min(100, (done / gap) * 100));
-        progressHtml = `
-        <div class="vip-progress-wrap">
-            <div class="vip-progress-labels">
-                <span>${tier.emoji || '○'} ${tier.name}</span>
-                <span>${nextTier.emoji} ${nextTier.name}</span>
-            </div>
-            <div class="vip-progress-bar">
-                <div class="vip-progress-fill" style="width:${pct}%;background:${nextTier.color}"></div>
-            </div>
-            <div class="vip-progress-sub">${wager.toLocaleString('ru')} / ${nextTier.threshold.toLocaleString('ru')} 🐚 оборота</div>
-        </div>`;
-    } else {
-        progressHtml = `<div class="vip-max-label">🏆 Максимальный статус достигнут</div>`;
-    }
-
-    // Cashback chip
-    const loss      = v.vipPeriodNetLoss || 0;
-    const estimated = v.vipEstimatedCashback || 0;
-    const cashbackHtml = v.vipTier === 'NONE'
-        ? `<div class="vip-cashback-locked">Кешбэк доступен со статуса 🪸 Коралл</div>`
-        : `<div class="vip-cashback-row">
-            <div class="vip-cashback-cell">
-                <div class="vip-cashback-num">${loss.toLocaleString('ru')} 🐚</div>
-                <div class="vip-cashback-label">чистый минус за период</div>
-            </div>
-            <div class="vip-cashback-arrow">→</div>
-            <div class="vip-cashback-cell">
-                <div class="vip-cashback-num" style="color:${tier.color}">+${estimated.toLocaleString('ru')} 🐚</div>
-                <div class="vip-cashback-label">кешбэк ${tier.cb}% (${v.vipNextCashbackDate || '?'})</div>
-            </div>
-          </div>`;
-
-    // Tiers table
-    const tiersHtml = VIP_TIERS.slice(1).map(t => {
-        const active   = t.id === v.vipTier;
-        const reached  = VIP_TIERS.indexOf(tier) >= VIP_TIERS.indexOf(t);
-        const rowStyle = active ? `border-color:${t.color}55;background:${t.color}08` : '';
-        return `<div class="vip-tier-row${active ? ' active' : ''}${reached ? ' reached' : ''}" style="${rowStyle}">
-            <div class="vip-tier-icon">${t.emoji}</div>
-            <div class="vip-tier-info">
-                <div class="vip-tier-name" style="color:${t.color}">${t.name}</div>
-                <div class="vip-tier-req">от ${t.threshold.toLocaleString('ru')} 🐚 оборота</div>
-            </div>
-            <div class="vip-tier-cb" style="color:${t.color}">+${t.cb}%</div>
-        </div>`;
-    }).join('');
-
+    // ── Hero ──────────────────────────────────────────────────────────────
     const heroStyle = [
         `--hero-bg:${tier.heroBg}`,
         `--hero-border:${tier.heroBorder}`,
@@ -617,18 +564,128 @@ function renderVipSheet() {
         `--hero-text:${tier.heroText}`,
     ].join(';');
 
+    const heroHtml = `
+    <div class="vip-hero" style="${heroStyle}">
+        <div class="vip-hero-icon">${tier.emoji || '🐚'}</div>
+        <div class="vip-hero-name">${tier.id === 'NONE' ? 'Нет статуса' : tier.name}</div>
+        <div class="vip-hero-wager">оборот: ${wager.toLocaleString('ru')} 🐚</div>
+    </div>`;
+
+    // ── Progress ──────────────────────────────────────────────────────────
+    let progressHtml = '';
+    if (tier.id === 'REEF') {
+        progressHtml = `<div class="vip-max-badge">🏆 Максимальный статус достигнут</div>`;
+    } else {
+        const next = VIP_TIERS[tierIdx + 1];
+        const prev = tier.threshold;
+        const gap  = next.threshold - prev;
+        const done = Math.max(0, Math.min(wager - prev, gap));
+        const pct  = Math.max(2, Math.min(100, (done / gap) * 100));
+        const left = (next.threshold - wager).toLocaleString('ru');
+        // gradient fill: current tier color → next tier color
+        const fillBg = `linear-gradient(90deg, ${tier.id === 'NONE' ? '#c8c8d0' : tier.color}, ${next.color})`;
+        progressHtml = `
+        <div class="vip-group">
+            <div class="vip-group-title">До следующего статуса</div>
+            <div class="vip-progress-card">
+                <div class="vip-progress-heads">
+                    <div class="vip-progress-tier" style="color:${tier.id === 'NONE' ? 'var(--text2)' : tier.color}">
+                        ${tier.emoji || '○'} ${tier.name}
+                    </div>
+                    <div class="vip-progress-tier" style="color:${next.color}">
+                        ${next.emoji} ${next.name}
+                    </div>
+                </div>
+                <div class="vip-progress-track">
+                    <div class="vip-progress-fill" style="width:${pct}%;background:${fillBg}"></div>
+                </div>
+                <div class="vip-progress-meta">ещё ${left} 🐚 до ${next.emoji} ${next.name}</div>
+            </div>
+        </div>`;
+    }
+
+    // ── Cashback ──────────────────────────────────────────────────────────
+    const loss      = v.vipPeriodNetLoss  || 0;
+    const estimated = v.vipEstimatedCashback || 0;
+    const payDate   = v.vipNextCashbackDate || '?';
+
+    let cashbackHtml = '';
+    if (tier.id === 'NONE') {
+        cashbackHtml = `
+        <div class="vip-group">
+            <div class="vip-group-title">Кешбэк периода</div>
+            <div class="vip-cb-card">
+                <div class="vip-cb-locked">Кешбэк доступен с&nbsp;🪸&nbsp;Коралл<br>Тратьте и&nbsp;мы&nbsp;вернём часть потерь</div>
+            </div>
+        </div>`;
+    } else {
+        cashbackHtml = `
+        <div class="vip-group">
+            <div class="vip-group-title">Кешбэк периода</div>
+            <div class="vip-cb-card" style="--cb-color:${tier.color}">
+                <div class="vip-cb-top">
+                    <div class="vip-cb-col">
+                        <div class="vip-cb-col-label">Потери</div>
+                        <div class="vip-cb-num">${loss.toLocaleString('ru')} 🐚</div>
+                        <div class="vip-cb-sub">чистый минус</div>
+                    </div>
+                    <div class="vip-cb-divider"></div>
+                    <div class="vip-cb-col">
+                        <div class="vip-cb-col-label">Кешбэк ${tier.cb}%</div>
+                        <div class="vip-cb-num earn">+${estimated.toLocaleString('ru')} 🐚</div>
+                        <div class="vip-cb-sub">к выплате</div>
+                    </div>
+                </div>
+                <div class="vip-cb-bottom">
+                    <div class="vip-cb-payout-label">Следующая выплата</div>
+                    <div class="vip-cb-payout-date">${payDate}</div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // ── Tier rows ─────────────────────────────────────────────────────────
+    const tiersHtml = VIP_TIERS.slice(1).map(t => {
+        const active  = t.id === tier.id;
+        const reached = tierIdx >= VIP_TIERS.indexOf(t);
+        const cls     = ['vip-tier-row', active ? 'active' : '', reached ? 'reached' : ''].filter(Boolean).join(' ');
+
+        // CSS custom properties for coloring
+        let rowStyle = `--tier-accent:${t.color};`;
+        if (active) {
+            rowStyle += `--tier-bg:${t.heroBg};--tier-border:${t.heroBorder};--tier-shadow:${t.heroShadow};--tier-text:${t.heroText};--tier-sub:${t.heroText}88;`;
+        } else if (reached) {
+            rowStyle += `--tier-text:${t.heroText};--tier-sub:var(--text2);`;
+        } else {
+            rowStyle += `--tier-text:var(--text2);--tier-sub:var(--text2);`;
+        }
+
+        const checkMark = reached
+            ? `<div class="vip-tier-check">${active ? 'Текущий' : '✓'}</div>`
+            : '';
+
+        return `<div class="${cls}" style="${rowStyle}">
+            <div class="vip-tier-icon">${t.emoji}</div>
+            <div class="vip-tier-info">
+                <div class="vip-tier-name">${t.name}</div>
+                <div class="vip-tier-req">от ${t.threshold.toLocaleString('ru')} 🐚</div>
+            </div>
+            <div class="vip-tier-right">
+                <div class="vip-tier-cb">+${t.cb}%</div>
+                ${checkMark}
+            </div>
+        </div>`;
+    }).join('');
+
     content.innerHTML = `
-        <div class="vip-hero" style="${heroStyle}">
-            <div class="vip-hero-icon">${tier.emoji || '🐚'}</div>
-            <div class="vip-hero-name">${tier.id === 'NONE' ? 'Нет статуса' : tier.name}</div>
-            <div class="vip-hero-wager">оборот ${wager.toLocaleString('ru')} 🐚</div>
-        </div>
+        ${heroHtml}
         ${progressHtml}
-        <div class="vip-section-title">Кешбэк периода</div>
         ${cashbackHtml}
-        <div class="vip-section-title">Статусы</div>
-        <div class="vip-tiers-list">${tiersHtml}</div>
-        <div class="vip-footer-note">Статус постоянный и не сгорает. Кешбэк выплачивается пн и чт в 00:00 на чистый минус за период.</div>
+        <div class="vip-group">
+            <div class="vip-group-title">Статусы и кешбэк</div>
+            <div class="vip-tiers-list">${tiersHtml}</div>
+        </div>
+        <div class="vip-footer-note">Статус постоянный — не сгорает с&nbsp;уровнем. Кешбэк выплачивается каждый понедельник и&nbsp;четверг в&nbsp;00:00 на&nbsp;чистый минус за&nbsp;период.</div>
     `;
 }
 
