@@ -42,15 +42,16 @@ public class PlinkoService {
      * Multiplier tables [risk][slot].
      * 8 rows → 9 slots (indices 0..8).
      */
-    // 8 rows → 9 slots. RTP: LOW≈97.5%, MEDIUM≈95.7%, HIGH≈90%
-    private static final double[] MULT_8_LOW    = {3.0, 1.4, 1.2, 1.0, 0.6, 1.0, 1.2, 1.4, 3.0};
-    private static final double[] MULT_8_MEDIUM = {18.0, 3.0, 1.3, 0.6, 0.3, 0.6, 1.3, 3.0, 18.0};
-    private static final double[] MULT_8_HIGH   = {25.0, 4.0, 1.0, 0.4, 0.2, 0.4, 1.0, 4.0, 25.0};
+    // 8 rows → 9 slots. RTP: LOW≈97.6%, MEDIUM≈97.1%, HIGH≈94.7%
+    private static final double[] MULT_8_LOW    = {3.0,   1.5, 1.3, 1.0,  0.5,  1.0,  1.3, 1.5,  3.0};
+    private static final double[] MULT_8_MEDIUM = {18.0,  3.0, 1.3, 0.6,  0.35, 0.6,  1.3, 3.0,  18.0};
+    private static final double[] MULT_8_HIGH   = {25.0,  4.5, 1.1, 0.4,  0.2,  0.4,  1.1, 4.5,  25.0};
 
-    // 12 rows → 13 slots. RTP: LOW≈95%, MEDIUM≈92%, HIGH≈88%
-    private static final double[] MULT_12_LOW    = {20.0, 5.0, 2.0, 1.3, 1.0, 0.7, 0.5, 0.7, 1.0, 1.3, 2.0, 5.0, 20.0};
-    private static final double[] MULT_12_MEDIUM = {33.0, 10.0, 3.0, 1.5, 0.7, 0.4, 0.2, 0.4, 0.7, 1.5, 3.0, 10.0, 33.0};
-    private static final double[] MULT_12_HIGH   = {50.0, 12.0, 3.0, 1.0, 0.4, 0.2, 0.1, 0.2, 0.4, 1.0, 3.0, 12.0, 50.0};
+    // 12 rows → 13 slots. RTP: LOW≈97.8%, MEDIUM≈97.1%, HIGH≈93.8%
+    // Large jackpots compensate for the heavy center weight in binomial(12) distribution.
+    private static final double[] MULT_12_LOW    = {20.0,  8.0,  3.0, 1.5, 1.0, 0.8, 0.5, 0.8, 1.0, 1.5, 3.0,  8.0,  20.0};
+    private static final double[] MULT_12_MEDIUM = {70.0,  8.0,  2.0, 1.5, 1.0, 0.8, 0.5, 0.8, 1.0, 1.5, 2.0,  8.0,  70.0};
+    private static final double[] MULT_12_HIGH   = {450.0, 13.0, 2.5, 1.0, 0.8, 0.5, 0.3, 0.5, 0.8, 1.0, 2.5, 13.0, 450.0};
 
     private final SecureRandom secureRandom = new SecureRandom();
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");

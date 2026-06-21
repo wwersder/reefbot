@@ -19,8 +19,8 @@ const AUTO_MAX   = 100;
 const RESULTS_MAX= 10;
 
 const RTP_TABLE = {
-    8:  { LOW: 97.5, MEDIUM: 95.7, HIGH: 90.0 },
-    12: { LOW: 95.0, MEDIUM: 92.0, HIGH: 88.0 },
+    8:  { LOW: 97.6, MEDIUM: 97.1, HIGH: 94.7 },
+    12: { LOW: 97.8, MEDIUM: 97.1, HIGH: 93.8 },
 };
 
 
