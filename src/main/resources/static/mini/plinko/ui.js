@@ -10,8 +10,8 @@
  *   - Broke state: disabled button when balance < MIN_BET
  */
 
-import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=14';
-import { PlinkoBoard } from './plinko.js?v=14';
+import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=15';
+import { PlinkoBoard } from './plinko.js?v=15';
 
 const MIN_BET    = 5;
 const BET_STEP   = 5;
