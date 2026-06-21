@@ -336,22 +336,23 @@ html, body {
     opacity: .8;
 }
 
-/* ── Bet row ─────────────────────────────────────────────────────────────── */
+/* ── Bet row — single pill ───────────────────────────────────────────────── */
 
 #bet-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    background: #f2f2f7;
+    border-radius: 14px;
     margin-bottom: 12px;
+    overflow: hidden;
 }
 
 .adj-btn {
-    width: 40px; height: 40px;
-    background: #f2f2f7;
+    width: 48px; height: 52px;
+    background: none;
     border: none;
-    border-radius: 12px;
-    font-size: 22px;
-    font-weight: 400;
+    font-size: 26px;
+    font-weight: 300;
     color: var(--accent);
     cursor: pointer;
     display: flex;
@@ -359,25 +360,25 @@ html, body {
     justify-content: center;
     font-family: inherit;
     flex-shrink: 0;
-    transition: opacity .12s, transform .1s;
+    transition: background .12s;
 }
-.adj-btn:active { opacity: .5; transform: scale(.9); }
+.adj-btn:active { background: rgba(0,0,0,.07); }
 
 #bet-input {
     flex: 1;
     text-align: center;
-    font-size: 32px;
+    font-size: 30px;
     font-weight: 800;
     font-family: inherit;
     color: var(--text);
-    background: #f2f2f7;
+    background: none;
     border: none;
-    border-radius: 12px;
     outline: none;
-    padding: 8px 0;
+    padding: 0;
     -moz-appearance: textfield;
     letter-spacing: -.8px;
     line-height: 1;
+    min-width: 0;
 }
 #bet-input::-webkit-outer-spin-button,
 #bet-input::-webkit-inner-spin-button { -webkit-appearance: none; }
