@@ -35,10 +35,18 @@ const BONUS_MULT    = 100;
 // ── VIP tiers ─────────────────────────────────────────────────────────────────
 
 const VIP_TIERS = [
-    { id: 'NONE',  emoji: '',   name: 'Нет',    heroBg: '#f5f5f7', heroBorder: '#e5e5ea', heroText: '#1c1c1e' },
-    { id: 'CORAL', emoji: '🪸', name: 'Коралл', heroBg: '#fff5f2', heroBorder: '#f2c4b0', heroText: '#c45a31' },
-    { id: 'PEARL', emoji: '🦪', name: 'Жемчуг', heroBg: '#f5f3ff', heroBorder: '#c4bafa', heroText: '#5b48d9' },
-    { id: 'REEF',  emoji: '👑', name: 'Риф',    heroBg: '#fffbf0', heroBorder: '#f0d080', heroText: '#a06a00' },
+    { id: 'NONE',  emoji: '',   name: 'Нет',    cb: 0,  threshold: 0,
+      color: '#9ca3af', heroBg: '#f5f5f7', heroBorder: '#e5e5ea',
+      heroGlow: 'transparent', heroShadow: 'rgba(0,0,0,.06)', heroText: '#1c1c1e' },
+    { id: 'CORAL', emoji: '🪸', name: 'Коралл', cb: 3,  threshold: 5000,
+      color: '#e07857', heroBg: '#fff5f2', heroBorder: '#f2c4b0',
+      heroGlow: '#f4a07a', heroShadow: 'rgba(224,120,87,.18)', heroText: '#c45a31' },
+    { id: 'PEARL', emoji: '🦪', name: 'Жемчуг', cb: 6,  threshold: 25000,
+      color: '#7c6af5', heroBg: '#f5f3ff', heroBorder: '#c4bafa',
+      heroGlow: '#a596f8', heroShadow: 'rgba(124,106,245,.20)', heroText: '#5b48d9' },
+    { id: 'REEF',  emoji: '👑', name: 'Риф',    cb: 10, threshold: 100000,
+      color: '#c8850a', heroBg: '#fffbf0', heroBorder: '#f0d080',
+      heroGlow: '#f0c040', heroShadow: 'rgba(200,133,10,.22)', heroText: '#a06a00' },
 ];
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -93,9 +101,15 @@ function bindEvents() {
     $('paytable-btn').addEventListener('click', openPaytable);
     $('pt-close')    .addEventListener('click', closePaytable);
     $('pt-backdrop') .addEventListener('click', closePaytable);
-    $('bonus-btn')   .addEventListener('click', handleBonusBuy);
-    $('back-btn')    .addEventListener('click', () => { window.location.href = '/mini/plinko/'; });
-    $('vip-btn')     .addEventListener('click', () => { window.location.href = '/mini/plinko/'; });
+    $('bonus-btn')      .addEventListener('click', handleBonusBuy);
+    $('game-title-btn') .addEventListener('click', openGameSelector);
+    $('gs-close')       .addEventListener('click', closeGameSelector);
+    $('gs-backdrop')    .addEventListener('click', closeGameSelector);
+    $('gs-slot')        .addEventListener('click', closeGameSelector);
+    $('gs-plinko')      .addEventListener('click', () => { window.location.href = '/mini/plinko/'; });
+    $('vip-btn')        .addEventListener('click', openVip);
+    $('vip-close')      .addEventListener('click', closeVip);
+    $('vip-backdrop')   .addEventListener('click', closeVip);
     document.addEventListener('touchstart', e => {
         if (document.activeElement?.id === 'bet-input' && !e.target.closest('#bet-input'))
             document.activeElement.blur();
@@ -323,6 +337,158 @@ function showFsBanner(remaining, mult) {
 
 function openPaytable()  { $('pt-overlay').classList.add('open');    }
 function closePaytable() { $('pt-overlay').classList.remove('open'); }
+
+// ── Game selector ─────────────────────────────────────────────────────────────
+
+function openGameSelector() {
+    haptic('light');
+    $('gs-overlay').classList.add('open');
+}
+
+function closeGameSelector() {
+    $('gs-overlay').classList.remove('open');
+}
+
+// ── VIP sheet ─────────────────────────────────────────────────────────────────
+
+function openVip() {
+    $('vip-overlay').classList.add('open');
+    renderVipSheet();
+}
+
+function closeVip() {
+    $('vip-overlay').classList.remove('open');
+}
+
+function renderVipSheet() {
+    const content = $('vip-content');
+    if (!content || !_vipState) return;
+
+    const v       = _vipState;
+    const tier    = VIP_TIERS.find(t => t.id === v.vipTier) || VIP_TIERS[0];
+    const tierIdx = VIP_TIERS.indexOf(tier);
+    const wager   = v.vipLifetimeWager || 0;
+
+    const heroStyle = [
+        `--hero-bg:${tier.heroBg}`,
+        `--hero-border:${tier.heroBorder}`,
+        `--hero-glow:${tier.heroGlow}`,
+        `--hero-shadow:${tier.heroShadow}`,
+        `--hero-text:${tier.heroText}`,
+    ].join(';');
+
+    const heroHtml = `
+    <div class="vip-hero" style="${heroStyle}">
+        <div class="vip-hero-icon">${tier.emoji || '🐚'}</div>
+        <div class="vip-hero-name">${tier.id === 'NONE' ? 'Нет статуса' : tier.name}</div>
+        <div class="vip-hero-wager">оборот: ${wager.toLocaleString('ru')} 🐚</div>
+    </div>`;
+
+    let progressHtml = '';
+    if (tier.id === 'REEF') {
+        progressHtml = `<div class="vip-max-badge">🏆 Максимальный статус достигнут</div>`;
+    } else {
+        const next    = VIP_TIERS[tierIdx + 1];
+        const prev    = tier.threshold;
+        const gap     = next.threshold - prev;
+        const done    = Math.max(0, Math.min(wager - prev, gap));
+        const pct     = Math.max(2, Math.min(100, (done / gap) * 100));
+        const left    = (next.threshold - wager).toLocaleString('ru');
+        const fillBg  = `linear-gradient(90deg, ${tier.id === 'NONE' ? '#c8c8d0' : tier.color}, ${next.color})`;
+        progressHtml = `
+        <div class="vip-group">
+            <div class="vip-group-title">До следующего статуса</div>
+            <div class="vip-progress-card">
+                <div class="vip-progress-heads">
+                    <div class="vip-progress-tier" style="color:${tier.id === 'NONE' ? 'var(--text2)' : tier.color}">
+                        ${tier.emoji || '○'} ${tier.name}
+                    </div>
+                    <div class="vip-progress-tier" style="color:${next.color}">
+                        ${next.emoji} ${next.name}
+                    </div>
+                </div>
+                <div class="vip-progress-track">
+                    <div class="vip-progress-fill" style="width:${pct}%;background:${fillBg}"></div>
+                </div>
+                <div class="vip-progress-meta">ещё ${left} 🐚 до ${next.emoji} ${next.name}</div>
+            </div>
+        </div>`;
+    }
+
+    const loss      = v.vipPeriodNetLoss      || 0;
+    const estimated = v.vipEstimatedCashback  || 0;
+    const payDate   = v.vipNextCashbackDate   || '?';
+
+    let cashbackHtml = '';
+    if (tier.id === 'NONE') {
+        cashbackHtml = `
+        <div class="vip-group">
+            <div class="vip-group-title">Кешбэк периода</div>
+            <div class="vip-cb-card">
+                <div class="vip-cb-locked">Кешбэк доступен с&nbsp;🪸&nbsp;Коралл<br>Тратьте и&nbsp;мы&nbsp;вернём часть потерь</div>
+            </div>
+        </div>`;
+    } else {
+        cashbackHtml = `
+        <div class="vip-group">
+            <div class="vip-group-title">Кешбэк периода</div>
+            <div class="vip-cb-card" style="--cb-color:${tier.color}">
+                <div class="vip-cb-top">
+                    <div class="vip-cb-col">
+                        <div class="vip-cb-col-label">Потери</div>
+                        <div class="vip-cb-num">${loss.toLocaleString('ru')} 🐚</div>
+                        <div class="vip-cb-sub">чистый минус</div>
+                    </div>
+                    <div class="vip-cb-divider"></div>
+                    <div class="vip-cb-col">
+                        <div class="vip-cb-col-label">Кешбэк ${tier.cb}%</div>
+                        <div class="vip-cb-num earn">+${estimated.toLocaleString('ru')} 🐚</div>
+                        <div class="vip-cb-sub">к выплате</div>
+                    </div>
+                </div>
+                <div class="vip-cb-bottom">
+                    <div class="vip-cb-payout-label">Следующая выплата</div>
+                    <div class="vip-cb-payout-date">${payDate}</div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    const tiersHtml = VIP_TIERS.slice(1).map(t => {
+        const active  = t.id === tier.id;
+        const reached = tierIdx >= VIP_TIERS.indexOf(t);
+        const cls     = ['vip-tier-row', active ? 'active' : '', reached ? 'reached' : ''].filter(Boolean).join(' ');
+        let rowStyle  = `--tier-accent:${t.color};`;
+        if (active)        rowStyle += `--tier-bg:${t.heroBg};--tier-border:${t.heroBorder};--tier-shadow:${t.heroShadow};--tier-text:${t.heroText};--tier-sub:${t.heroText}88;`;
+        else if (reached)  rowStyle += `--tier-text:${t.heroText};--tier-sub:var(--text2);`;
+        else               rowStyle += `--tier-text:var(--text2);--tier-sub:var(--text2);`;
+        const check = reached
+            ? `<div class="vip-tier-check">${active ? 'Текущий' : '✓'}</div>`
+            : '';
+        return `<div class="${cls}" style="${rowStyle}">
+            <div class="vip-tier-icon">${t.emoji}</div>
+            <div class="vip-tier-info">
+                <div class="vip-tier-name">${t.name}</div>
+                <div class="vip-tier-req">от ${t.threshold.toLocaleString('ru')} 🐚</div>
+            </div>
+            <div class="vip-tier-right">
+                <div class="vip-tier-cb">+${t.cb}%</div>
+                ${check}
+            </div>
+        </div>`;
+    }).join('');
+
+    content.innerHTML = `
+        ${heroHtml}
+        ${progressHtml}
+        ${cashbackHtml}
+        <div class="vip-group">
+            <div class="vip-group-title">Статусы и кешбэк</div>
+            <div class="vip-tiers-list">${tiersHtml}</div>
+        </div>
+        <div class="vip-footer-note">Статус постоянный — не сгорает с&nbsp;уровнем. Кешбэк выплачивается каждый понедельник и&nbsp;четверг в&nbsp;00:00 на&nbsp;чистый минус за&nbsp;период.</div>
+    `;
+}
 
 function updateVipBadge() {
     const badge = $('vip-badge'), btn = badge?.closest('.vip-badge-btn');

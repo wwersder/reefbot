@@ -25,10 +25,9 @@
 <!-- App -->
 <div id="app">
 
-    <!-- Topbar — matches Plinko layout -->
+    <!-- Topbar — same layout as Reef Plinko -->
     <div id="topbar">
-        <button id="back-btn" class="back-btn">‹</button>
-        <span id="game-title">🎰 The Reef House</span>
+        <button id="game-title-btn" class="game-title-btn">🎰 The Reef House <span class="game-title-chevron">›</span></button>
         <button id="vip-btn" class="vip-badge-btn"><span id="vip-badge">🐚 VIP</span></button>
         <span id="balance-display">🐚 <span id="balance-num">0</span></span>
     </div>
@@ -161,6 +160,51 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+</div>
+
+<!-- Game selector bottom sheet -->
+<div id="gs-overlay">
+    <div id="gs-backdrop"></div>
+    <div id="gs-sheet">
+        <div id="gs-handle"></div>
+        <div id="gs-header">
+            <span>🎮 Выбери игру</span>
+            <button id="gs-close">✕</button>
+        </div>
+        <div id="gs-content">
+            <button class="gs-card gs-card--active" id="gs-slot">
+                <div class="gs-card-icon">🎰</div>
+                <div class="gs-card-body">
+                    <div class="gs-card-name">The Reef House</div>
+                    <div class="gs-card-desc">5 барабанов, 9 линий, бонусные спины с множителем</div>
+                </div>
+                <div class="gs-card-badge">Сейчас</div>
+            </button>
+            <button class="gs-card" id="gs-plinko">
+                <div class="gs-card-icon">🪷</div>
+                <div class="gs-card-body">
+                    <div class="gs-card-name">Reef Plinko</div>
+                    <div class="gs-card-desc">Классический Plinko — шарики, множители, джекпоты</div>
+                </div>
+                <div class="gs-card-arrow">›</div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- VIP bottom sheet -->
+<div id="vip-overlay">
+    <div id="vip-backdrop"></div>
+    <div id="vip-sheet">
+        <div id="vip-handle"></div>
+        <div id="vip-header">
+            <span>✨ VIP статус</span>
+            <button id="vip-close">✕</button>
+        </div>
+        <div id="vip-content">
+            <div class="lb-placeholder">⏳ Загрузка...</div>
         </div>
     </div>
 </div>
