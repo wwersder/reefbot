@@ -9,7 +9,7 @@
 <title>Reef Plinko</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=22">
+<link rel="stylesheet" href="style.css?v=23">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -31,6 +31,7 @@
     <div id="game-zone">
         <div id="topbar">
             <span id="game-title">🪷 Reef Plinko</span>
+            <button id="vip-btn" class="vip-badge-btn"><span id="vip-badge">🐚 VIP</span></button>
             <span id="balance-display">🐚 <span id="balance-num">0</span></span>
         </div>
 
@@ -105,9 +106,10 @@
             </div>
         </div>
 
-        <!-- Leaderboard link -->
+        <!-- Footer: leaderboard + VIP links -->
         <div class="lb-footer">
-            <button id="lb-btn" class="link-btn"></button>
+            <button id="lb-btn" class="link-btn">🏆 Рекорды</button>
+            <button id="vip-open-btn" class="link-btn">🪸 Мой статус</button>
         </div>
 
     </div>
@@ -116,6 +118,21 @@
 
 <!-- Jackpot fullscreen flash -->
 <div id="jackpot-flash"></div>
+
+<!-- VIP bottom sheet -->
+<div id="vip-overlay">
+    <div id="vip-backdrop"></div>
+    <div id="vip-sheet">
+        <div id="vip-handle"></div>
+        <div id="vip-header">
+            <span>✨ VIP статус</span>
+            <button id="vip-close">✕</button>
+        </div>
+        <div id="vip-content">
+            <div class="lb-placeholder">⏳ Загрузка...</div>
+        </div>
+    </div>
+</div>
 
 <!-- Leaderboard bottom sheet -->
 <div id="lb-overlay">
@@ -133,7 +150,7 @@
 </div>
 
 <script type="module">
-    import { init } from './ui.js?v=22';
+    import { init } from './ui.js?v=23';
     init();
 </script>
 </body>

@@ -63,6 +63,7 @@ public class PlinkoService {
     private final PlinkoLogRepository plinkoLogRepository;
     private final TelegramClient      telegramClient;
     private final TelegramProperties  telegramProperties;
+    private final VipService          vipService;
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -81,7 +82,7 @@ public class PlinkoService {
         int dailyLost = currentDailyLost(player);
         int level     = player.getFishing() != null ? player.getFishing().getFishingLevel() : 1;
 
-        return PlinkoStateResponse.ok(balance, dailyLost, level);
+        return PlinkoStateResponse.ok(balance, dailyLost, level, player);
     }
 
     /**
@@ -159,6 +160,16 @@ public class PlinkoService {
             player.setPlinkoDailyLost(player.getPlinkoDailyLost() + (-profit));
         }
         player.setPlinkoLastPlay(LocalDateTime.now());
+
+        // ── VIP: track lifetime wager + period net loss ──────────────────────
+        long prevWager = player.getVipLifetimeWager() != null ? player.getVipLifetimeWager() : 0L;
+        player.setVipLifetimeWager(prevWager + req.bet());
+
+        int prevNetLoss = player.getVipPeriodNetLoss() != null ? player.getVipPeriodNetLoss() : 0;
+        // net loss accumulates: positive means player is down, negative means they're up
+        player.setVipPeriodNetLoss(prevNetLoss + (req.bet() - won));
+
+        boolean tierUpgraded = vipService.updateTier(player);
         playerRepository.save(player);
 
         // ── Log ──────────────────────────────────────────────────────────────
@@ -178,6 +189,11 @@ public class PlinkoService {
         // ── Jackpot notification ─────────────────────────────────────────────
         if (multiplier >= JACKPOT_THRESHOLD_X) {
             sendJackpotNotification(player, won, multiplier, req.bet());
+        }
+
+        // ── VIP tier-up notification ─────────────────────────────────────────
+        if (tierUpgraded) {
+            sendTierUpNotification(player);
         }
 
         return PlinkoPlayResponse.success(slot, multiplier, won, profit, island.getShells(), path);
@@ -250,6 +266,27 @@ public class PlinkoService {
                     .build());
         } catch (TelegramApiException e) {
             log.warn("Could not send jackpot notification to player {}", player.getId(), e);
+        }
+    }
+
+    private void sendTierUpNotification(Player player) {
+        String text = String.format(
+                "%s <b>Новый VIP статус — %s!</b>\n\n" +
+                "Поздравляем! Ты открыл статус <b>%s</b>\n" +
+                "Кешбэк на чистый минус: <b>%d%%</b> 🎁\n\n" +
+                "Статус постоянный и никогда не сгорит.",
+                player.getVipTier().getEmoji(),
+                player.getVipTier().getDisplayName(),
+                player.getVipTier().label(),
+                (int) (player.getVipTier().getCashbackRate() * 100));
+        try {
+            telegramClient.execute(SendMessage.builder()
+                    .chatId(player.getTelegramId())
+                    .text(text)
+                    .parseMode("HTML")
+                    .build());
+        } catch (TelegramApiException e) {
+            log.warn("Could not send tier-up notification to player {}", player.getId(), e);
         }
     }
 

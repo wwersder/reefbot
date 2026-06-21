@@ -471,44 +471,58 @@ html, body {
 .toggle input:checked + .toggle-track { background: var(--green); }
 .toggle input:checked + .toggle-track::after { transform: translateX(20px); }
 
-/* ── Leaderboard button ──────────────────────────────────────────────────── */
+/* ── Footer buttons ──────────────────────────────────────────────────────── */
 
 .lb-footer {
     padding: 0;
     margin-top: 4px;
     padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
+    display: flex;
+    gap: 7px;
 }
 
 .link-btn {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    width: 100%;
+    justify-content: center;
+    flex: 1;
     padding: 14px 16px;
     background: var(--surface);
     border: 0.5px solid var(--border);
     border-radius: 14px;
     font-family: inherit;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text);
     cursor: pointer;
+    gap: 6px;
     box-shadow: 0 1px 4px rgba(0,0,0,.06),
                 inset 0 1px 0 rgba(255,255,255,1);
     transition: opacity .12s, transform .1s;
 }
 
-.link-btn::before { content: '🏆  Таблица рекордов'; font-size: 15px; }
+.link-btn:active { opacity: .7; transform: scale(.98); }
 
-.link-btn::after {
-    content: '›';
-    font-size: 20px;
-    font-weight: 300;
-    color: var(--text2);
-    line-height: 1;
+/* ── VIP badge in topbar ─────────────────────────────────────────────────── */
+
+.vip-badge-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity .12s, transform .1s;
 }
 
-.link-btn:active { opacity: .7; transform: scale(.98); }
+.vip-badge-btn:active { opacity: .7; transform: scale(.95); }
+
+#vip-badge {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .2px;
+    color: var(--text2);
+}
 
 /* ── Leaderboard bottom sheet ────────────────────────────────────────────── */
 
@@ -670,4 +684,240 @@ html, body {
     0%   { opacity: 1; transform: scale(0.95); }
     30%  { opacity: 1; transform: scale(1.02); }
     100% { opacity: 0; transform: scale(1.06); }
+}
+
+/* ── VIP bottom sheet ────────────────────────────────────────────────────── */
+
+#vip-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    pointer-events: none;
+}
+
+#vip-overlay.open { pointer-events: all; }
+
+#vip-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    opacity: 0;
+    transition: opacity .3s;
+}
+
+#vip-overlay.open #vip-backdrop { opacity: 1; }
+
+#vip-sheet {
+    position: relative;
+    width: 100%;
+    max-height: 82vh;
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -2px 20px rgba(0,0,0,.12),
+                inset 0 1px 0 rgba(255,255,255,1);
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(.32,0,.67,0);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#vip-overlay.open #vip-sheet { transform: translateY(0); }
+
+#vip-handle {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 10px auto 0;
+    flex-shrink: 0;
+}
+
+#vip-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--border);
+    flex-shrink: 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+#vip-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: var(--text2);
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+#vip-content {
+    overflow-y: auto;
+    flex: 1;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
+}
+
+/* Hero card */
+.vip-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px 16px;
+    border: 1.5px solid;
+    border-radius: 18px;
+    text-align: center;
+    gap: 4px;
+}
+
+.vip-hero-icon { font-size: 44px; line-height: 1.2; }
+
+.vip-hero-name {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -.3px;
+}
+
+.vip-hero-wager {
+    font-size: 13px;
+    color: var(--text2);
+    margin-top: 2px;
+}
+
+/* Section title */
+.vip-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    margin-top: 2px;
+}
+
+/* Progress bar */
+.vip-progress-wrap { display: flex; flex-direction: column; gap: 6px; }
+
+.vip-progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+}
+
+.vip-progress-bar {
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.vip-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .4s ease;
+    min-width: 4px;
+}
+
+.vip-progress-sub {
+    font-size: 12px;
+    color: var(--text2);
+    text-align: center;
+}
+
+.vip-max-label {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gold);
+    padding: 8px 0;
+}
+
+/* Cashback info row */
+.vip-cashback-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg);
+    border-radius: 14px;
+    padding: 14px 16px;
+}
+
+.vip-cashback-cell { flex: 1; text-align: center; }
+
+.vip-cashback-num {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -.5px;
+}
+
+.vip-cashback-label {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 2px;
+}
+
+.vip-cashback-arrow {
+    font-size: 18px;
+    color: var(--text2);
+    flex-shrink: 0;
+}
+
+.vip-cashback-locked {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text2);
+    padding: 12px 0;
+}
+
+/* Tiers list */
+.vip-tiers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.vip-tier-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--bg);
+    border-radius: 12px;
+    border: 1px solid transparent;
+    transition: border-color .2s;
+}
+
+.vip-tier-row.reached { background: var(--bg); }
+.vip-tier-row.active  { border-color: currentColor; background: var(--surface); box-shadow: 0 1px 6px rgba(0,0,0,.06); }
+
+.vip-tier-icon { font-size: 22px; flex-shrink: 0; }
+
+.vip-tier-info { flex: 1; }
+
+.vip-tier-name { font-size: 15px; font-weight: 700; }
+
+.vip-tier-req { font-size: 12px; color: var(--text2); margin-top: 1px; }
+
+.vip-tier-cb {
+    font-size: 18px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+/* Footer note */
+.vip-footer-note {
+    font-size: 12px;
+    color: var(--text2);
+    text-align: center;
+    line-height: 1.5;
+    padding: 4px 8px;
 }

@@ -10,8 +10,8 @@
  *   - Broke state: disabled button when balance < MIN_BET
  */
 
-import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=11';
-import { PlinkoBoard } from './plinko.js?v=11';
+import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=12';
+import { PlinkoBoard } from './plinko.js?v=12';
 
 const MIN_BET    = 5;
 const BET_STEP   = 5;
@@ -27,6 +27,7 @@ const RTP_TABLE = {
 // ── State ─────────────────────────────────────────────────────────────────────
 
 let _tg            = null;   // Telegram WebApp
+let _vipState      = null;   // VIP data from server (refreshed on fetchState)
 let balance        = 0;
 let _shownBal      = 0;      // currently displayed balance (for animation)
 let _balRaf        = null;   // rAF handle for balance animation
@@ -99,8 +100,10 @@ export async function init() {
             return;
         }
 
-        balance   = state.balance;
-        _shownBal = balance;
+        balance    = state.balance;
+        _shownBal  = balance;
+        _vipState  = state;
+        updateVipBadge();
 
         if (!state.rows12Unlocked) {
             const btn12 = $('rows-btn-12');
@@ -183,6 +186,11 @@ function bindEvents() {
     $('lb-btn').addEventListener('click', openLeaderboard);
     $('lb-close').addEventListener('click', closeLeaderboard);
     $('lb-backdrop').addEventListener('click', closeLeaderboard);
+
+    $('vip-btn').addEventListener('click', openVip);
+    $('vip-open-btn').addEventListener('click', openVip);
+    $('vip-close').addEventListener('click', closeVip);
+    $('vip-backdrop').addEventListener('click', closeVip);
 }
 
 // ── Throw ─────────────────────────────────────────────────────────────────────
@@ -450,6 +458,118 @@ function setResult(text, type) {
     if (type !== 'neutral') {
         _resultTimer = setTimeout(() => bar.classList.remove('visible'), 2500);
     }
+}
+
+// ── VIP ───────────────────────────────────────────────────────────────────────
+
+const VIP_TIERS = [
+    { id: 'NONE',  emoji: '',   name: 'Нет',    cb: 0,  threshold: 0,       color: '#8e8e93' },
+    { id: 'CORAL', emoji: '🪸', name: 'Коралл', cb: 3,  threshold: 5000,    color: '#ff6b6b' },
+    { id: 'PEARL', emoji: '🦪', name: 'Жемчуг', cb: 6,  threshold: 25000,   color: '#5ac8fa' },
+    { id: 'REEF',  emoji: '👑', name: 'Риф',    cb: 10, threshold: 100000,  color: '#ffd700' },
+];
+
+function updateVipBadge() {
+    const badge  = $('vip-badge');
+    const btnEl  = badge?.closest('.vip-badge-btn');
+    if (!badge || !_vipState) return;
+    const tier = VIP_TIERS.find(t => t.id === _vipState.vipTier) || VIP_TIERS[0];
+    if (tier.id === 'NONE') {
+        badge.textContent     = '🐚 VIP';
+        badge.style.color     = '';
+        if (btnEl) btnEl.style.borderColor = '';
+    } else {
+        badge.textContent     = `${tier.emoji} ${tier.name}`;
+        badge.style.color     = tier.color;
+        if (btnEl) btnEl.style.borderColor = `${tier.color}88`;
+    }
+}
+
+function openVip() {
+    $('vip-overlay').classList.add('open');
+    renderVipSheet();
+}
+
+function closeVip() {
+    $('vip-overlay').classList.remove('open');
+}
+
+function renderVipSheet() {
+    const content = $('vip-content');
+    if (!content || !_vipState) return;
+
+    const v      = _vipState;
+    const tier   = VIP_TIERS.find(t => t.id === v.vipTier) || VIP_TIERS[0];
+    const wager  = v.vipLifetimeWager || 0;
+
+    // Progress to next tier
+    let progressHtml = '';
+    const nextTier = VIP_TIERS[tier === VIP_TIERS[3] ? 3 : VIP_TIERS.indexOf(tier) + 1];
+    if (tier.id !== 'REEF') {
+        const prev  = tier.threshold;
+        const gap   = nextTier.threshold - prev;
+        const done  = Math.min(wager - prev, gap);
+        const pct   = Math.max(0, Math.min(100, (done / gap) * 100));
+        progressHtml = `
+        <div class="vip-progress-wrap">
+            <div class="vip-progress-labels">
+                <span>${tier.emoji || '○'} ${tier.name}</span>
+                <span>${nextTier.emoji} ${nextTier.name}</span>
+            </div>
+            <div class="vip-progress-bar">
+                <div class="vip-progress-fill" style="width:${pct}%;background:${nextTier.color}"></div>
+            </div>
+            <div class="vip-progress-sub">${wager.toLocaleString('ru')} / ${nextTier.threshold.toLocaleString('ru')} 🐚 оборота</div>
+        </div>`;
+    } else {
+        progressHtml = `<div class="vip-max-label">🏆 Максимальный статус достигнут</div>`;
+    }
+
+    // Cashback chip
+    const loss      = v.vipPeriodNetLoss || 0;
+    const estimated = v.vipEstimatedCashback || 0;
+    const cashbackHtml = v.vipTier === 'NONE'
+        ? `<div class="vip-cashback-locked">Кешбэк доступен со статуса 🪸 Коралл</div>`
+        : `<div class="vip-cashback-row">
+            <div class="vip-cashback-cell">
+                <div class="vip-cashback-num">${loss.toLocaleString('ru')} 🐚</div>
+                <div class="vip-cashback-label">чистый минус за период</div>
+            </div>
+            <div class="vip-cashback-arrow">→</div>
+            <div class="vip-cashback-cell">
+                <div class="vip-cashback-num" style="color:${tier.color}">+${estimated.toLocaleString('ru')} 🐚</div>
+                <div class="vip-cashback-label">кешбэк ${tier.cb}% (${v.vipNextCashbackDate || '?'})</div>
+            </div>
+          </div>`;
+
+    // Tiers table
+    const tiersHtml = VIP_TIERS.slice(1).map(t => {
+        const active   = t.id === v.vipTier;
+        const reached  = VIP_TIERS.indexOf(tier) >= VIP_TIERS.indexOf(t);
+        const rowStyle = active ? `border-color:${t.color}55;background:${t.color}08` : '';
+        return `<div class="vip-tier-row${active ? ' active' : ''}${reached ? ' reached' : ''}" style="${rowStyle}">
+            <div class="vip-tier-icon">${t.emoji}</div>
+            <div class="vip-tier-info">
+                <div class="vip-tier-name" style="color:${t.color}">${t.name}</div>
+                <div class="vip-tier-req">от ${t.threshold.toLocaleString('ru')} 🐚 оборота</div>
+            </div>
+            <div class="vip-tier-cb" style="color:${t.color}">+${t.cb}%</div>
+        </div>`;
+    }).join('');
+
+    content.innerHTML = `
+        <div class="vip-hero" style="border-color:${tier.color}44; background:${tier.color}11">
+            <div class="vip-hero-icon">${tier.emoji || '🐚'}</div>
+            <div class="vip-hero-name" style="color:${tier.color}">${tier.id === 'NONE' ? 'Нет статуса' : tier.name}</div>
+            <div class="vip-hero-wager">Оборот: ${wager.toLocaleString('ru')} 🐚</div>
+        </div>
+        ${progressHtml}
+        <div class="vip-section-title">Кешбэк периода</div>
+        ${cashbackHtml}
+        <div class="vip-section-title">Статусы</div>
+        <div class="vip-tiers-list">${tiersHtml}</div>
+        <div class="vip-footer-note">Статус постоянный и не сгорает. Кешбэк выплачивается пн и чт в 00:00 на чистый минус за период.</div>
+    `;
 }
 
 function showScreen(name) {

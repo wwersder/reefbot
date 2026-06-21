@@ -2,6 +2,7 @@ package com.reefbot.entity;
 
 import com.reefbot.enums.OnboardingStep;
 import com.reefbot.enums.PlayerStatus;
+import com.reefbot.enums.VipTier;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
@@ -80,4 +81,28 @@ public class Player {
 
     /** Timestamp of the last plinko throw (for cooldown enforcement). */
     private LocalDateTime plinkoLastPlay;
+
+    // ── VIP loyalty ──────────────────────────────────────────────────────────
+
+    /** Permanent VIP tier based on cumulative lifetime wager. Never downgrades. */
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    private VipTier vipTier = VipTier.NONE;
+
+    /** Total shells wagered across all games (never resets). */
+    @Builder.Default
+    private Long vipLifetimeWager = 0L;
+
+    /**
+     * Net loss for the current cashback period: accumulated (bet - won).
+     * Positive = net loss (eligible for cashback). Reset to 0 after each payout.
+     */
+    @Builder.Default
+    private Integer vipPeriodNetLoss = 0;
+
+    /** Start date of the current cashback period (set on each payout reset). */
+    private LocalDate vipPeriodStart;
+
+    /** Timestamp of the last cashback payment (null = never paid). */
+    private LocalDateTime vipCashbackPaidAt;
 }
