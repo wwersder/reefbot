@@ -10,8 +10,8 @@
  *   - Broke state: disabled button when balance < MIN_BET
  */
 
-import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=12';
-import { PlinkoBoard } from './plinko.js?v=12';
+import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=13';
+import { PlinkoBoard } from './plinko.js?v=13';
 
 const MIN_BET    = 5;
 const BET_STEP   = 5;
@@ -214,6 +214,7 @@ async function doManualThrow() {
             balance = newBalance;
             updateBalance();
             showResult(mult, profit);
+            applyVipDelta(bet, profit);
             scheduleBalanceSync();
         });
     } catch (e) {
@@ -235,10 +236,12 @@ async function doAutoThrow() {
             stopAuto(); return;
         }
         const newBalance = res.newBalance;
+        const autoBet    = betValue;
         board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
             balance = newBalance;
             updateBalance();
             showResult(mult, profit);
+            applyVipDelta(autoBet, profit);
             autoInFlight = false;
 
             if (!autoRunning) { scheduleBalanceSync(); return; }
@@ -406,6 +409,7 @@ function updateThrowBtn() {
 
 /**
  * Debounced balance sync (BUG-14: sequence counter prevents stale overwrites).
+ * Also refreshes VIP state (tier may have changed server-side).
  */
 function scheduleBalanceSync() {
     clearTimeout(_syncTimer);
@@ -413,12 +417,52 @@ function scheduleBalanceSync() {
     _syncTimer = setTimeout(async () => {
         try {
             const s = await fetchState();
-            if (seq === _syncSeq && typeof s.balance === 'number' && s.balance !== balance) {
+            if (seq !== _syncSeq) return;
+            if (typeof s.balance === 'number' && s.balance !== balance) {
                 balance = s.balance;
                 updateBalance();
             }
+            // Sync VIP data (confirmed values from server, e.g. tier upgrade)
+            if (s.vipTier != null) {
+                _vipState = s;
+                refreshVipDisplay();
+            }
         } catch { /* silent — best-effort */ }
     }, 500);
+}
+
+/**
+ * Optimistic VIP update — called immediately after each successful play so the
+ * user sees numbers moving without waiting for the balance-sync round-trip.
+ * @param {number} bet  shells wagered
+ * @param {number} profit  net profit (negative = loss)
+ */
+function applyVipDelta(bet, profit) {
+    if (!_vipState) return;
+    const won     = bet + profit;
+    const netLoss = bet - won;   // positive when player lost, negative when they won
+
+    _vipState = {
+        ..._vipState,
+        vipLifetimeWager:  (_vipState.vipLifetimeWager  || 0) + bet,
+        vipPeriodNetLoss:  Math.max(0, (_vipState.vipPeriodNetLoss || 0) + netLoss),
+    };
+    // Recalculate estimated cashback from updated period loss
+    const tier    = VIP_TIERS.find(t => t.id === _vipState.vipTier) || VIP_TIERS[0];
+    _vipState.vipEstimatedCashback = Math.floor(_vipState.vipPeriodNetLoss * tier.cb / 100);
+
+    // Next-tier threshold: stay in sync
+    const tierIdx = VIP_TIERS.indexOf(tier);
+    const next    = VIP_TIERS[tierIdx + 1];
+    _vipState.vipNextTierThreshold = next ? next.threshold : null;
+
+    refreshVipDisplay();
+}
+
+/** Updates the topbar badge and re-renders the VIP sheet if it's currently open. */
+function refreshVipDisplay() {
+    updateVipBadge();
+    if ($('vip-overlay')?.classList.contains('open')) renderVipSheet();
 }
 
 function updateRtpLabel() {

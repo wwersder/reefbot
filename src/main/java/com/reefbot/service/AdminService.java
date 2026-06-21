@@ -7,6 +7,7 @@ import com.reefbot.entity.Island;
 import com.reefbot.entity.IslandBuilding;
 import com.reefbot.entity.Player;
 import com.reefbot.enums.ConsumableItem;
+import com.reefbot.enums.VipTier;
 import com.reefbot.repository.InventoryRepository;
 import com.reefbot.repository.IslandBuildingRepository;
 import com.reefbot.repository.IslandRepository;
@@ -81,11 +82,222 @@ public class AdminService {
             return handleProduce(text.substring(9).trim());
         }
 
+        if (text.startsWith("/vip ") || text.equals("/vip")) {
+            return handleVip(text.length() > 5 ? text.substring(5).trim() : "");
+        }
+
         if (text.equals("/admin") || text.equals("/admin help")) {
             return handleAdminHelp();
         }
 
         return null;
+    }
+
+    // ── /vip — управление VIP ────────────────────────────────────────────
+    //
+    //  /vip <id>                — показать VIP-профиль игрока
+    //  /vip tier <id> <TIER>    — установить тир (NONE/CORAL/PEARL/REEF)
+    //  /vip wager <id> <delta>  — прибавить/убавить оборот (может быть <0)
+    //  /vip reset <id>          — обнулить период (чистый минус → 0, дата → сегодня)
+    //  /vip cashback <id>       — принудительно выплатить кешбэк сейчас
+    // ─────────────────────────────────────────────────────────────────────
+
+    private BotResponse handleVip(String args) {
+        if (args.isEmpty()) {
+            return new BotResponse("""
+                    Используй:
+                    /vip <id>               — VIP-профиль
+                    /vip tier <id> <TIER>   — установить тир
+                    /vip wager <id> <delta> — изменить оборот
+                    /vip reset <id>         — обнулить период
+                    /vip cashback <id>      — выплатить кешбэк сейчас""");
+        }
+
+        String[] parts = args.split("\\s+");
+        String sub = parts[0].toLowerCase();
+
+        return switch (sub) {
+            case "tier"     -> handleVipTier(parts);
+            case "wager"    -> handleVipWager(parts);
+            case "reset"    -> handleVipReset(parts);
+            case "cashback" -> handleVipCashback(parts);
+            default         -> handleVipInfo(parts);  // /vip <id>
+        };
+    }
+
+    /** /vip <id> — показать VIP профиль. */
+    private BotResponse handleVipInfo(String[] parts) {
+        Player player = resolvePlayer(parts[0]);
+        if (player == null) return new BotResponse("Игрок #" + parts[0] + " не найден.");
+
+        VipTier tier     = safe(player.getVipTier());
+        long wager       = player.getVipLifetimeWager() != null ? player.getVipLifetimeWager() : 0L;
+        int periodLoss   = player.getVipPeriodNetLoss()  != null ? player.getVipPeriodNetLoss()  : 0;
+        int cashback     = (int) Math.floor(Math.max(0, periodLoss) * tier.getCashbackRate());
+        String paidAt    = player.getVipCashbackPaidAt() != null
+                ? player.getVipCashbackPaidAt().toString() : "никогда";
+        String periodStart = player.getVipPeriodStart() != null
+                ? player.getVipPeriodStart().toString() : "—";
+
+        VipTier next = tier.next();
+        String nextInfo = next != null
+                ? String.format("До %s: %,d 🐚 осталось",
+                        next.label(), Math.max(0, next.getWageredThreshold() - wager))
+                : "Максимальный статус 🏆";
+
+        return new BotResponse(String.format("""
+                ✨ VIP профиль — игрок #%d (@%s)
+
+                Статус:      %s (%d%% кешбэк)
+                Оборот:      %,d 🐚
+                %s
+
+                Период с:    %s
+                Чистый минус: %,d 🐚
+                Кешбэк ~:    %,d 🐚
+
+                Последняя выплата: %s""",
+                player.getId(),
+                player.getUsername() != null ? player.getUsername() : "без юзернейма",
+                tier.label(), (int)(tier.getCashbackRate() * 100),
+                wager,
+                nextInfo,
+                periodStart,
+                Math.max(0, periodLoss),
+                cashback,
+                paidAt));
+    }
+
+    /** /vip tier <id> <TIER> — установить тир. */
+    private BotResponse handleVipTier(String[] parts) {
+        if (parts.length < 3)
+            return new BotResponse("Формат: /vip tier <id> <TIER>\nТиры: NONE, CORAL, PEARL, REEF");
+
+        Player player = resolvePlayer(parts[1]);
+        if (player == null) return new BotResponse("Игрок #" + parts[1] + " не найден.");
+
+        VipTier newTier;
+        try {
+            newTier = VipTier.valueOf(parts[2].toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return new BotResponse("Неизвестный тир: " + parts[2] + "\nДоступные: NONE, CORAL, PEARL, REEF");
+        }
+
+        VipTier old = safe(player.getVipTier());
+        player.setVipTier(newTier);
+        playerRepository.save(player);
+        log.info("Admin vip tier: player#{} {} → {}", player.getId(), old, newTier);
+
+        return new BotResponse(String.format("✅ Тир игрока #%d: %s → %s",
+                player.getId(), old.label(), newTier.label()));
+    }
+
+    /** /vip wager <id> <delta> — изменить пожизненный оборот. */
+    private BotResponse handleVipWager(String[] parts) {
+        if (parts.length < 3)
+            return new BotResponse("Формат: /vip wager <id> <delta>\nДельта может быть отрицательной.");
+
+        Player player = resolvePlayer(parts[1]);
+        if (player == null) return new BotResponse("Игрок #" + parts[1] + " не найден.");
+
+        long delta;
+        try { delta = Long.parseLong(parts[2]); }
+        catch (NumberFormatException e) { return new BotResponse("delta должна быть числом."); }
+
+        long before = player.getVipLifetimeWager() != null ? player.getVipLifetimeWager() : 0L;
+        long after  = Math.max(0, before + delta);
+        player.setVipLifetimeWager(after);
+
+        // Update tier based on new wager (never downgrade below current tier)
+        VipTier earned = VipTier.forWager(after);
+        VipTier current = safe(player.getVipTier());
+        if (earned.ordinal() > current.ordinal()) {
+            player.setVipTier(earned);
+        }
+        playerRepository.save(player);
+        log.info("Admin vip wager: player#{} {} → {} (delta {})", player.getId(), before, after, delta);
+
+        return new BotResponse(String.format("✅ Оборот игрока #%d: %,d → %,d 🐚 (тир: %s)",
+                player.getId(), before, after, safe(player.getVipTier()).label()));
+    }
+
+    /** /vip reset <id> — обнулить период кешбэка. */
+    private BotResponse handleVipReset(String[] parts) {
+        if (parts.length < 2)
+            return new BotResponse("Формат: /vip reset <id>");
+
+        Player player = resolvePlayer(parts[1]);
+        if (player == null) return new BotResponse("Игрок #" + parts[1] + " не найден.");
+
+        int before = player.getVipPeriodNetLoss() != null ? player.getVipPeriodNetLoss() : 0;
+        player.setVipPeriodNetLoss(0);
+        player.setVipPeriodStart(java.time.LocalDate.now());
+        playerRepository.save(player);
+        log.info("Admin vip reset: player#{} period cleared (was {})", player.getId(), before);
+
+        return new BotResponse(String.format(
+                "✅ Период кешбэка игрока #%d обнулён.\n"
+                + "Чистый минус был: %,d 🐚 → 0",
+                player.getId(), Math.max(0, before)));
+    }
+
+    /** /vip cashback <id> — принудительно выплатить кешбэк. */
+    private BotResponse handleVipCashback(String[] parts) {
+        if (parts.length < 2)
+            return new BotResponse("Формат: /vip cashback <id>");
+
+        Player player = resolvePlayer(parts[1]);
+        if (player == null) return new BotResponse("Игрок #" + parts[1] + " не найден.");
+
+        VipTier tier = safe(player.getVipTier());
+        if (tier == VipTier.NONE) {
+            return new BotResponse("Игрок #" + parts[1] + " не имеет VIP статуса — кешбэк не начисляется.");
+        }
+
+        int loss = player.getVipPeriodNetLoss() != null ? player.getVipPeriodNetLoss() : 0;
+        if (loss <= 0) {
+            return new BotResponse(String.format(
+                    "Игрок #%d не в минусе в текущем периоде (чистый минус: %,d 🐚).\n"
+                    + "Кешбэк не выплачивается.", player.getId(), loss));
+        }
+
+        int cashback = (int) Math.floor(loss * tier.getCashbackRate());
+        Island island = islandRepository.findByPlayer(player).orElse(null);
+        if (island == null) {
+            return new BotResponse("У игрока #" + parts[1] + " нет острова.");
+        }
+
+        island.setShells(island.getShells() + cashback);
+        islandRepository.save(island);
+
+        player.setVipPeriodNetLoss(0);
+        player.setVipPeriodStart(java.time.LocalDate.now());
+        player.setVipCashbackPaidAt(java.time.LocalDateTime.now());
+        playerRepository.save(player);
+
+        log.info("Admin vip cashback: player#{} +{} shells (period loss={})", player.getId(), cashback, loss);
+
+        return new BotResponse(String.format(
+                "✅ Кешбэк выплачен игроку #%d\n"
+                + "Тир: %s (%d%%)\n"
+                + "Чистый минус: %,d 🐚\n"
+                + "Выплачено: +%,d 🐚\n"
+                + "Период обнулён.",
+                player.getId(), tier.label(), (int)(tier.getCashbackRate() * 100), loss, cashback));
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+
+    private Player resolvePlayer(String idStr) {
+        try {
+            return playerRepository.findById(Long.parseLong(idStr)).orElse(null);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private VipTier safe(VipTier tier) {
+        return tier != null ? tier : VipTier.NONE;
     }
 
     // ── /admin — справка ──────────────────────────────────────────────────

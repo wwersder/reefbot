@@ -25,6 +25,7 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
  *   <li>{@code admin:buildings} — /buildings подробности</li>
  *   <li>{@code admin:speedup}   — /speedup подробности</li>
  *   <li>{@code admin:produce}   — /produce подробности</li>
+ *   <li>{@code admin:vip}       — /vip подробности</li>
  * </ul>
  */
 @Slf4j
@@ -48,6 +49,7 @@ public class AdminCallbackHandler implements CallbackHandler {
             case "buildings" -> textBuildings();
             case "speedup"   -> textSpeedup();
             case "produce"   -> textProduce();
+            case "vip"       -> textVip();
             default          -> textMenu();
         };
 
@@ -79,6 +81,7 @@ public class AdminCallbackHandler implements CallbackHandler {
                 👤  <b>Игроки</b> — удалить, выдать ресурсы и предметы
                 🌊  <b>Прилив</b> — принудительно активировать
                 🏗  <b>Здания</b> — статус, ускорение, производство
+                ✨  <b>VIP</b>    — статус, оборот, кешбэк
 
                 Все ID — внутренние (БД), не Telegram.""";
     }
@@ -203,6 +206,58 @@ public class AdminCallbackHandler implements CallbackHandler {
                 → помост будет показывать 20 🐟 готово к сбору""";
     }
 
+    private static String textVip() {
+        return """
+                ✨ <b>/vip — управление VIP статусом</b>
+
+                ━━━━━━━━━━━━━━━━
+                📊 <b>Просмотр профиля</b>
+
+                <code>/vip &lt;id&gt;</code>
+                Показывает тир, оборот, чистый минус,
+                ожидаемый кешбэк и дату последней выплаты.
+
+                ━━━━━━━━━━━━━━━━
+                🎖 <b>Установить тир вручную</b>
+
+                <code>/vip tier &lt;id&gt; &lt;TIER&gt;</code>
+                Тиры: <code>NONE</code>  <code>CORAL</code>  <code>PEARL</code>  <code>REEF</code>
+
+                <b>Пример:</b>
+                <code>/vip tier 3 PEARL</code>
+
+                ━━━━━━━━━━━━━━━━
+                💰 <b>Изменить оборот</b>
+
+                <code>/vip wager &lt;id&gt; &lt;delta&gt;</code>
+                Прибавляет к пожизненному обороту.
+                Отрицательная delta — списание.
+                Тир пересчитывается автоматически (только вверх).
+
+                <b>Примеры:</b>
+                <code>/vip wager 3 5000</code>
+                <code>/vip wager 3 -1000</code>
+
+                ━━━━━━━━━━━━━━━━
+                🔄 <b>Обнулить период</b>
+
+                <code>/vip reset &lt;id&gt;</code>
+                Сбрасывает чистый минус в 0 и сдвигает
+                начало периода на сегодня.
+                Кешбэк <b>не</b> выплачивается.
+
+                ━━━━━━━━━━━━━━━━
+                💸 <b>Принудительная выплата</b>
+
+                <code>/vip cashback &lt;id&gt;</code>
+                Немедленно начисляет кешбэк за текущий
+                период и обнуляет его.
+                Работает только если игрок в минусе.
+
+                <b>Пример:</b>
+                <code>/vip cashback 3</code>""";
+    }
+
     // ── Клавиатуры ────────────────────────────────────────────────────────
 
     public static InlineKeyboardMarkup menuKeyboard() {
@@ -218,6 +273,9 @@ public class AdminCallbackHandler implements CallbackHandler {
                         btn("🏗 /buildings", "admin:buildings"),
                         btn("⚡ /speedup", "admin:speedup"),
                         btn("📦 /produce", "admin:produce")
+                ))
+                .keyboardRow(new InlineKeyboardRow(
+                        btn("✨ /vip", "admin:vip")
                 ))
                 .build();
     }
