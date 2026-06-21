@@ -81,53 +81,54 @@ html, body {
 
 /* ── Topbar ──────────────────────────────────────────────────────────────── */
 
+/* ── Topbar: 3 equal columns ─────────────────────────────────────────────── */
+
 #topbar {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px 10px;
+    padding: 10px 14px 8px;
     flex-shrink: 0;
-    gap: 8px;
+    gap: 6px;
 }
 
-/* Game title — tappable button */
+/* Left column — title button */
 .game-title-btn {
     background: none;
     border: none;
-    padding: 4px 8px;
+    padding: 4px 6px;
     border-radius: 10px;
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text);
     cursor: pointer;
     font-family: inherit;
     display: flex;
     align-items: center;
-    gap: 3px;
-    white-space: nowrap;
-    flex-shrink: 0;
+    gap: 5px;
+    text-align: left;
+    justify-self: start;
     transition: background .12s, opacity .1s;
 }
 .game-title-btn:active { background: rgba(0,0,0,.06); }
 
-.game-title-chevron {
-    font-size: 16px;
-    font-weight: 400;
-    color: var(--text2);
-    transform: rotate(90deg);
-    display: inline-block;
-    margin-left: 1px;
+.game-title-icon {
+    font-size: 22px;
     line-height: 1;
-}
-
-/* Right group: VIP badge + balance */
-.topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 6px;
     flex-shrink: 0;
 }
 
+.game-title-text {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.25;
+}
+
+.game-title-chevron {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text2);
+}
+
+/* Center column — VIP badge */
 .vip-badge-btn {
     background: none;
     border: 1px solid var(--border);
@@ -135,6 +136,7 @@ html, body {
     padding: 4px 10px;
     cursor: pointer;
     font-family: inherit;
+    justify-self: center;
     transition: opacity .12s, transform .1s;
 }
 .vip-badge-btn:active { opacity: .7; transform: scale(.95); }
@@ -144,16 +146,20 @@ html, body {
     font-weight: 600;
     letter-spacing: .2px;
     color: var(--text2);
+    white-space: nowrap;
 }
 
+/* Right column — balance */
 #balance-display {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--accent);
     background: rgba(0, 122, 255, 0.09);
     border-radius: 12px;
-    padding: 4px 11px;
+    padding: 4px 10px;
     white-space: nowrap;
+    justify-self: end;
+    text-align: right;
 }
 
 /* ── Free spins banner ───────────────────────────────────────────────────── */
