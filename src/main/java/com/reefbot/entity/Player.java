@@ -105,4 +105,14 @@ public class Player {
 
     /** Timestamp of the last cashback payment (null = never paid). */
     private LocalDateTime vipCashbackPaidAt;
+
+    // ── Slot state (The Reef House) ───────────────────────────────────────────
+
+    /** Free spins remaining in the current bonus round (0 = not in bonus). */
+    @Builder.Default
+    private Integer slotFreeSpinsRemaining = 0;
+
+    /** Current wild multiplier accumulated during free spins (resets after bonus). */
+    @Builder.Default
+    private Integer slotMultiplier = 1;
 }

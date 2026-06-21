@@ -5,6 +5,7 @@ import com.reefbot.entity.Player;
 import com.reefbot.enums.PlayerStatus;
 import com.reefbot.service.game.GameService;
 import com.reefbot.service.plinko.PlinkoBotService;
+import com.reefbot.service.slot.SlotBotService;
 import com.reefbot.service.registration.OnboardingService;
 import com.reefbot.service.support.SupportService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class MessageDispatcher {
     private final GameService gameService;
     private final SupportService supportService;
     private final PlinkoBotService plinkoBotService;
+    private final SlotBotService   slotBotService;
 
     public BotResponse dispatch(Long telegramId, String username, String text, boolean isPrivate) {
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -75,9 +77,12 @@ public class MessageDispatcher {
                 return supportService.handlePlayerCommand(player, text);
             }
 
-            // Plinko commands available for ACTIVE players
+            // Mini App commands available for ACTIVE players
             if (isPlinkoCommand(text) && status == PlayerStatus.ACTIVE) {
                 return plinkoBotService.handle(player, text);
+            }
+            if (isSlotCommand(text) && status == PlayerStatus.ACTIVE) {
+                return slotBotService.handle(player);
             }
 
             return switch (status) {
@@ -110,5 +115,9 @@ public class MessageDispatcher {
 
     private boolean isPlinkoCommand(String text) {
         return text.startsWith("/plinko");
+    }
+
+    private boolean isSlotCommand(String text) {
+        return text.startsWith("/slot") || text.startsWith("/reef");
     }
 }

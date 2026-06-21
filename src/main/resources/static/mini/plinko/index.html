@@ -9,7 +9,7 @@
 <title>Reef Plinko</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=29">
+<link rel="stylesheet" href="style.css?v=30">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -30,7 +30,7 @@
     <!-- Unified dark game zone: topbar + canvas -->
     <div id="game-zone">
         <div id="topbar">
-            <span id="game-title">🪷 Reef Plinko</span>
+            <button id="game-title-btn" class="game-title-btn">🪷 Reef Plinko <span class="game-title-chevron">›</span></button>
             <button id="vip-btn" class="vip-badge-btn"><span id="vip-badge">🐚 VIP</span></button>
             <span id="balance-display">🐚 <span id="balance-num">0</span></span>
         </div>
@@ -134,6 +134,38 @@
     </div>
 </div>
 
+<!-- Game selector bottom sheet -->
+<div id="gs-overlay">
+    <div id="gs-backdrop"></div>
+    <div id="gs-sheet">
+        <div id="gs-handle"></div>
+        <div id="gs-header">
+            <span>🎮 Выбери игру</span>
+            <button id="gs-close">✕</button>
+        </div>
+        <div id="gs-content">
+            <!-- Plinko card — active (current game) -->
+            <button class="gs-card gs-card--active" id="gs-plinko">
+                <div class="gs-card-icon">🪷</div>
+                <div class="gs-card-body">
+                    <div class="gs-card-name">Reef Plinko</div>
+                    <div class="gs-card-desc">Классический Plinko — шарики, множители, джекпоты</div>
+                </div>
+                <div class="gs-card-badge">Сейчас</div>
+            </button>
+            <!-- Reef House card -->
+            <button class="gs-card" id="gs-slot">
+                <div class="gs-card-icon">🎰</div>
+                <div class="gs-card-body">
+                    <div class="gs-card-name">The Reef House</div>
+                    <div class="gs-card-desc">5 барабанов, 9 линий, бонусные спины с множителем</div>
+                </div>
+                <div class="gs-card-arrow">›</div>
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Leaderboard bottom sheet -->
 <div id="lb-overlay">
     <div id="lb-backdrop"></div>
@@ -150,7 +182,7 @@
 </div>
 
 <script type="module">
-    import { init } from './ui.js?v=29';
+    import { init } from './ui.js?v=30';
     init();
 </script>
 </body>

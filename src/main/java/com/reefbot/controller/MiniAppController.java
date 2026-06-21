@@ -14,4 +14,9 @@ public class MiniAppController {
     public String plinkoIndex() {
         return "forward:/mini/plinko/index.html";
     }
+
+    @GetMapping({"/mini/slot", "/mini/slot/"})
+    public String slotIndex() {
+        return "forward:/mini/slot/index.html";
+    }
 }

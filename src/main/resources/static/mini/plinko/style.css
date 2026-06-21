@@ -102,10 +102,32 @@ html, body {
     flex-shrink: 0;
 }
 
-#game-title {
+/* Game title as tappable button */
+.game-title-btn {
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 10px;
     font-size: 16px;
     font-weight: 700;
     color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    transition: background .12s, opacity .1s;
+}
+.game-title-btn:active { background: rgba(0,0,0,.06); }
+
+.game-title-chevron {
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--text2);
+    transform: rotate(90deg);
+    display: inline-block;
+    margin-left: 1px;
+    line-height: 1;
 }
 
 #balance-display {
@@ -1003,4 +1025,151 @@ html, body {
     text-align: center;
     line-height: 1.65;
     padding: 4px 12px 8px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Game selector bottom sheet
+   ══════════════════════════════════════════════════════════════════════════ */
+
+#gs-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    pointer-events: none;
+}
+
+#gs-overlay.open { pointer-events: all; }
+
+#gs-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    opacity: 0;
+    transition: opacity .3s;
+}
+
+#gs-overlay.open #gs-backdrop { opacity: 1; }
+
+#gs-sheet {
+    position: relative;
+    width: 100%;
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -2px 20px rgba(0,0,0,.12),
+                inset 0 1px 0 rgba(255,255,255,1);
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(.32,0,.67,0);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom, 8px);
+}
+
+#gs-overlay.open #gs-sheet { transform: translateY(0); }
+
+#gs-handle {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 10px auto 0;
+    flex-shrink: 0;
+}
+
+#gs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--border);
+    flex-shrink: 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+#gs-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: var(--text2);
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+#gs-content {
+    padding: 12px 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ── Game cards ──────────────────────────────────────────────────────────── */
+
+.gs-card {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 14px;
+    background: var(--bg);
+    border: 1.5px solid transparent;
+    border-radius: 16px;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    transition: background .15s, border-color .15s, box-shadow .15s, transform .1s;
+}
+
+.gs-card:active { transform: scale(.98); }
+
+.gs-card--active {
+    background: #fff;
+    border-color: var(--accent);
+    box-shadow: 0 2px 12px rgba(0,122,255,.12),
+                inset 0 1px 0 rgba(255,255,255,1);
+}
+
+.gs-card-icon {
+    font-size: 36px;
+    flex-shrink: 0;
+    line-height: 1;
+    width: 48px;
+    text-align: center;
+}
+
+.gs-card-body { flex: 1; min-width: 0; }
+
+.gs-card-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+}
+
+.gs-card--active .gs-card-name { color: var(--accent); }
+
+.gs-card-desc {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.4;
+}
+
+.gs-card-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    background: rgba(0,122,255,.1);
+    border-radius: 8px;
+    padding: 3px 8px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.gs-card-arrow {
+    font-size: 22px;
+    color: var(--text2);
+    font-weight: 400;
+    flex-shrink: 0;
 }

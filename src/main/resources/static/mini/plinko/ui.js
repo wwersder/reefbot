@@ -191,6 +191,16 @@ function bindEvents() {
     $('vip-open-btn').addEventListener('click', openVip);
     $('vip-close').addEventListener('click', closeVip);
     $('vip-backdrop').addEventListener('click', closeVip);
+
+    // Game selector
+    $('game-title-btn').addEventListener('click', openGameSelector);
+    $('gs-close').addEventListener('click', closeGameSelector);
+    $('gs-backdrop').addEventListener('click', closeGameSelector);
+    $('gs-plinko').addEventListener('click', closeGameSelector);
+    $('gs-slot').addEventListener('click', () => {
+        hapticImpact('medium');
+        window.location.href = '/mini/slot/';
+    });
 }
 
 // ── Throw ─────────────────────────────────────────────────────────────────────
@@ -754,4 +764,15 @@ function renderLeaderboard(data, container) {
     container.innerHTML =
         section('💰 Лучший выигрыш', data.topWin, 'win') +
         multSection;
+}
+
+// ── Game selector ─────────────────────────────────────────────────────────────
+
+function openGameSelector() {
+    hapticImpact('light');
+    $('gs-overlay').classList.add('open');
+}
+
+function closeGameSelector() {
+    $('gs-overlay').classList.remove('open');
 }

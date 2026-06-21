@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<title>The Reef House</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="slot.css?v=1">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="screen-loading"><div class="spinner"></div></div>
+
+<!-- Onboarding / error -->
+<div id="screen-onboarding">
+    <div class="ob-emoji">🎰</div>
+    <h2>Сначала зарегистрируйся!</h2>
+    <p id="ob-text">Напиши /start в боте</p>
+</div>
+
+<!-- App -->
+<div id="app">
+
+    <!-- Topbar -->
+    <div id="topbar">
+        <button id="back-btn" class="back-btn">‹</button>
+        <span id="game-title">🎰 The Reef House</span>
+        <span id="balance-display">🐚 <span id="balance-num">0</span></span>
+    </div>
+
+    <!-- Free spins banner -->
+    <div id="fs-banner">
+        <span>🏺 FREE SPINS: <b id="fs-count">0</b></span>
+        <span id="fs-mult-wrap"> <span id="fs-mult"></span></span>
+    </div>
+
+    <!-- Slot zone: 5×3 grid -->
+    <div id="slot-zone">
+
+        <!-- Win overlay pill -->
+        <div id="win-bar" class="win-bar">
+            <span id="win-label">Крути и выигрывай!</span>
+        </div>
+
+        <div id="slot-grid">
+            <!-- 5 reels -->
+            <div class="reel"><div class="reel-strip" id="strip-0"></div></div>
+            <div class="reel"><div class="reel-strip" id="strip-1"></div></div>
+            <div class="reel"><div class="reel-strip" id="strip-2"></div></div>
+            <div class="reel"><div class="reel-strip" id="strip-3"></div></div>
+            <div class="reel"><div class="reel-strip" id="strip-4"></div></div>
+        </div>
+
+        <!-- Payline indicator lines (decorative) -->
+        <div class="payline-mark top"></div>
+        <div class="payline-mark mid"></div>
+        <div class="payline-mark bot"></div>
+
+    </div>
+
+    <!-- Controls -->
+    <div id="controls">
+
+        <!-- Bet card -->
+        <div class="ctrl-card">
+            <div class="card-label">Ставка <span class="card-hint">баланс: <span id="balance-hint">0</span> 🐚</span></div>
+            <div id="bet-row">
+                <button class="adj-btn" id="bet-minus">−</button>
+                <input type="number" id="bet-input" value="10" min="10"
+                       inputmode="numeric" enterkeyhint="done" autocomplete="off">
+                <span class="bet-unit">🐚</span>
+                <button class="adj-btn" id="bet-plus">+</button>
+            </div>
+            <div id="mult-btns">
+                <button class="mult-btn" data-mult="0.5">½</button>
+                <button class="mult-btn" data-mult="2">×2</button>
+                <button class="mult-btn" data-mult="5">×5</button>
+                <button class="mult-btn" data-mult="10">×10</button>
+                <button class="mult-btn" data-mult="max">MAX</button>
+            </div>
+        </div>
+
+        <!-- Spin button -->
+        <button id="spin-btn">КРУТИТЬ</button>
+
+        <!-- Paytable card -->
+        <div class="ctrl-card paytable-card">
+            <div class="card-label">Таблица выплат <span class="card-hint">× ставку</span></div>
+            <div class="paytable">
+                <div class="pt-row"><span>🌊 Wild</span><span class="pt-val">замена</span></div>
+                <div class="pt-row"><span>🏺 Scatter ×3</span><span class="pt-val">+2× + 10 FS</span></div>
+                <div class="pt-sep"></div>
+                <div class="pt-row"><span>🦈 ×3/4/5</span><span class="pt-val shark">30 / 80 / 250</span></div>
+                <div class="pt-row"><span>🦑 ×3/4/5</span><span class="pt-val squid">15 / 40 / 100</span></div>
+                <div class="pt-row"><span>🐙 ×3/4/5</span><span class="pt-val">8 / 20 / 60</span></div>
+                <div class="pt-row"><span>🦀 ×3/4/5</span><span class="pt-val">5 / 12 / 35</span></div>
+                <div class="pt-row"><span>🐟 ×3/4/5</span><span class="pt-val">3 / 8 / 20</span></div>
+                <div class="pt-row pt-low"><span>🦐🐡🐠 ×3–5</span><span class="pt-val">1–15</span></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script type="module">
+    import { init } from './slot-ui.js?v=1';
+    init();
+</script>
+</body>
+</html>
