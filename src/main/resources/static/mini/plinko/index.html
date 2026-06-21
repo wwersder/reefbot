@@ -9,7 +9,7 @@
 <title>Reef Plinko</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=17">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -53,7 +53,7 @@
             <div class="card-label">Ставка <span class="card-hint">баланс: <span id="balance-hint">0</span> 🐚</span></div>
             <div id="bet-row">
                 <button class="adj-btn" id="bet-minus">−</button>
-                <input type="number" id="bet-input" value="25" min="5" max="500"
+                <input type="number" id="bet-input" value="25" min="5"
                        inputmode="numeric" enterkeyhint="done" autocomplete="off">
                 <span class="bet-unit">🐚</span>
                 <button class="adj-btn" id="bet-plus">+</button>
@@ -133,7 +133,7 @@
 </div>
 
 <script type="module">
-    import { init } from './ui.js?v=15';
+    import { init } from './ui.js?v=17';
     init();
 </script>
 </body>

@@ -14,13 +14,10 @@ import { setInitData, fetchState, postPlay, fetchLeaderboard } from './api.js?v=
 import { PlinkoBoard } from './plinko.js?v=11';
 
 const MIN_BET    = 5;
-const MAX_BET    = 500;
 const BET_STEP   = 5;
 const AUTO_MAX   = 100;
 const RESULTS_MAX= 10;
 
-// ── Demo mode: force jackpot every throw (for recording). Set false when done.
-const DEMO_JACKPOT = true;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -48,8 +45,12 @@ let _resultTimer   = null;  // auto-hide result bar
 const $  = id  => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 
-function clampBet(v) {
-    return Math.max(MIN_BET, Math.min(MAX_BET, Math.round(v / BET_STEP) * BET_STEP || MIN_BET));
+/** Clamps bet to [MIN_BET, balance]. Step-rounding only when stepSnap=true (±buttons). */
+function clampBet(v, stepSnap = false) {
+    const n = parseInt(v) || MIN_BET;
+    const clamped = Math.max(MIN_BET, Math.min(balance || MIN_BET, n));
+    if (stepSnap) return Math.round(clamped / BET_STEP) * BET_STEP || MIN_BET;
+    return clamped;
 }
 
 function escHtml(s) {
@@ -151,19 +152,18 @@ function bindEvents() {
     }));
 
     // Bet +/-
-    $('bet-minus').addEventListener('click', () => setBet(betValue - BET_STEP));
-    $('bet-plus').addEventListener('click',  () => setBet(betValue + BET_STEP));
+    $('bet-minus').addEventListener('click', () => setBet(betValue - BET_STEP, true));
+    $('bet-plus').addEventListener('click',  () => setBet(betValue + BET_STEP, true));
 
     // Bet free input
-    $('bet-input').addEventListener('blur', () => setBet(parseInt($('bet-input').value) || MIN_BET));
+    $('bet-input').addEventListener('blur', () => setBet(parseInt($('bet-input').value) || MIN_BET, false));
 
     // Multiplier chips (BUG-07)
     $$('.mult-btn').forEach(btn => btn.addEventListener('click', () => {
         const m = btn.dataset.mult;
         if (m === 'max') {
-            const maxBet = Math.min(MAX_BET, balance);
-            if (maxBet < MIN_BET) { setResult('Недостаточно ракушек 🐚', 'loss'); return; }
-            setBet(maxBet);
+            if (balance < MIN_BET) { setResult('Недостаточно ракушек 🐚', 'loss'); return; }
+            setBet(balance);
         } else {
             setBet(Math.round(betValue * parseFloat(m)));
         }
@@ -194,12 +194,6 @@ async function doManualThrow() {
     try {
         const res = await postPlay(bet, rows, risk);
         if (res.error) { setResult(res.message || res.error, 'loss'); return; }
-        if (DEMO_JACKPOT) {
-            res.path = Array(rows).fill(false);  // all left → slot 0
-            res.slot = 0;
-            res.multiplier = rows === 12 ? 20 : 18;
-            res.profit = Math.round(bet * res.multiplier) - bet;
-        }
         const newBalance = res.newBalance;
         board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
             balance = newBalance;
@@ -224,12 +218,6 @@ async function doAutoThrow() {
         if (res.error) {
             setResult(res.message || res.error, 'loss');
             stopAuto(); return;
-        }
-        if (DEMO_JACKPOT) {
-            res.path = Array(rows).fill(false);
-            res.slot = 0;
-            res.multiplier = rows === 12 ? 20 : 18;
-            res.profit = Math.round(betValue * res.multiplier) - betValue;
         }
         const newBalance = res.newBalance;
         board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
@@ -335,8 +323,8 @@ function updateUI() {
     updateAutoProgress();
 }
 
-function setBet(v) {
-    betValue = clampBet(v);
+function setBet(v, stepSnap = false) {
+    betValue = clampBet(v, stepSnap);
     $('bet-input').value = betValue;
 }
 

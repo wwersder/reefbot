@@ -34,14 +34,9 @@ public class PlinkoService {
 
     // ── Constants ─────────────────────────────────────────────────────────────
 
-    public static final int DAILY_LOSS_LIMIT = 2000;
-    public static final int MIN_BET          = 5;
-    public static final int MAX_BET          = 500;
+    public static final int MIN_BET             = 5;
     public static final int JACKPOT_THRESHOLD_X = 15; // multiplier to trigger notification
-    public static final long COOLDOWN_MILLIS = 1_000;
-
-    /** Valid bet amounts (quick-select buttons). */
-    public static final int[] BET_STEPS = {5, 10, 25, 50, 100, 250, 500};
+    public static final long COOLDOWN_MILLIS    = 1_000;
 
     /**
      * Multiplier tables [risk][slot].
@@ -127,9 +122,9 @@ public class PlinkoService {
         }
 
         // ── Validate bet ─────────────────────────────────────────────────────
-        if (req.bet() < MIN_BET || req.bet() > MAX_BET) {
+        if (req.bet() < MIN_BET) {
             return PlinkoPlayResponse.error("INVALID_BET",
-                    "Ставка должна быть от " + MIN_BET + " до " + MAX_BET + " 🐚.");
+                    "Минимальная ставка — " + MIN_BET + " 🐚.");
         }
 
         // Lock the island row before any check/write to prevent concurrent-request races.
