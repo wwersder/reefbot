@@ -534,10 +534,9 @@ function updateSpinBtn() {
 }
 
 function updateBonusBtn() {
-    const btn = $('bonus-btn'), cost = $('bonus-cost'); if (!btn || !cost) return;
+    const btn = $('bonus-btn'); if (!btn) return;
     const inFS = (_vipState?.freeSpinsRemaining ?? 0) > 0;
     const c = betValue * BONUS_MULT;
-    cost.textContent = `×100 = ${c} 🐚`;
     btn.disabled = inFS || balance < c || spinning;
     btn.style.opacity = btn.disabled ? '.4' : '';
 }
