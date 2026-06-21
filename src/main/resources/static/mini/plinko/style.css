@@ -479,7 +479,7 @@ html, body {
 .lb-footer {
     padding: 0;
     margin-top: 4px;
-    padding-bottom: 4px;
+    padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
 }
 
 .link-btn {
