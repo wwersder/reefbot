@@ -37,8 +37,9 @@
 
     <!-- Free spins banner -->
     <div id="fs-banner">
-        <span>🏺 FREE SPINS: <b id="fs-count">0</b></span>
-        <span id="fs-mult-wrap"> <span id="fs-mult"></span></span>
+        <span>🏺 <b id="fs-count">0</b> FS</span>
+        <span id="fs-mult-wrap"><span id="fs-mult"></span></span>
+        <span id="fs-win-wrap">💰 +<span id="fs-win">0</span> 🐚</span>
     </div>
 
     <!-- Slot zone: 5×3 grid (clean, no chrome) -->
@@ -221,6 +222,21 @@
                 <div class="gs-card-arrow">›</div>
             </button>
         </div>
+    </div>
+</div>
+
+<!-- FS Bonus summary popup -->
+<div id="fss-overlay">
+    <div id="fss-backdrop"></div>
+    <div id="fss-card">
+        <div class="fss-emoji">🌊🏺🌊</div>
+        <div class="fss-title">Бонус завершён!</div>
+        <div class="fss-win-box">
+            <div class="fss-win-label">Общий выигрыш</div>
+            <div class="fss-win-value">+<span id="fss-win-num">0</span> 🐚</div>
+        </div>
+        <div class="fss-meta">Макс. множитель: <span id="fss-mult">×1</span></div>
+        <button id="fss-collect">Забрать!</button>
     </div>
 </div>
 

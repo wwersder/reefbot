@@ -15,6 +15,7 @@ public record SlotStateResponse(
         int     balance,
         int     freeSpinsRemaining,
         int     multiplier,
+        int     fsPendingWin,
         boolean rows12Unlocked,
 
         // VIP
@@ -32,7 +33,7 @@ public record SlotStateResponse(
 
     public static SlotStateResponse onboarding(String msg) {
         return new SlotStateResponse(true, msg,
-                0, 0, 1, false,
+                0, 0, 1, 0, false,
                 "NONE", "Нет", "", 0, 0L, 0, 0, null, null);
     }
 
@@ -49,6 +50,7 @@ public record SlotStateResponse(
                 balance,
                 p.getSlotFreeSpinsRemaining(),
                 p.getSlotMultiplier(),
+                p.getSlotFsPendingWin(),
                 fisherLvl >= 5,
 
                 tier.name(),

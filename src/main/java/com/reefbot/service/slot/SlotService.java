@@ -167,6 +167,7 @@ public class SlotService {
             player.setSlotFreeSpinsRemaining(bonusSpins);
             player.setSlotMultiplier(1);
             player.setStickyWildsJson(null); // fresh bonus round
+            player.setSlotFsPendingWin(0);   // fresh accumulator
             stickyWilds = new ArrayList<>();
         } else if (inFreeSpins) {
             int remaining = player.getSlotFreeSpinsRemaining() - 1;
@@ -184,7 +185,21 @@ public class SlotService {
         }
 
         // ── Credit winnings ───────────────────────────────────────────────────
-        island.setShells(island.getShells() + totalWin);
+        // During free spins: accumulate in player field; credit all at round end.
+        if (inFreeSpins) {
+            player.setSlotFsPendingWin(player.getSlotFsPendingWin() + totalWin);
+        } else {
+            island.setShells(island.getShells() + totalWin);
+        }
+
+        // Capture running total for response (before possible reset below)
+        int fsPendingWin = player.getSlotFsPendingWin();
+
+        // Last FS spin → flush accumulated win to balance
+        if (inFreeSpins && player.getSlotFreeSpinsRemaining() == 0) {
+            island.setShells(island.getShells() + fsPendingWin);
+            player.setSlotFsPendingWin(0);
+        }
         islandRepository.save(island);
 
         // ── VIP tracking (only for paid spins) ───────────────────────────────
@@ -216,6 +231,7 @@ public class SlotService {
                 triggerFreeSpins,
                 inFreeSpins,
                 stickyWilds,
+                fsPendingWin,
                 player
         );
     }
@@ -245,11 +261,12 @@ public class SlotService {
         player.setSlotFreeSpinsRemaining(10);
         player.setSlotMultiplier(1);
         player.setStickyWildsJson(null); // fresh round
+        player.setSlotFsPendingWin(0);   // fresh accumulator
 
         vipService.updateTier(player);
         playerRepository.save(player);
 
-        return SlotSpinResponse.ok(new String[5][3], List.of(), 0, 0, 0, false, false, List.of(), player);
+        return SlotSpinResponse.ok(new String[5][3], List.of(), 0, 0, 0, false, false, List.of(), 0, player);
     }
 
     // ── Grid generation ───────────────────────────────────────────────────────

@@ -58,9 +58,11 @@ let spinning = false, _serverResult = null, _skipRequested = false;
 let turboMode = false;
 let autoRunning = false, autoCount = 0, autoInFlight = false;
 
-// Sticky wilds (Dog House mechanic)
-let _stickyWilds = []; // [{col,row,mult}]
+// Sticky wilds + bonus accumulation (Dog House mechanic)
+let _stickyWilds   = []; // [{col,row,mult}]
 let _fsAutoRunning = false; // auto-play free spins
+let _fsPendingWin  = 0;    // accumulated FS win (shown in banner, credited at end)
+let _maxMult       = 1;    // max multiplier reached during current FS
 
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
@@ -80,12 +82,18 @@ export async function init() {
             showScreen('onboarding'); return;
         }
         balance = st.balance; _shownBal = balance; _vipState = st;
+        _fsPendingWin = st.fsPendingWin || 0;
+        _maxMult      = st.multiplier   || 1;
         bindEvents();
         renderReels(null);
         updateUI();
         updateVipBadge();
-        showFsBanner(st.freeSpinsRemaining, st.multiplier);
+        showFsBanner(st.freeSpinsRemaining, st.multiplier, _fsPendingWin);
         showScreen('app');
+        // Resume FS auto-play if bonus was active when app was closed
+        if (st.freeSpinsRemaining > 0) {
+            setTimeout(() => startFsAuto(), 900);
+        }
     } catch (e) { console.error('Init', e); showScreen('onboarding'); }
 }
 
@@ -115,6 +123,7 @@ function bindEvents() {
     $('gs-backdrop')    .addEventListener('click', closeGameSelector);
     $('gs-slot')        .addEventListener('click', closeGameSelector);
     $('gs-plinko')      .addEventListener('click', () => { window.location.href = '/mini/plinko/'; });
+    $('fss-collect')    .addEventListener('click', collectFsBonus);
     $('vip-btn')        .addEventListener('click', openVip);
     $('vip-close')      .addEventListener('click', closeVip);
     $('vip-backdrop')   .addEventListener('click', closeVip);
@@ -178,31 +187,52 @@ async function doSpin(isAuto) {
 }
 
 function applyResult(res) {
-    balance = res.newBalance; _vipState = { ..._vipState, ...res };
-    animateBalance(balance); updateVipBadge();
+    // Balance: don't animate during active FS (win credited at end)
+    balance = res.newBalance;
+    const isFsEnd      = res.wasFreeSpins && res.freeSpinsRemaining === 0;
+    const isActiveFsSpin = res.wasFreeSpins && res.freeSpinsRemaining > 0;
+    if (!isActiveFsSpin && !isFsEnd) {
+        animateBalance(balance); // normal spin — update immediately
+    }
+    // isFsEnd: animate on "collect" button tap
 
-    // Update sticky wilds
+    _vipState = { ..._vipState, ...res };
+    updateVipBadge();
+
+    // Sticky wilds
     _stickyWilds = res.stickyWilds || [];
     renderStickyWilds();
 
-    showFsBanner(res.freeSpinsRemaining, res.multiplier);
+    // Track running FS win + max mult
+    if (res.wasFreeSpins) {
+        _fsPendingWin = res.fsPendingWin || 0;
+        _maxMult = Math.max(_maxMult, res.multiplier);
+    }
+
+    showFsBanner(res.freeSpinsRemaining, res.multiplier, _fsPendingWin);
 
     if (res.isFreeSpinTrigger) {
         haptic('success');
         const n = res.scatterCount === 3 ? 10 : res.scatterCount === 4 ? 15 : 20;
         showWin(`🏺 БОНУС! ${n} Free Spins!`, 'bonus');
         _stickyWilds = [];
+        _fsPendingWin = 0;
+        _maxMult = 1;
         startFsAuto();
-    } else if (res.freeSpinsRemaining === 0 && res.wasFreeSpins) {
-        // Bonus ended
+    } else if (isFsEnd) {
+        // Bonus ended — show summary popup; balance animates on collect
         _stickyWilds = [];
         renderStickyWilds();
         _fsAutoRunning = false;
+        showFsSummary(_fsPendingWin, _maxMult);
+    } else if (isActiveFsSpin) {
+        // FS spin result — show mini feedback in win-bar
         if (res.totalWin > 0) {
-            haptic('success');
-            showWin(`🏺 Бонус закончен! +${res.totalWin} 🐚`, 'bonus');
+            haptic('light');
+            const mult = res.multiplier > 1 ? ` ×${res.multiplier}` : '';
+            showWin(`+${res.totalWin} 🐚${mult}`, 'win');
         } else {
-            showWin('Бонус закончен', 'loss');
+            showWin('✨', 'neutral');
         }
     } else if (res.totalWin > 0) {
         haptic('success');
@@ -248,8 +278,8 @@ async function handleBonusBuy() {
         if (res.error) { showWin(errTxt(res.error)); return; }
         balance = res.newBalance; _vipState = { ..._vipState, ...res };
         animateBalance(balance); updateVipBadge();
-        _stickyWilds = [];
-        showFsBanner(res.freeSpinsRemaining, res.multiplier);
+        _stickyWilds = []; _fsPendingWin = 0; _maxMult = 1;
+        showFsBanner(res.freeSpinsRemaining, res.multiplier, 0);
         showWin('🏺 Куплено! 10 Free Spins', 'bonus');
         startFsAuto();
     } catch (e) { console.error('Bonus buy', e); showWin('Ошибка сети 🌊'); }
@@ -374,12 +404,17 @@ function showWin(text, type = 'neutral') {
     bar.className  = type;
 }
 
-function showFsBanner(remaining, mult) {
+function showFsBanner(remaining, mult, pendingWin = 0) {
     const banner = $('fs-banner'), zone = $('slot-zone');
     if (!banner || !zone) return;
     if (remaining > 0) {
         $('fs-count').textContent = remaining;
-        $('fs-mult').textContent  = mult > 1 ? `×${mult}` : '';
+        const mw = $('fs-mult-wrap');
+        if (mw) mw.style.display = mult > 1 ? '' : 'none';
+        if ($('fs-mult')) $('fs-mult').textContent = `×${mult}`;
+        const fw = $('fs-win-wrap');
+        if (fw) fw.style.display = pendingWin > 0 ? '' : 'none';
+        if ($('fs-win')) $('fs-win').textContent = pendingWin.toLocaleString('ru');
         banner.classList.add('visible'); zone.classList.add('free-spins');
     } else {
         banner.classList.remove('visible'); zone.classList.remove('free-spins');
@@ -421,6 +456,48 @@ function renderStickyWilds() {
         badge.textContent = `×${sw.mult}`;
         cell.appendChild(badge);
     }
+}
+
+// ── FS bonus summary popup ────────────────────────────────────────────────────
+
+function showFsSummary(totalWin, maxMult) {
+    const numEl = $('fss-win-num');
+    const btn   = $('fss-collect');
+    if (!numEl || !btn) return;
+
+    numEl.textContent = '0';
+    if ($('fss-mult')) $('fss-mult').textContent = maxMult > 1 ? `×${maxMult}` : '×1';
+    btn.textContent = totalWin > 0
+        ? `Забрать +${totalWin.toLocaleString('ru')} 🐚`
+        : 'Закрыть';
+
+    $('fss-overlay').classList.add('open');
+    haptic(totalWin > 0 ? 'success' : 'light');
+
+    // Count-up animation
+    if (totalWin > 0) {
+        let startTs = null;
+        const dur = Math.max(600, Math.min(1600, totalWin * 1.5));
+        function tick(ts) {
+            if (!startTs) startTs = ts;
+            const p = Math.min((ts - startTs) / dur, 1);
+            const e = 1 - Math.pow(1 - p, 3);
+            numEl.textContent = Math.round(e * totalWin).toLocaleString('ru');
+            if (p < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+    }
+}
+
+function collectFsBonus() {
+    $('fss-overlay').classList.remove('open');
+    haptic('medium');
+    // Now animate balance from old displayed value to final (includes all FS wins)
+    animateBalance(balance);
+    _fsPendingWin = 0;
+    _maxMult = 1;
+    showWin('', 'neutral');
+    updateSpinBtn(); updateBonusBtn();
 }
 
 function openPaytable()  { $('pt-overlay').classList.add('open');    }

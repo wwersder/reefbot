@@ -119,4 +119,8 @@ public class Player {
     /** Sticky wild positions as JSON [[col,row,mult],...]. Null when not in FS. */
     @Column(name = "sticky_wilds_json", length = 500)
     private String stickyWildsJson;
+
+    /** Accumulated winnings during the current FS round (credited all at once at end). */
+    @Builder.Default
+    private Integer slotFsPendingWin = 0;
 }
