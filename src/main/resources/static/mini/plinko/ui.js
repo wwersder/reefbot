@@ -193,7 +193,7 @@ async function doManualThrow() {
     const bet = betValue;
     try {
         const res = await postPlay(bet, rows, risk);
-        if (res.error) { setResult(res.message || res.error, 'loss'); return; }
+        if (res.error) { showServerError(res.error); return; }
         const newBalance = res.newBalance;
         board.dropBall(res.path, res.slot, res.multiplier, res.profit, (mult, profit) => {
             balance = newBalance;
@@ -216,7 +216,7 @@ async function doAutoThrow() {
     try {
         const res = await postPlay(betValue, rows, risk);
         if (res.error) {
-            setResult(res.message || res.error, 'loss');
+            showServerError(res.error);
             stopAuto(); return;
         }
         const newBalance = res.newBalance;
@@ -405,6 +405,18 @@ function scheduleBalanceSync() {
             }
         } catch { /* silent — best-effort */ }
     }, 500);
+}
+
+/** Maps server error codes to short, friendly messages. */
+function showServerError(code) {
+    const MAP = {
+        COOLDOWN:             ['⏱ Секунду...', 'neutral'],
+        INSUFFICIENT_BALANCE: ['Недостаточно ракушек 🐚', 'loss'],
+        ROWS_LOCKED:          ['Открывается с 5 ур. рыбака', 'neutral'],
+        INVALID_BET:          ['Неверная ставка', 'neutral'],
+    };
+    const [text, type] = MAP[code] ?? ['Что-то пошло не так 🌊', 'neutral'];
+    setResult(text, type);
 }
 
 function setResult(text, type) {
