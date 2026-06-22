@@ -169,11 +169,11 @@ public class ShoreZoneHandler implements GameHandler {
 
         RichText rt = new RichText();
         rt.beginBold().emoji(ReefEmoji.SHORE).add(" Берег").endBold()
-          .add("\n\n")
+          .add("\n")
           .add(flavor)
-          .add("\n\n");
+          .add("\n");
 
-        // Компактный дайджест по трём направлениям
+        // Compact status digest
         appendFishingStatus(rt, player);
         rt.add("\n");
 
@@ -228,17 +228,18 @@ public class ShoreZoneHandler implements GameHandler {
     }
 
     private static void appendPierStatus(RichText rt, IslandBuilding pier) {
-        rt.add("⚓ ").bold("Помост:").add(" ");
+        int lvl = pier.getLevel();
         if (pier.getBuildFinishAt() != null && LocalDateTime.now().isBefore(pier.getBuildFinishAt())) {
             long mins = Math.max(1, Duration.between(LocalDateTime.now(), pier.getBuildFinishAt()).toMinutes());
-            rt.add("ур." + pier.getLevel() + " — ⏳ улучшается (" + mins + " мин)");
+            rt.add("⚓ ").bold("Помост (lvl " + lvl + "):").add(" ⏳ улучшается (" + mins + " мин)");
         } else {
             int acc = ShorePierHandler.calcAccumulated(pier);
-            int cap = BuildingType.FISHING_PIER.capAt(pier.getLevel());
+            int cap = BuildingType.FISHING_PIER.capAt(lvl);
+            rt.add("⚓ ").bold("Помост (lvl " + lvl + "):").add(" ");
             if (acc >= cap) {
-                rt.add("ур." + pier.getLevel() + " — ").bold("полон! " + acc + " 🐟");
+                rt.bold(acc + "/" + cap + " 🐟");
             } else {
-                rt.add("ур." + pier.getLevel() + " — " + acc + "/" + cap + " 🐟");
+                rt.add(acc + "/" + cap + " 🐟");
             }
         }
     }
