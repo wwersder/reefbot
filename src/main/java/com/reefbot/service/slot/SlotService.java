@@ -79,9 +79,9 @@ public class SlotService {
     /**
      * Bonus buy cost = bet × multiplier.
      * Per-payline SUM mechanic, 10 FS, wild mults ×1/×2/×3/×5.
-     * Simulation-verified (1M sessions): E[FS] = 128.71×. Buy RTP = 128.71/134 = 96.1%.
+     * Simulation-verified (50k sessions): E[FS] = 97.4×. Buy RTP = 97.4%.
      */
-    public static final int BONUS_BUY_MULTIPLIER = 134;
+    public static final int BONUS_BUY_MULTIPLIER = 100;
 
     /**
      * Maximum win per free-spins session (× bet).
