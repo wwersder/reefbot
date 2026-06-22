@@ -65,6 +65,7 @@ public record SlotSpinResponse(
         int loss     = Math.max(0, player.getVipPeriodNetLoss());
         int cashback = (int)(loss * tier.getCashbackRate());
 
+        var ss = player.getSlotState();
         return new SlotSpinResponse(
                 null,
                 grid,
@@ -74,8 +75,8 @@ public record SlotSpinResponse(
                 scatterAmount,
                 isFreeSpinTrigger,
                 wasFreeSpins,
-                player.getSlotFreeSpinsRemaining(),
-                player.getSlotMultiplier(),
+                ss != null ? ss.getFreeSpinsRemaining() : 0,
+                ss != null ? ss.getMultiplier()         : 1,
                 stickyWilds,
                 fsPendingWin,
                 player.getIsland() != null ? player.getIsland().getShells() : 0,

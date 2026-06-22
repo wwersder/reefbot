@@ -108,19 +108,7 @@ public class Player {
 
     // ── Slot state (The Reef House) ───────────────────────────────────────────
 
-    /** Free spins remaining in the current bonus round (0 = not in bonus). */
-    @Builder.Default
-    private Integer slotFreeSpinsRemaining = 0;
-
-    /** Current total multiplier (sum of all sticky wild multipliers). */
-    @Builder.Default
-    private Integer slotMultiplier = 1;
-
-    /** Sticky wild positions as JSON [[col,row,mult],...]. Null when not in FS. */
-    @Column(name = "sticky_wilds_json", length = 500)
-    private String stickyWildsJson;
-
-    /** Accumulated winnings during the current FS round (credited all at once at end). */
-    @Builder.Default
-    private Integer slotFsPendingWin = 0;
+    @OneToOne(mappedBy = "player", cascade = CascadeType.ALL,
+              fetch = FetchType.EAGER, orphanRemoval = true)
+    private PlayerSlotState slotState;
 }

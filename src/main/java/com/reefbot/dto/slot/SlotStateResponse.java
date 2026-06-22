@@ -44,13 +44,14 @@ public record SlotStateResponse(
         int cashback  = (int)(loss * tier.getCashbackRate());
         int balance   = p.getIsland() != null ? p.getIsland().getShells() : 0;
         int fisherLvl = p.getFishing() != null ? p.getFishing().getFishingLevel() : 1;
+        var ss        = p.getSlotState();
 
         return new SlotStateResponse(
                 false, null,
                 balance,
-                p.getSlotFreeSpinsRemaining(),
-                p.getSlotMultiplier(),
-                p.getSlotFsPendingWin(),
+                ss != null ? ss.getFreeSpinsRemaining() : 0,
+                ss != null ? ss.getMultiplier()         : 1,
+                ss != null ? ss.getFsPendingWin()       : 0,
                 fisherLvl >= 5,
 
                 tier.name(),

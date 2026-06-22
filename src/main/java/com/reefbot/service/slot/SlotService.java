@@ -7,6 +7,7 @@ import com.reefbot.dto.slot.WinLine;
 import com.reefbot.config.TelegramProperties;
 import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
+import com.reefbot.entity.PlayerSlotState;
 import com.reefbot.entity.SlotLog;
 import com.reefbot.enums.OnboardingStep;
 import com.reefbot.enums.PlayerStatus;
@@ -94,18 +95,19 @@ public class SlotService {
             return SlotSpinResponse.error("ONBOARDING_REQUIRED");
         }
 
-        boolean inFreeSpins = player.getSlotFreeSpinsRemaining() > 0;
+        PlayerSlotState ss = ss(player);
+        boolean inFreeSpins = ss.getFreeSpinsRemaining() > 0;
 
         Island island = islandRepository.findByPlayerForUpdate(player)
                 .orElseThrow(() -> new SecurityException("Island not found for player " + player.getId()));
 
         // Validate bet (free spins cost nothing)
         if (!inFreeSpins) {
-            if (req.bet() < MIN_BET)                    return SlotSpinResponse.error("INVALID_BET");
-            if (island.getShells() < req.bet())         return SlotSpinResponse.error("INSUFFICIENT_BALANCE");
+            if (req.bet() < MIN_BET)            return SlotSpinResponse.error("INVALID_BET");
+            if (island.getShells() < req.bet()) return SlotSpinResponse.error("INSUFFICIENT_BALANCE");
         }
 
-        int bet = req.bet(); // actual bet for payout calc
+        int bet = req.bet();
 
         // Deduct bet
         if (!inFreeSpins) {
@@ -113,7 +115,7 @@ public class SlotService {
         }
 
         // ── Sticky wilds (Dog House mechanic) ────────────────────────────────
-        List<StickyWild> stickyWilds = parseStickyWilds(player.getStickyWildsJson());
+        List<StickyWild> stickyWilds = parseStickyWilds(ss.getStickyWildsJson());
 
         // ── Generate grid ─────────────────────────────────────────────────────
         SlotSymbol[][] grid = generateGrid();
@@ -164,41 +166,40 @@ public class SlotService {
                 case 4  -> 15;
                 default -> 20;
             };
-            player.setSlotFreeSpinsRemaining(bonusSpins);
-            player.setSlotMultiplier(1);
-            player.setStickyWildsJson(null); // fresh bonus round
-            player.setSlotFsPendingWin(0);   // fresh accumulator
+            ss.setFreeSpinsRemaining(bonusSpins);
+            ss.setMultiplier(1);
+            ss.setStickyWildsJson(null);
+            ss.setFsPendingWin(0);
             stickyWilds = new ArrayList<>();
         } else if (inFreeSpins) {
-            int remaining = player.getSlotFreeSpinsRemaining() - 1;
-            player.setSlotFreeSpinsRemaining(Math.max(0, remaining));
-            player.setSlotMultiplier(totalMult);
+            int remaining = ss.getFreeSpinsRemaining() - 1;
+            ss.setFreeSpinsRemaining(Math.max(0, remaining));
+            ss.setMultiplier(totalMult);
 
             if (remaining <= 0) {
-                // Bonus round ended — clear sticky wilds
-                player.setStickyWildsJson(null);
-                player.setSlotMultiplier(1);
-                stickyWilds = new ArrayList<>(); // don't send stale data
+                ss.setStickyWildsJson(null);
+                ss.setMultiplier(1);
+                stickyWilds = new ArrayList<>();
             } else {
-                player.setStickyWildsJson(toStickyWildsJson(stickyWilds));
+                ss.setStickyWildsJson(toStickyWildsJson(stickyWilds));
             }
         }
 
         // ── Credit winnings ───────────────────────────────────────────────────
-        // During free spins: accumulate in player field; credit all at round end.
+        // During free spins: accumulate; credit all at round end.
         if (inFreeSpins) {
-            player.setSlotFsPendingWin(player.getSlotFsPendingWin() + totalWin);
+            ss.setFsPendingWin(ss.getFsPendingWin() + totalWin);
         } else {
             island.setShells(island.getShells() + totalWin);
         }
 
-        // Capture running total for response (before possible reset below)
-        int fsPendingWin = player.getSlotFsPendingWin();
+        // Capture running total for response (before possible reset)
+        int fsPendingWin = ss.getFsPendingWin();
 
         // Last FS spin → flush accumulated win to balance
-        if (inFreeSpins && player.getSlotFreeSpinsRemaining() == 0) {
+        if (inFreeSpins && ss.getFreeSpinsRemaining() == 0) {
             island.setShells(island.getShells() + fsPendingWin);
-            player.setSlotFsPendingWin(0);
+            ss.setFsPendingWin(0);
         }
         islandRepository.save(island);
 
@@ -240,16 +241,16 @@ public class SlotService {
     @Transactional
     public SlotSpinResponse buyBonus(String initData, SlotSpinRequest req) {
         Player player = resolve(initData);
-        if (!isReady(player))                           return SlotSpinResponse.error("ONBOARDING_REQUIRED");
-        if (player.getSlotFreeSpinsRemaining() > 0)    return SlotSpinResponse.error("ALREADY_IN_BONUS");
-        if (req.bet() < MIN_BET)                        return SlotSpinResponse.error("INVALID_BET");
+        if (!isReady(player))                          return SlotSpinResponse.error("ONBOARDING_REQUIRED");
+        if (ss(player).getFreeSpinsRemaining() > 0)   return SlotSpinResponse.error("ALREADY_IN_BONUS");
+        if (req.bet() < MIN_BET)                       return SlotSpinResponse.error("INVALID_BET");
 
         int cost = req.bet() * BONUS_BUY_MULTIPLIER;
 
         Island island = islandRepository.findByPlayerForUpdate(player)
                 .orElseThrow(() -> new SecurityException("Island not found for player " + player.getId()));
 
-        if (island.getShells() < cost)                  return SlotSpinResponse.error("INSUFFICIENT_BALANCE");
+        if (island.getShells() < cost) return SlotSpinResponse.error("INSUFFICIENT_BALANCE");
 
         island.setShells(island.getShells() - cost);
         islandRepository.save(island);
@@ -258,10 +259,11 @@ public class SlotService {
         player.setVipLifetimeWager(player.getVipLifetimeWager() + cost);
         player.setVipPeriodNetLoss(player.getVipPeriodNetLoss() + cost);
 
-        player.setSlotFreeSpinsRemaining(10);
-        player.setSlotMultiplier(1);
-        player.setStickyWildsJson(null); // fresh round
-        player.setSlotFsPendingWin(0);   // fresh accumulator
+        PlayerSlotState ss = ss(player);
+        ss.setFreeSpinsRemaining(10);
+        ss.setMultiplier(1);
+        ss.setStickyWildsJson(null);
+        ss.setFsPendingWin(0);
 
         vipService.updateTier(player);
         playerRepository.save(player);
@@ -315,15 +317,13 @@ public class SlotService {
      */
     private WinLine evaluateLine(SlotSymbol[][] grid, int[] rows, int lineIdx,
                                  int bet, int multiplier) {
-        // Find target: first non-wild, non-scatter from left
         SlotSymbol target = null;
         for (int reel = 0; reel < 5; reel++) {
             SlotSymbol s = grid[reel][rows[reel]];
             if (s.isPaying()) { target = s; break; }
         }
-        if (target == null) return null; // all wilds or scatters (rare edge case)
+        if (target == null) return null;
 
-        // Count consecutive matches from left
         int count = 0;
         for (int reel = 0; reel < 5; reel++) {
             SlotSymbol s = grid[reel][rows[reel]];
@@ -341,6 +341,18 @@ public class SlotService {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Returns the player's slot state, creating a default row if not yet present.
+     * New players don't have a row until their first slot interaction.
+     */
+    private PlayerSlotState ss(Player player) {
+        if (player.getSlotState() == null) {
+            PlayerSlotState fresh = PlayerSlotState.builder().player(player).build();
+            player.setSlotState(fresh);
+        }
+        return player.getSlotState();
+    }
 
     private int countSymbol(SlotSymbol[][] grid, SlotSymbol sym) {
         int n = 0;
@@ -393,10 +405,8 @@ public class SlotService {
         List<StickyWild> result = new ArrayList<>();
         if (json == null || json.isBlank() || json.equals("[]")) return result;
         try {
-            // Strip outer brackets
             String inner = json.trim().substring(1, json.trim().length() - 1);
             if (inner.isBlank()) return result;
-            // Split by "]," to get each inner array
             String[] parts = inner.split("],\\s*\\[");
             for (String part : parts) {
                 part = part.replace("[", "").replace("]", "").trim();
@@ -429,8 +439,8 @@ public class SlotService {
     }
 
     private Player resolve(String initData) {
-        var params   = TelegramInitDataVerifier.verify(initData, telegramProperties.getToken());
-        Long tgId    = TelegramInitDataVerifier.extractTelegramId(params);
+        var params = TelegramInitDataVerifier.verify(initData, telegramProperties.getToken());
+        Long tgId  = TelegramInitDataVerifier.extractTelegramId(params);
         return playerRepository.findByTelegramId(tgId)
                 .orElseThrow(() -> new SecurityException("Player not found: " + tgId));
     }
