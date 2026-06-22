@@ -65,6 +65,11 @@ let _fsPendingWin  = 0;    // accumulated FS win (shown in banner, credited at e
 let _maxMult       = 1;    // max multiplier reached during current FS
 let _fsBannerTimer = null; // timer to revert win-bar to FS total after a win
 
+// Win-line animation
+const WIN_LINE_COLORS = ['#FFD700','#00D4FF','#FF6B6B','#7CFF6B','#FF9F43','#B388FF','#FF80AB','#00E5CC'];
+const WIN_LINE_STEP   = 300; // ms between sequential line draws
+let   _winTimers      = [];  // active timeouts for win-line sequence
+
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 
@@ -151,7 +156,8 @@ async function doSpin(isAuto) {
     spinning = true; _serverResult = null; _skipRequested = false;
     haptic(isAuto ? 'light' : 'medium');
     updateSpinBtn();
-    if (inFS) showFsTotal(); else clearWinOverlay();
+    clearWinHighlight();                              // clear lines and winning cells
+    if (inFS) showFsTotal(); else showWin('', 'neutral');
 
     if (!inFS) { balance = Math.max(0, balance - betValue); animateBalance(balance); }
     startAllReels();
@@ -214,14 +220,20 @@ function applyResult(res) {
         _stickyWilds = [];
         startFsAuto();
     } else if (isFsEnd) {
-        // Bonus ended — credit pending win, show summary popup; balance animates on collect
+        // Bonus ended — show last-spin wins first, then summary popup
         _fsPendingWin = res.fsPendingWin || 0;
         showFsBanner(res.freeSpinsRemaining, res.multiplier, _fsPendingWin);
         clearTimeout(_fsBannerTimer);
         _stickyWilds = [];
         renderStickyWilds();
         _fsAutoRunning = false;
-        showFsSummary(_fsPendingWin);
+        const lastLines = res.wins?.length ?? 0;
+        if (lastLines > 0) {
+            showWin(`+${res.totalWin.toLocaleString('de-DE')} 🐚`, 'win');
+            highlightWins(res.wins);
+        }
+        const summaryDelay = lastLines * WIN_LINE_STEP + (lastLines > 0 ? 1000 : 300);
+        setTimeout(() => showFsSummary(_fsPendingWin), summaryDelay);
     } else if (isActiveFsSpin) {
         // Win-bar always shows accumulated FS total; only switches to spin win during highlight
         clearTimeout(_fsBannerTimer);
@@ -389,19 +401,50 @@ function renderReels(grid) {
 
 // ── Win display ───────────────────────────────────────────────────────────────
 
+/** Draw winning lines one-by-one with SVG animation. */
 function highlightWins(wins) {
     if (!wins?.length) return;
-    wins.forEach(w => {
-        for (let r = 0; r < REEL_COUNT; r++) {
-            const cells = $(`strip-${r}`)?.querySelectorAll('.slot-sym');
-            if (cells?.[w.rows[r]]) cells[w.rows[r]].classList.add('winning');
-        }
+    clearWinHighlight();
+    const svg = $('win-lines-svg');
+    wins.forEach((w, i) => {
+        const t = setTimeout(() => {
+            // Highlight cells for this line
+            for (let r = 0; r < REEL_COUNT; r++) {
+                const cells = $(`strip-${r}`)?.querySelectorAll('.slot-sym');
+                if (cells?.[w.rows[r]]) cells[w.rows[r]].classList.add('winning');
+            }
+            // Draw animated SVG line
+            if (svg) {
+                const color = WIN_LINE_COLORS[i % WIN_LINE_COLORS.length];
+                const pts = Array.from({length: REEL_COUNT}, (_, r) =>
+                    `${r * 100 + 50},${w.rows[r] * 88 + 44}`).join(' ');
+                const el = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                el.setAttribute('points', pts);
+                el.setAttribute('fill', 'none');
+                el.setAttribute('stroke', color);
+                el.setAttribute('stroke-width', '4');
+                el.setAttribute('stroke-linecap', 'round');
+                el.setAttribute('stroke-linejoin', 'round');
+                el.setAttribute('opacity', '0.92');
+                el.style.strokeDasharray = '900';
+                el.style.strokeDashoffset = '900';
+                el.style.transition = 'stroke-dashoffset 0.35s ease-out';
+                svg.appendChild(el);
+                requestAnimationFrame(() => { el.style.strokeDashoffset = '0'; });
+            }
+        }, i * WIN_LINE_STEP);
+        _winTimers.push(t);
     });
-    setTimeout(clearWinHighlight, 1500);
+    // Auto-clear after all lines are shown
+    _winTimers.push(setTimeout(clearWinHighlight, wins.length * WIN_LINE_STEP + 1400));
 }
 
 function clearWinHighlight() {
+    _winTimers.forEach(clearTimeout);
+    _winTimers = [];
     $$('.slot-sym.winning').forEach(el => el.classList.remove('winning'));
+    const svg = $('win-lines-svg');
+    if (svg) svg.innerHTML = '';
 }
 
 function clearWinOverlay() {

@@ -337,22 +337,37 @@ html, body {
 }
 
 .slot-sym.winning {
-    background: rgba(255, 214, 0, 0.15);
     border-radius: 10px;
+    animation: winCellPulse .6s ease-in-out infinite alternate;
 }
 
 .slot-sym.winning::after {
     content: '';
     position: absolute;
-    inset: 4px;
-    border: 2.5px solid var(--gold);
-    border-radius: 8px;
-    animation: winPulse .4s ease-in-out infinite alternate;
+    inset: 3px;
+    border: 2px solid var(--gold);
+    border-radius: 7px;
+    animation: winBorderPulse .6s ease-in-out infinite alternate;
 }
 
-@keyframes winPulse {
-    from { opacity: .4; transform: scale(.96); }
-    to   { opacity: 1;  transform: scale(1.03); }
+@keyframes winCellPulse {
+    from { background: rgba(255, 214, 0, 0.08); }
+    to   { background: rgba(255, 214, 0, 0.26); }
+}
+@keyframes winBorderPulse {
+    from { opacity: .5; }
+    to   { opacity: 1; }
+}
+
+/* ── Win-line SVG overlay ─────────────────────────────────────────────────── */
+
+#win-lines-svg {
+    position: absolute;
+    top: 6px;            /* matches #slot-grid padding */
+    left: 0; right: 0;
+    height: 264px;       /* 3 rows × 88px */
+    pointer-events: none;
+    z-index: 6;          /* above reels, below sticky-overlay (z:10) */
 }
 
 /* ── Result text (below grid) ────────────────────────────────────────────── */
