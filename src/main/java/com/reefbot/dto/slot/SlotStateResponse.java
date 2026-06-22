@@ -24,8 +24,8 @@ public record SlotStateResponse(
         String  vipTierEmoji,
         int     vipCashbackPercent,
         long    vipLifetimeWager,
-        int     vipPeriodNetLoss,
-        int     vipEstimatedCashback,
+        long    vipPeriodNetLoss,
+        long    vipEstimatedCashback,
         Long    vipNextTierThreshold,
         String  vipNextCashbackDate
 ) {
@@ -34,14 +34,14 @@ public record SlotStateResponse(
     public static SlotStateResponse onboarding(String msg) {
         return new SlotStateResponse(true, msg,
                 0, 0, 1, 0, false,
-                "NONE", "Нет", "", 0, 0L, 0, 0, null, null);
+                "NONE", "Нет", "", 0, 0L, 0L, 0L, null, null);
     }
 
     public static SlotStateResponse ok(Player p) {
         var tier = p.getVipTier();
         var next = tier.next();
-        int loss      = Math.max(0, p.getVipPeriodNetLoss());
-        int cashback  = (int)(loss * tier.getCashbackRate());
+        long loss     = Math.max(0L, p.getVipPeriodNetLoss());
+        long cashback = (long)(loss * tier.getCashbackRate());
         int balance   = p.getIsland() != null ? p.getIsland().getShells() : 0;
         int fisherLvl = p.getFishing() != null ? p.getFishing().getFishingLevel() : 1;
         var ss        = p.getSlotState();

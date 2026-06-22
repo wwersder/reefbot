@@ -94,8 +94,8 @@ public class VipService {
 
     private void payCashback(Player player) {
         VipTier tier = player.getVipTier();
-        int netLoss  = player.getVipPeriodNetLoss();
-        int cashback = (int) Math.floor(netLoss * tier.getCashbackRate());
+        long netLoss  = player.getVipPeriodNetLoss();
+        long cashback = (long) Math.floor(netLoss * tier.getCashbackRate());
 
         if (cashback <= 0) {
             resetPeriod(player);
@@ -105,7 +105,7 @@ public class VipService {
         // Credit shells
         Island island = player.getIsland();
         if (island != null) {
-            island.setShells(island.getShells() + cashback);
+            island.setShells(island.getShells() + (int) Math.min(cashback, Integer.MAX_VALUE));
             islandRepository.save(island);
         }
 
@@ -122,11 +122,11 @@ public class VipService {
     }
 
     private void resetPeriod(Player player) {
-        player.setVipPeriodNetLoss(0);
+        player.setVipPeriodNetLoss(0L);
         player.setVipPeriodStart(LocalDate.now());
     }
 
-    private void sendCashbackNotification(Player player, VipTier tier, int cashback, int netLoss) {
+    private void sendCashbackNotification(Player player, VipTier tier, long cashback, long netLoss) {
         String text = String.format(
                 "%s <b>VIP кешбэк %s!</b>\n\n" +
                 "За прошедший период ты потерял <b>%d 🐚</b>\n" +

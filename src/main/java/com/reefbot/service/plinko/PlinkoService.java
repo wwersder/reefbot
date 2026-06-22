@@ -165,9 +165,9 @@ public class PlinkoService {
         long prevWager = player.getVipLifetimeWager() != null ? player.getVipLifetimeWager() : 0L;
         player.setVipLifetimeWager(prevWager + req.bet());
 
-        int prevNetLoss = player.getVipPeriodNetLoss() != null ? player.getVipPeriodNetLoss() : 0;
+        long prevNetLoss = player.getVipPeriodNetLoss() != null ? player.getVipPeriodNetLoss() : 0L;
         // net loss accumulates: positive means player is down, negative means they're up
-        player.setVipPeriodNetLoss(prevNetLoss + (req.bet() - won));
+        player.setVipPeriodNetLoss(prevNetLoss + ((long) req.bet() - won));
 
         boolean tierUpgraded = vipService.updateTier(player);
         playerRepository.save(player);

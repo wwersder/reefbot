@@ -28,8 +28,8 @@ public record PlinkoStateResponse(
         String  vipTierEmoji,
         Integer vipCashbackPercent,
         Long    vipLifetimeWager,
-        Integer vipPeriodNetLoss,
-        Integer vipEstimatedCashback,
+        Long    vipPeriodNetLoss,
+        Long    vipEstimatedCashback,
         Long    vipNextTierThreshold,
         String  vipNextCashbackDate
 ) {
@@ -50,10 +50,10 @@ public record PlinkoStateResponse(
         int remaining   = Math.max(0, 2000 - dailyLost);
         VipTier tier    = player.getVipTier() != null ? player.getVipTier() : VipTier.NONE;
         long wager      = player.getVipLifetimeWager() != null ? player.getVipLifetimeWager() : 0L;
-        int periodLoss  = player.getVipPeriodNetLoss() != null ? player.getVipPeriodNetLoss() : 0;
+        long periodLoss    = player.getVipPeriodNetLoss() != null ? player.getVipPeriodNetLoss() : 0L;
         // Only net losses are cashback-eligible
-        int effectiveLoss = Math.max(0, periodLoss);
-        int estimated     = (int) Math.floor(effectiveLoss * tier.getCashbackRate());
+        long effectiveLoss = Math.max(0L, periodLoss);
+        long estimated     = (long) Math.floor(effectiveLoss * tier.getCashbackRate());
 
         VipTier next = tier.next();
         Long nextThreshold = next != null ? next.getWageredThreshold() : null;

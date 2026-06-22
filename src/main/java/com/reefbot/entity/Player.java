@@ -96,9 +96,10 @@ public class Player {
     /**
      * Net loss for the current cashback period: accumulated (bet - won).
      * Positive = net loss (eligible for cashback). Reset to 0 after each payout.
+     * Long to handle high-volume players without overflow.
      */
     @Builder.Default
-    private Integer vipPeriodNetLoss = 0;
+    private Long vipPeriodNetLoss = 0L;
 
     /** Start date of the current cashback period (set on each payout reset). */
     private LocalDate vipPeriodStart;

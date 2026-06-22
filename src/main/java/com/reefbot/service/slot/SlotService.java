@@ -213,13 +213,19 @@ public class SlotService {
             fsPendingWin = Math.min(fsPendingWin, bet * MAX_WIN_MULTIPLIER);
             island.setShells(island.getShells() + fsPendingWin);
             ss.setFsPendingWin(0);
+            // Reduce VIP period net loss by the actual FS payout so that winners in a bonus round
+            // are not erroneously shown as net-negative for cashback purposes.
+            // Example: bonus buy costs 1000 (added to netLoss on purchase); if FS pays out 5000,
+            // the player is net +4000 for the period and must not receive cashback.
+            long prevNetLoss = player.getVipPeriodNetLoss() != null ? player.getVipPeriodNetLoss() : 0L;
+            player.setVipPeriodNetLoss(prevNetLoss - fsPendingWin);
         }
         islandRepository.save(island);
 
         // ── VIP tracking (only for paid spins) ───────────────────────────────
         if (!inFreeSpins) {
             player.setVipLifetimeWager(player.getVipLifetimeWager() + bet);
-            int netLoss = bet - totalWin;
+            long netLoss = (long) bet - totalWin;
             player.setVipPeriodNetLoss(player.getVipPeriodNetLoss() + netLoss);
         }
         vipService.updateTier(player);
@@ -270,7 +276,7 @@ public class SlotService {
 
         // VIP: bonus buy counts as wager
         player.setVipLifetimeWager(player.getVipLifetimeWager() + cost);
-        player.setVipPeriodNetLoss(player.getVipPeriodNetLoss() + cost);
+        player.setVipPeriodNetLoss(player.getVipPeriodNetLoss() + (long) cost);
 
         PlayerSlotState ss = ss(player);
         ss.setFreeSpinsRemaining(10);

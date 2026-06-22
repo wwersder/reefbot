@@ -134,8 +134,8 @@ public class AdminService {
 
         VipTier tier     = safe(player.getVipTier());
         long wager       = player.getVipLifetimeWager() != null ? player.getVipLifetimeWager() : 0L;
-        int periodLoss   = player.getVipPeriodNetLoss()  != null ? player.getVipPeriodNetLoss()  : 0;
-        int cashback     = (int) Math.floor(Math.max(0, periodLoss) * tier.getCashbackRate());
+        long periodLoss  = player.getVipPeriodNetLoss()  != null ? player.getVipPeriodNetLoss()  : 0L;
+        long cashback    = (long) Math.floor(Math.max(0L, periodLoss) * tier.getCashbackRate());
         String paidAt    = player.getVipCashbackPaidAt() != null
                 ? player.getVipCashbackPaidAt().toString() : "никогда";
         String periodStart = player.getVipPeriodStart() != null
@@ -231,8 +231,8 @@ public class AdminService {
         Player player = resolvePlayer(parts[1]);
         if (player == null) return new BotResponse("Игрок #" + parts[1] + " не найден.");
 
-        int before = player.getVipPeriodNetLoss() != null ? player.getVipPeriodNetLoss() : 0;
-        player.setVipPeriodNetLoss(0);
+        long before = player.getVipPeriodNetLoss() != null ? player.getVipPeriodNetLoss() : 0L;
+        player.setVipPeriodNetLoss(0L);
         player.setVipPeriodStart(java.time.LocalDate.now());
         playerRepository.save(player);
         log.info("Admin vip reset: player#{} period cleared (was {})", player.getId(), before);
@@ -256,7 +256,7 @@ public class AdminService {
             return new BotResponse("Игрок #" + parts[1] + " не имеет VIP статуса — кешбэк не начисляется.");
         }
 
-        int loss = player.getVipPeriodNetLoss() != null ? player.getVipPeriodNetLoss() : 0;
+        long loss = player.getVipPeriodNetLoss() != null ? player.getVipPeriodNetLoss() : 0L;
         if (loss <= 0) {
             return new BotResponse(String.format(
                     "Игрок #%d не в минусе в текущем периоде (чистый минус: %,d 🐚).\n"
@@ -298,11 +298,11 @@ public class AdminService {
 
         VipTier oldTier  = safe(player.getVipTier());
         long oldWager    = player.getVipLifetimeWager()  != null ? player.getVipLifetimeWager()  : 0L;
-        int oldLoss      = player.getVipPeriodNetLoss()  != null ? player.getVipPeriodNetLoss()  : 0;
+        long oldLoss     = player.getVipPeriodNetLoss()  != null ? player.getVipPeriodNetLoss()  : 0L;
 
         player.setVipTier(VipTier.NONE);
         player.setVipLifetimeWager(0L);
-        player.setVipPeriodNetLoss(0);
+        player.setVipPeriodNetLoss(0L);
         player.setVipPeriodStart(null);
         player.setVipCashbackPaidAt(null);
         playerRepository.save(player);
