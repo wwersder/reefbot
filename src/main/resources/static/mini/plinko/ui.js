@@ -197,10 +197,7 @@ function bindEvents() {
     $('gs-close').addEventListener('click', closeGameSelector);
     $('gs-backdrop').addEventListener('click', closeGameSelector);
     $('gs-plinko').addEventListener('click', closeGameSelector);
-    $('gs-slot').addEventListener('click', () => {
-        hapticImpact('medium');
-        window.location.href = '/mini/slot/';
-    });
+    $('gs-slot').addEventListener('click', () => navigateToGame('/mini/slot/', '🎰', 'The Reef House'));
 }
 
 // ── Throw ─────────────────────────────────────────────────────────────────────
@@ -775,4 +772,19 @@ function openGameSelector() {
 
 function closeGameSelector() {
     $('gs-overlay').classList.remove('open');
+}
+
+function navigateToGame(url, icon, label) {
+    hapticImpact('medium');
+    closeGameSelector();
+
+    const ov = document.createElement('div');
+    ov.id = 'game-transition-overlay';
+    ov.innerHTML = `<div class="gto-icon">${icon}</div><div class="gto-label">${label}</div>`;
+    document.body.appendChild(ov);
+
+    ov.offsetHeight; // force reflow before transition
+    ov.classList.add('visible');
+
+    setTimeout(() => { window.location.href = url; }, 440);
 }

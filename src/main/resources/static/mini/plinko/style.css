@@ -1173,3 +1173,47 @@ html, body {
     font-weight: 400;
     flex-shrink: 0;
 }
+
+/* ── Game switch transition overlay ─────────────────────────────────────── */
+
+#game-transition-overlay {
+    position: fixed; inset: 0; z-index: 999;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 10px;
+    background: var(--bg);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .28s ease;
+}
+
+#game-transition-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.gto-icon {
+    font-size: 68px;
+    line-height: 1;
+    transform: scale(.6);
+    transition: transform .4s cubic-bezier(.34, 1.56, .64, 1);
+}
+
+#game-transition-overlay.visible .gto-icon {
+    transform: scale(1);
+}
+
+.gto-label {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text2);
+    letter-spacing: -.3px;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity .2s ease .18s, transform .25s ease .18s;
+}
+
+#game-transition-overlay.visible .gto-label {
+    opacity: 1;
+    transform: translateY(0);
+}
