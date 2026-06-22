@@ -10,25 +10,26 @@ package com.reefbot.enums;
  * <p>WILD substitutes for any paying symbol (not SCATTER).
  * SCATTER pays anywhere on grid and triggers free spins on 3+.
  *
- * <p>Approximate base-game RTP: ~97% on 9 paylines.
+ * <p>RTP BALANCE v2 (2026-06-22):
+ * Base-game ~87.8%, total with free-spins ~95.5%, house edge ~4.5%.
+ * Scatter weight raised 0.01→0.02 (organic trigger 1/538 spins).
+ * Weight transferred from FISH_CLOWN (0.20→0.19).
+ * Scatter trigger bonus pays: 5×/15×/50× (see SlotService).
+ * Bonus buy: 40× bet (SlotService.BONUS_BUY_MULTIPLIER), RTP ~91%.
  */
 public enum SlotSymbol {
 
-    //                      weight  pay3   pay4    pay5
-    //                      weight  pay3   pay4    pay5
-    // pay3 reduced ~5-8% from original. pay4/pay5 unchanged.
-    // Target: base-game RTP ~95%, total with free-spins ~97-98%.
-    // House edge ~2-3% — economy drains slowly, players still win often.
-    FISH_CLOWN  (0.20,      0.95,  2.5,   6.0  ),
-    FISH_PUFFER (0.18,      1.4,   4.0,   10.0 ),
-    SHRIMP      (0.15,      2.3,   6.0,   15.0 ),
-    FISH_BLUE   (0.14,      2.8,   8.0,   20.0 ),
-    CRAB        (0.12,      4.7,   12.0,  35.0 ),
-    OCTOPUS     (0.09,      7.5,   20.0,  60.0 ),
-    SQUID       (0.06,      14.0,  40.0,  100.0),
-    SHARK       (0.03,      27.0,  80.0,  250.0),
+    //                      weight  pay3   pay4   pay5
+    FISH_CLOWN  (0.19,      0.9,   2.4,   5.5  ),
+    FISH_PUFFER (0.18,      1.3,   3.8,   9.5  ),
+    SHRIMP      (0.15,      2.2,   5.7,   14.0 ),
+    FISH_BLUE   (0.14,      2.6,   7.5,   19.0 ),
+    CRAB        (0.12,      4.5,   11.5,  33.0 ),
+    OCTOPUS     (0.09,      7.0,   19.0,  57.0 ),
+    SQUID       (0.06,      13.0,  38.0,  95.0 ),
+    SHARK       (0.03,      25.0,  76.0,  235.0),
     WILD        (0.02,      0,     0,     0    ),
-    SCATTER     (0.01,      0,     0,     0    );
+    SCATTER     (0.02,      0,     0,     0    );
 
     private final double weight;
     private final double pay3;

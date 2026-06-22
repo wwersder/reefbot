@@ -76,7 +76,13 @@ public class SlotService {
     private final VipService          vipService;
     private final SecureRandom        rng = new SecureRandom();
 
-    public static final int BONUS_BUY_MULTIPLIER = 100; // cost = bet × 100
+    public static final int BONUS_BUY_MULTIPLIER = 40;  // cost = bet × 40  (E[FS] ~36× → RTP ~91%)
+
+    // Scatter trigger bonus pays (× bet), applied on top of free spins.
+    // Raised to create excitement at organic trigger moments.
+    private static final int SCATTER_PAY_3 = 5;   // was 2
+    private static final int SCATTER_PAY_4 = 15;  // was 5
+    private static final int SCATTER_PAY_5 = 50;  // was 20
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -152,9 +158,9 @@ public class SlotService {
         int scatterAmount = 0;
         if (scatterCount >= 3) {
             scatterAmount = bet * switch (scatterCount) {
-                case 3  -> 2;
-                case 4  -> 5;
-                default -> 20;
+                case 3  -> SCATTER_PAY_3;
+                case 4  -> SCATTER_PAY_4;
+                default -> SCATTER_PAY_5;
             };
             totalWin += scatterAmount;
         }
