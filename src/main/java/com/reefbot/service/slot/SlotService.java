@@ -78,14 +78,14 @@ public class SlotService {
 
     /**
      * Bonus buy cost = bet × multiplier.
-     * Dog House mechanic: 7 FS, per-payline ×2/×3 sticky wilds.
-     * Simulation-verified (1M sessions): E[FS] = 67.71×. Buy RTP = 67.71/70 = 96.7%.
+     * Per-payline SUM mechanic, 10 FS, wild mults ×1/×2/×3/×5.
+     * Simulation-verified (1M sessions): E[FS] = 128.71×. Buy RTP = 128.71/134 = 96.1%.
      */
-    public static final int BONUS_BUY_MULTIPLIER = 70;
+    public static final int BONUS_BUY_MULTIPLIER = 134;
 
     /**
      * Maximum win per free-spins session (× bet).
-     * With Dog House mechanic, E[FS]=67.71× and P99=783×. Cap triggers in only 0.06% of sessions.
+     * With per-payline SUM mechanic, E[FS]=128.71×, P99=1377×. Cap triggers in 0.21% of sessions.
      */
     public static final int MAX_WIN_MULTIPLIER = 2500;
 
@@ -174,9 +174,9 @@ public class SlotService {
         // ── Update free spins state ───────────────────────────────────────────
         if (triggerFreeSpins) {
             int bonusSpins = switch (scatterCount) {
-                case 3  -> 7;   // Dog House: 3 scatters = 7 FS
-                case 4  -> 12;  // Dog House: 4 scatters = 12 FS
-                default -> 20;  // 5 scatters = 20 FS (same)
+                case 3  -> 10;
+                case 4  -> 15;
+                default -> 20;
             };
             ss.setFreeSpinsRemaining(bonusSpins);
             ss.setMultiplier(1);
@@ -273,7 +273,7 @@ public class SlotService {
         player.setVipPeriodNetLoss(player.getVipPeriodNetLoss() + cost);
 
         PlayerSlotState ss = ss(player);
-        ss.setFreeSpinsRemaining(7);
+        ss.setFreeSpinsRemaining(10);
         ss.setMultiplier(1);
         ss.setStickyWildsJson(null);
         ss.setFsPendingWin(0);
@@ -421,9 +421,13 @@ public class SlotService {
 
     // ── Sticky wilds helpers ──────────────────────────────────────────────────
 
-    /** Dog House wild multiplier: ×2 (50%) or ×3 (50%). E[mult] = 2.5. */
+    /** Wild multiplier: ×1 50%, ×2 30%, ×3 15%, ×5 5%. E[mult] = 1.80. */
     private int randomMult() {
-        return rng.nextDouble() < 0.50 ? 2 : 3;
+        double r = rng.nextDouble();
+        if (r < 0.50) return 1;
+        if (r < 0.80) return 2;
+        if (r < 0.95) return 3;
+        return 5;
     }
 
     private boolean isSticky(List<StickyWild> list, int col, int row) {
