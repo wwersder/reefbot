@@ -150,7 +150,8 @@ async function doSpin(isAuto) {
 
     spinning = true; _serverResult = null; _skipRequested = false;
     haptic(isAuto ? 'light' : 'medium');
-    updateSpinBtn(); clearWinOverlay();
+    updateSpinBtn();
+    if (inFS) showFsTotal(); else clearWinOverlay();
 
     if (!inFS) { balance = Math.max(0, balance - betValue); animateBalance(balance); }
     startAllReels();
@@ -222,27 +223,25 @@ function applyResult(res) {
         _fsAutoRunning = false;
         showFsSummary(_fsPendingWin);
     } else if (isActiveFsSpin) {
-        // Show banner with OLD pending win — don't spoil whether this spin won
-        showFsBanner(res.freeSpinsRemaining, res.multiplier, _fsPendingWin);
-        // Brief suspense pause, then reveal; both branches have identical delay
+        // Win-bar always shows accumulated FS total; only switches to spin win during highlight
         clearTimeout(_fsBannerTimer);
-        _fsBannerTimer = setTimeout(() => {
-            _fsPendingWin = res.fsPendingWin || 0; // update only after reveal
-            if (res.totalWin > 0) {
-                haptic('light');
-                const mult = res.multiplier > 1 ? ` ×${res.multiplier}` : '';
-                showWin(`+${res.totalWin} 🐚${mult}`, 'win');
-                highlightWins(res.wins);
-                _fsBannerTimer = setTimeout(() => {
-                    showFsTotal();
-                    // Sync banner pending win after win-bar reverts to total
-                    showFsBanner(res.freeSpinsRemaining, res.multiplier, _fsPendingWin);
-                }, 1800);
-            } else {
+        showFsBanner(res.freeSpinsRemaining, res.multiplier, _fsPendingWin); // still old value
+        if (res.totalWin > 0) {
+            // Reveal: show spin win + highlight simultaneously, then revert to new total
+            _fsPendingWin = res.fsPendingWin || 0;
+            haptic('light');
+            const mult = res.multiplier > 1 ? ` ×${res.multiplier}` : '';
+            showWin(`+${res.totalWin} 🐚${mult}`, 'win');
+            highlightWins(res.wins);
+            _fsBannerTimer = setTimeout(() => {
                 showFsTotal();
                 showFsBanner(res.freeSpinsRemaining, res.multiplier, _fsPendingWin);
-            }
-        }, 400);
+            }, 1800);
+        } else {
+            // No win — silently update state, win-bar stays on FS total (no visible change)
+            _fsPendingWin = res.fsPendingWin || 0;
+            showFsTotal();
+        }
     } else if (res.totalWin > 0) {
         haptic('success');
         const mult = res.multiplier > 1 ? `  ×${res.multiplier}` : '';
@@ -398,11 +397,15 @@ function highlightWins(wins) {
             if (cells?.[w.rows[r]]) cells[w.rows[r]].classList.add('winning');
         }
     });
-    setTimeout(clearWinOverlay, 1500);
+    setTimeout(clearWinHighlight, 1500);
+}
+
+function clearWinHighlight() {
+    $$('.slot-sym.winning').forEach(el => el.classList.remove('winning'));
 }
 
 function clearWinOverlay() {
-    $$('.slot-sym.winning').forEach(el => el.classList.remove('winning'));
+    clearWinHighlight();
     showWin('', 'neutral');
 }
 
