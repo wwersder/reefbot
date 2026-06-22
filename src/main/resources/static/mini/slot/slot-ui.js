@@ -63,6 +63,7 @@ let _stickyWilds   = []; // [{col,row,mult}]
 let _fsAutoRunning = false; // auto-play free spins
 let _fsPendingWin  = 0;    // accumulated FS win (shown in banner, credited at end)
 let _maxMult       = 1;    // max multiplier reached during current FS
+let _fsBannerTimer = null; // timer to revert win-bar to FS total after a win
 
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
@@ -220,19 +221,22 @@ function applyResult(res) {
         startFsAuto();
     } else if (isFsEnd) {
         // Bonus ended — show summary popup; balance animates on collect
+        clearTimeout(_fsBannerTimer);
         _stickyWilds = [];
         renderStickyWilds();
         _fsAutoRunning = false;
         showFsSummary(_fsPendingWin);
     } else if (isActiveFsSpin) {
-        // FS spin result
+        // FS spin result — show win, then revert to accumulated total
         if (res.totalWin > 0) {
             haptic('light');
             const mult = res.multiplier > 1 ? ` ×${res.multiplier}` : '';
             showWin(`+${res.totalWin} 🐚${mult}`, 'win');
             highlightWins(res.wins);
+            clearTimeout(_fsBannerTimer);
+            _fsBannerTimer = setTimeout(showFsTotal, 1800);
         } else {
-            showWin('✨', 'neutral');
+            showFsTotal();
         }
     } else if (res.totalWin > 0) {
         haptic('success');
@@ -404,6 +408,15 @@ function showWin(text, type = 'neutral') {
     bar.className  = type;
 }
 
+/** Show accumulated FS total in win-bar (called between spins during FS). */
+function showFsTotal() {
+    clearTimeout(_fsBannerTimer);
+    if (_fsPendingWin > 0)
+        showWin(`💰 ${_fsPendingWin.toLocaleString('ru')} 🐚`, 'bonus');
+    else
+        showWin('', 'neutral');
+}
+
 function showFsBanner(remaining, mult, pendingWin = 0) {
     const banner = $('fs-banner'), zone = $('slot-zone');
     if (!banner || !zone) return;
@@ -438,23 +451,31 @@ function stopFsAuto() {
 // ── Sticky wilds rendering ────────────────────────────────────────────────────
 
 function renderStickyWilds() {
-    // Clear all existing sticky badges and classes
-    $$('.sticky-badge').forEach(el => el.remove());
+    // Clear sticky class from cells
     $$('.slot-sym.sticky').forEach(el => el.classList.remove('sticky'));
+
+    // Clear overlay (floats above blur)
+    const overlay = $('sticky-overlay');
+    if (overlay) overlay.innerHTML = '';
 
     if (!_stickyWilds.length) return;
 
     for (const sw of _stickyWilds) {
+        // Mark cell so CSS can style border/glow (optional, non-blurred indicator)
         const strip = $(`strip-${sw.col}`);
-        if (!strip) continue;
-        const cells = strip.querySelectorAll('.slot-sym');
-        const cell  = cells[sw.row];
-        if (!cell) continue;
-        cell.classList.add('sticky');
-        const badge = document.createElement('div');
-        badge.className   = 'sticky-badge';
-        badge.textContent = `×${sw.mult}`;
-        cell.appendChild(badge);
+        if (strip) {
+            const cells = strip.querySelectorAll('.slot-sym');
+            if (cells[sw.row]) cells[sw.row].classList.add('sticky');
+        }
+        // Float sharp wild above blurred reel strip
+        if (overlay) {
+            const el = document.createElement('div');
+            el.className  = 'sticky-float';
+            el.style.left = `${sw.col * 20}%`;
+            el.style.top  = `${sw.row * SYM_HEIGHT}px`;
+            el.innerHTML  = `🌊<span class="sticky-float-badge">×${sw.mult}</span>`;
+            overlay.appendChild(el);
+        }
     }
 }
 
@@ -692,17 +713,14 @@ function setBet(v, snap = false) {
 function updateSpinBtn() {
     const btn = $('spin-btn'); if (!btn) return;
     const inFS = (_vipState?.freeSpinsRemaining ?? 0) > 0;
-    if (spinning && _serverResult) {
-        btn.textContent = '⏭ ПРОПУСТИТЬ'; btn.className = ''; btn.disabled = false; return;
-    }
-    if (_fsAutoRunning) {
-        btn.textContent = '■ СТОП БОНУС'; btn.className = 'auto-running'; btn.disabled = false; return;
+    // While spinning (any phase) or FS auto — show stop icon
+    if (spinning || _fsAutoRunning) {
+        btn.textContent = '■'; btn.className = 'spinning'; btn.disabled = false; return;
     }
     if (autoRunning) {
         btn.textContent = `■ СТОП (${autoCount}x)`; btn.className = 'auto-running'; btn.disabled = false; return;
     }
-    if (spinning) { btn.textContent = '▪▪▪'; btn.className = ''; btn.disabled = true; return; }
-    if (inFS)     { btn.textContent = 'FREE SPIN 🏺'; btn.className = 'free'; btn.disabled = false; return; }
+    if (inFS)          { btn.textContent = 'FREE SPIN 🏺'; btn.className = 'free';  btn.disabled = false; return; }
     if (balance < MIN_BET) { btn.textContent = 'Пополни баланс 🐚'; btn.className = 'broke'; btn.disabled = true; return; }
     btn.textContent = 'КРУТИТЬ'; btn.className = ''; btn.disabled = false;
 }

@@ -579,6 +579,15 @@ html, body {
     box-shadow: none;
 }
 
+/* Stop icon — shown while spinning or during FS auto */
+#spin-btn.spinning {
+    background: #e5e5ea;
+    color: #1c1c1e;
+    font-size: 22px;
+    letter-spacing: 0;
+    box-shadow: none;
+}
+
 /* ── Sticky wild badge ───────────────────────────────────────────────────── */
 
 .slot-sym { position: relative; }
@@ -602,6 +611,42 @@ html, body {
 .slot-sym.sticky {
     background: rgba(0,122,255,.10);
     border-radius: 10px;
+}
+
+/* ── Sticky wild overlay (above blur) ───────────────────────────────────── */
+/* Floats above the spinning/blurred reel-strip so wilds stay sharp */
+
+#sticky-overlay {
+    position: absolute;
+    top: 6px; /* matches slot-grid padding */
+    left: 0; right: 0;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.sticky-float {
+    position: absolute;
+    width: 20%;
+    height: var(--sym-h);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 46px;
+    background: rgba(0,122,255,.12);
+    border-radius: 10px;
+    box-shadow: inset 0 0 0 1.5px rgba(0,122,255,.28);
+}
+
+.sticky-float-badge {
+    position: absolute;
+    bottom: 6px; right: 6px;
+    background: #007aff;
+    color: #fff;
+    font-size: 10px; font-weight: 800;
+    padding: 2px 5px;
+    border-radius: 6px;
+    line-height: 1;
+    box-shadow: 0 1px 4px rgba(0,122,255,.4);
 }
 
 /* ── Bonus confirm sheet ─────────────────────────────────────────────────── */
