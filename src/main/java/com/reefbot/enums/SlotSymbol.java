@@ -10,26 +10,34 @@ package com.reefbot.enums;
  * <p>WILD substitutes for any paying symbol (not SCATTER).
  * SCATTER pays anywhere on grid and triggers free spins on 3+.
  *
- * <p>RTP BALANCE v2 (2026-06-22):
- * Base-game ~87.8%, total with free-spins ~95.5%, house edge ~4.5%.
- * Scatter weight raised 0.01→0.02 (organic trigger 1/538 spins).
- * Weight transferred from FISH_CLOWN (0.20→0.19).
+ * <p>RTP BALANCE v6 (2026-06-22) — Dog House mechanic, simulation-verified:
+ * Base-game ~75.3%, total ~96.2%, house edge ~3.8%.
+ *
+ * KEY DATA from 1 000 000 FS simulation:
+ *   E[FS] = 67.71× bet (median 14.7×, P75 56.6×, P90 174×, P99 783×).
+ *   Mechanic: per-payline SUM of sticky wild mults (×2/×3, 50/50).
+ *   7 FS spins. Cap (MAX_WIN_MULTIPLIER=2500×) triggers in only 0.06% of sessions.
+ *
+ * Scatter weight 0.016→0.023 (organic trigger ~1/360 spins, every ~54min at 400 spins/hr).
+ * Weight transferred from FISH_CLOWN (0.194→0.187).
  * Scatter trigger bonus pays: 5×/15×/50× (see SlotService).
- * Bonus buy: 40× bet (SlotService.BONUS_BUY_MULTIPLIER), RTP ~91%.
+ * Bonus buy: 70× bet — E[FS]=67.71×, buy RTP=96.1% (SlotService.BONUS_BUY_MULTIPLIER).
+ * Max win per FS session: 2500× bet (see SlotService.MAX_WIN_MULTIPLIER).
  */
 public enum SlotSymbol {
 
-    //                      weight  pay3   pay4   pay5
-    FISH_CLOWN  (0.19,      0.9,   2.4,   5.5  ),
-    FISH_PUFFER (0.18,      1.3,   3.8,   9.5  ),
-    SHRIMP      (0.15,      2.2,   5.7,   14.0 ),
-    FISH_BLUE   (0.14,      2.6,   7.5,   19.0 ),
-    CRAB        (0.12,      4.5,   11.5,  33.0 ),
-    OCTOPUS     (0.09,      7.0,   19.0,  57.0 ),
-    SQUID       (0.06,      13.0,  38.0,  95.0 ),
-    SHARK       (0.03,      25.0,  76.0,  235.0),
-    WILD        (0.02,      0,     0,     0    ),
-    SCATTER     (0.02,      0,     0,     0    );
+    //                      weight   pay3   pay4    pay5
+    FISH_CLOWN  (0.187,     0.80,  2.0,    5.0  ),   // weight 0.200→0.187 (−0.013 to scatter)
+    FISH_PUFFER (0.18,      1.1,   3.2,    8.0  ),
+    SHRIMP      (0.15,      1.9,   5.0,    12.0 ),
+    FISH_BLUE   (0.14,      2.3,   6.5,    16.0 ),
+    CRAB        (0.12,      4.0,   10.0,   28.0 ),
+    OCTOPUS     (0.09,      6.0,   16.0,   48.0 ),
+    SQUID       (0.06,      11.5,  33.0,   80.0 ),
+    SHARK       (0.03,      22.0,  65.0,   200.0),
+    WILD        (0.02,      0,     0,      0    ),
+    SCATTER     (0.023,     0,     0,      0    );   // trigger ~1/360, every ~54min at 400/hr
+    // Sum: 0.187+0.18+0.15+0.14+0.12+0.09+0.06+0.03+0.02+0.023 = 1.000 ✓
 
     private final double weight;
     private final double pay3;
