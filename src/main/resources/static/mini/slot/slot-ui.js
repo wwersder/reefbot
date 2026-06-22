@@ -206,7 +206,6 @@ function applyResult(res) {
     // Track running FS win + max mult
     if (res.wasFreeSpins) {
         _fsPendingWin = res.fsPendingWin || 0;
-        _maxMult = Math.max(_maxMult, res.multiplier);
     }
 
     showFsBanner(res.freeSpinsRemaining, res.multiplier, _fsPendingWin);
@@ -224,13 +223,14 @@ function applyResult(res) {
         _stickyWilds = [];
         renderStickyWilds();
         _fsAutoRunning = false;
-        showFsSummary(_fsPendingWin, _maxMult);
+        showFsSummary(_fsPendingWin);
     } else if (isActiveFsSpin) {
-        // FS spin result — show mini feedback in win-bar
+        // FS spin result
         if (res.totalWin > 0) {
             haptic('light');
             const mult = res.multiplier > 1 ? ` ×${res.multiplier}` : '';
             showWin(`+${res.totalWin} 🐚${mult}`, 'win');
+            highlightWins(res.wins);
         } else {
             showWin('✨', 'neutral');
         }
@@ -460,13 +460,19 @@ function renderStickyWilds() {
 
 // ── FS bonus summary popup ────────────────────────────────────────────────────
 
-function showFsSummary(totalWin, maxMult) {
+function showFsSummary(totalWin) {
     const numEl = $('fss-win-num');
     const btn   = $('fss-collect');
     if (!numEl || !btn) return;
 
+    // X from bet (e.g. 350 win / 10 bet = 35x)
+    const xVal = betValue > 0 ? totalWin / betValue : 0;
+    const xStr = xVal >= 10
+        ? `${Math.round(xVal)}x`
+        : `${xVal % 1 === 0 ? xVal : xVal.toFixed(1)}x`;
+    if ($('fss-mult')) $('fss-mult').textContent = xStr;
+
     numEl.textContent = '0';
-    if ($('fss-mult')) $('fss-mult').textContent = maxMult > 1 ? `×${maxMult}` : '×1';
     btn.textContent = totalWin > 0
         ? `Забрать +${totalWin.toLocaleString('ru')} 🐚`
         : 'Закрыть';

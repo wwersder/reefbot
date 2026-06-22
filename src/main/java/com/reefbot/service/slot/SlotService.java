@@ -274,8 +274,15 @@ public class SlotService {
     private SlotSymbol[][] generateGrid() {
         SlotSymbol[][] grid = new SlotSymbol[5][3];
         for (int reel = 0; reel < 5; reel++) {
+            boolean reelHasScatter = false;
             for (int row = 0; row < 3; row++) {
-                grid[reel][row] = randomSymbol();
+                SlotSymbol sym = randomSymbol();
+                // At most one scatter per reel — reroll until non-scatter
+                if (sym == SlotSymbol.SCATTER && reelHasScatter) {
+                    do { sym = randomSymbol(); } while (sym == SlotSymbol.SCATTER);
+                }
+                if (sym == SlotSymbol.SCATTER) reelHasScatter = true;
+                grid[reel][row] = sym;
             }
         }
         return grid;
