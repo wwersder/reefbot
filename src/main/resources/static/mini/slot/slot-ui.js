@@ -231,7 +231,7 @@ function applyResult(res) {
             _fsPendingWin = res.fsPendingWin || 0;
             haptic('light');
             const mult = res.multiplier > 1 ? ` ×${res.multiplier}` : '';
-            showWin(`+${res.totalWin} 🐚${mult}`, 'win');
+            showWin(`+${res.totalWin.toLocaleString('de-DE')} 🐚${mult}`, 'win');
             highlightWins(res.wins);
             _fsBannerTimer = setTimeout(() => {
                 showFsTotal();
@@ -245,7 +245,7 @@ function applyResult(res) {
     } else if (res.totalWin > 0) {
         haptic('success');
         const mult = res.multiplier > 1 ? `  ×${res.multiplier}` : '';
-        showWin(`+${res.totalWin} 🐚${mult}`, 'win');
+        showWin(`+${res.totalWin.toLocaleString('de-DE')} 🐚${mult}`, 'win');
         highlightWins(res.wins);
     } else {
         showWin('Не повезло', 'loss');
@@ -264,9 +264,9 @@ function openBonusConfirm() {
     if (spinning) return;
     if ((_vipState?.freeSpinsRemaining ?? 0) > 0) { showWin('Уже в бонусе 🏺'); return; }
     const cost = betValue * BONUS_MULT;
-    $('bc-cost-num').textContent     = cost.toLocaleString('ru');
+    $('bc-cost-num').textContent     = cost.toLocaleString('de-DE');
     $('bc-bet-num').textContent      = `${betValue} 🐚`;
-    $('bc-confirm-cost').textContent = cost.toLocaleString('ru');
+    $('bc-confirm-cost').textContent = cost.toLocaleString('de-DE');
     $('bc-overlay').classList.add('open');
     haptic('light');
 }
@@ -279,7 +279,7 @@ async function handleBonusBuy() {
     closeBonusConfirm();
     if (spinning) return;
     const cost = betValue * BONUS_MULT;
-    if (balance < cost) { showWin(`Нужно ${cost} 🐚`, 'loss'); return; }
+    if (balance < cost) { showWin(`Нужно ${cost.toLocaleString('de-DE')} 🐚`, 'loss'); return; }
     haptic('medium'); spinning = true; updateSpinBtn();
     try {
         const res = await postBuyBonus(betValue);
@@ -420,7 +420,7 @@ function showWin(text, type = 'neutral') {
 function showFsTotal() {
     clearTimeout(_fsBannerTimer);
     if (_fsPendingWin > 0)
-        showWin(`💰 ${_fsPendingWin.toLocaleString('ru')} 🐚`, 'bonus');
+        showWin(`${_fsPendingWin.toLocaleString('de-DE')} 🐚`, 'bonus');
     else
         showWin('', 'neutral');
 }
@@ -435,7 +435,7 @@ function showFsBanner(remaining, mult, pendingWin = 0) {
         if ($('fs-mult')) $('fs-mult').textContent = `×${mult}`;
         const fw = $('fs-win-wrap');
         if (fw) fw.style.display = pendingWin > 0 ? '' : 'none';
-        if ($('fs-win')) $('fs-win').textContent = pendingWin.toLocaleString('ru');
+        if ($('fs-win')) $('fs-win').textContent = pendingWin.toLocaleString('de-DE');
         banner.classList.add('visible'); zone.classList.add('free-spins');
     } else {
         banner.classList.remove('visible'); zone.classList.remove('free-spins');
@@ -503,7 +503,7 @@ function showFsSummary(totalWin) {
 
     numEl.textContent = '0';
     btn.textContent = totalWin > 0
-        ? `Забрать +${totalWin.toLocaleString('ru')} 🐚`
+        ? `Забрать +${totalWin.toLocaleString('de-DE')} 🐚`
         : 'Закрыть';
 
     $('fss-overlay').classList.add('open');
@@ -517,7 +517,7 @@ function showFsSummary(totalWin) {
             if (!startTs) startTs = ts;
             const p = Math.min((ts - startTs) / dur, 1);
             const e = 1 - Math.pow(1 - p, 3);
-            numEl.textContent = Math.round(e * totalWin).toLocaleString('ru');
+            numEl.textContent = Math.round(e * totalWin).toLocaleString('de-DE');
             if (p < 1) requestAnimationFrame(tick);
         }
         requestAnimationFrame(tick);
@@ -581,7 +581,7 @@ function renderVipSheet() {
     <div class="vip-hero" style="${heroStyle}">
         <div class="vip-hero-icon">${tier.emoji || '🐚'}</div>
         <div class="vip-hero-name">${tier.id === 'NONE' ? 'Нет статуса' : tier.name}</div>
-        <div class="vip-hero-wager">оборот: ${wager.toLocaleString('ru')} 🐚</div>
+        <div class="vip-hero-wager">оборот: ${wager.toLocaleString('de-DE')} 🐚</div>
     </div>`;
 
     let progressHtml = '';
@@ -593,7 +593,7 @@ function renderVipSheet() {
         const gap     = next.threshold - prev;
         const done    = Math.max(0, Math.min(wager - prev, gap));
         const pct     = Math.max(2, Math.min(100, (done / gap) * 100));
-        const left    = (next.threshold - wager).toLocaleString('ru');
+        const left    = (next.threshold - wager).toLocaleString('de-DE');
         const fillBg  = `linear-gradient(90deg, ${tier.id === 'NONE' ? '#c8c8d0' : tier.color}, ${next.color})`;
         progressHtml = `
         <div class="vip-group">
@@ -636,13 +636,13 @@ function renderVipSheet() {
                 <div class="vip-cb-top">
                     <div class="vip-cb-col">
                         <div class="vip-cb-col-label">Потери</div>
-                        <div class="vip-cb-num">${loss.toLocaleString('ru')} 🐚</div>
+                        <div class="vip-cb-num">${loss.toLocaleString('de-DE')} 🐚</div>
                         <div class="vip-cb-sub">чистый минус</div>
                     </div>
                     <div class="vip-cb-divider"></div>
                     <div class="vip-cb-col">
                         <div class="vip-cb-col-label">Кешбэк ${tier.cb}%</div>
-                        <div class="vip-cb-num earn">+${estimated.toLocaleString('ru')} 🐚</div>
+                        <div class="vip-cb-num earn">+${estimated.toLocaleString('de-DE')} 🐚</div>
                         <div class="vip-cb-sub">к выплате</div>
                     </div>
                 </div>
@@ -669,7 +669,7 @@ function renderVipSheet() {
             <div class="vip-tier-icon">${t.emoji}</div>
             <div class="vip-tier-info">
                 <div class="vip-tier-name">${t.name}</div>
-                <div class="vip-tier-req">от ${t.threshold.toLocaleString('ru')} 🐚</div>
+                <div class="vip-tier-req">от ${t.threshold.toLocaleString('de-DE')} 🐚</div>
             </div>
             <div class="vip-tier-right">
                 <div class="vip-tier-cb">+${t.cb}%</div>
@@ -705,7 +705,7 @@ function updateVipBadge() {
 
 function updateUI() {
     setBet(betValue);
-    $('balance-num').textContent = $('balance-hint').textContent = balance;
+    $('balance-num').textContent = $('balance-hint').textContent = balance.toLocaleString('de-DE');
     _shownBal = balance;
     updateSpinBtn(); updateBonusBtn(); updateAutoProgress();
 }
@@ -749,7 +749,7 @@ function updateAutoProgress() {
 
 function animateBalance(to) {
     const from = _shownBal;
-    if (from === to) { $('balance-num').textContent = $('balance-hint').textContent = to; return; }
+    if (from === to) { $('balance-num').textContent = $('balance-hint').textContent = to.toLocaleString('de-DE'); return; }
     if (_balRaf) cancelAnimationFrame(_balRaf);
     const dur = Math.max(180, Math.min(500, Math.abs(to - from) * 1.2));
     const start = performance.now();
@@ -757,7 +757,7 @@ function animateBalance(to) {
         const t = Math.min((now - start) / dur, 1);
         const e = 1 - Math.pow(1 - t, 3);
         const v = Math.round(from + (to - from) * e);
-        $('balance-num').textContent = $('balance-hint').textContent = v;
+        $('balance-num').textContent = $('balance-hint').textContent = v.toLocaleString('de-DE');
         _shownBal = v;
         if (t < 1) _balRaf = requestAnimationFrame(step);
         else { _shownBal = to; updateSpinBtn(); updateBonusBtn(); }

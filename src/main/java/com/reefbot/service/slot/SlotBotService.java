@@ -3,6 +3,7 @@ package com.reefbot.service.slot;
 import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
+import com.reefbot.util.Fmt;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -31,7 +32,7 @@ public class SlotBotService {
                 5 барабанов, 9 линий, бонусный раунд с растущим множителем.
                 Три 🏺 — и тебя ждут бесплатные спины!
 
-                Баланс: 🐚 %d""", balance);
+                Баланс: 🐚 %s""", Fmt.n(balance));
 
         String freshUrl = miniAppUrl + "?t=" + (System.currentTimeMillis() / 60_000);
 

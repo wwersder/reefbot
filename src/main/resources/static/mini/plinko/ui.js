@@ -276,7 +276,7 @@ function showResult(multiplier, profit) {
         triggerJackpotFlash();
     } else if (profit > 0) {
         type = 'win';
-        setResult(`+${profit} 🐚  ×${multiplier.toFixed(1)}`, 'win');
+        setResult(`+${profit.toLocaleString('de-DE')} 🐚  ×${multiplier.toFixed(1)}`, 'win');
         hapticNotify('success');
     } else if (profit === 0) {
         type = 'push';
@@ -342,8 +342,8 @@ function triggerJackpotFlash() {
 
 function updateUI() {
     setBet(betValue);
-    $('balance-num').textContent  = balance;
-    $('balance-hint').textContent = balance;
+    $('balance-num').textContent  = balance.toLocaleString('de-DE');
+    $('balance-hint').textContent = balance.toLocaleString('de-DE');
     _shownBal = balance;
     updateThrowBtn();
     updateAutoProgress();
@@ -370,14 +370,14 @@ function updateBalance() {
         const t = Math.min((now - start) / dur, 1);
         const e = 1 - Math.pow(1 - t, 3);
         const v = Math.round(from + (to - from) * e);
-        $('balance-num').textContent  = v;
-        $('balance-hint').textContent = v;
+        $('balance-num').textContent  = v.toLocaleString('de-DE');
+        $('balance-hint').textContent = v.toLocaleString('de-DE');
         _shownBal = v;
         if (t < 1) {
             _balRaf = requestAnimationFrame(step);
         } else {
-            $('balance-num').textContent  = to;
-            $('balance-hint').textContent = to;
+            $('balance-num').textContent  = to.toLocaleString('de-DE');
+            $('balance-hint').textContent = to.toLocaleString('de-DE');
             _shownBal = to;
             updateThrowBtn();  // refresh broke state after balance settles
         }
@@ -578,7 +578,7 @@ function renderVipSheet() {
     <div class="vip-hero" style="${heroStyle}">
         <div class="vip-hero-icon">${tier.emoji || '🐚'}</div>
         <div class="vip-hero-name">${tier.id === 'NONE' ? 'Нет статуса' : tier.name}</div>
-        <div class="vip-hero-wager">оборот: ${wager.toLocaleString('ru')} 🐚</div>
+        <div class="vip-hero-wager">оборот: ${wager.toLocaleString('de-DE')} 🐚</div>
     </div>`;
 
     // ── Progress ──────────────────────────────────────────────────────────
@@ -591,7 +591,7 @@ function renderVipSheet() {
         const gap  = next.threshold - prev;
         const done = Math.max(0, Math.min(wager - prev, gap));
         const pct  = Math.max(2, Math.min(100, (done / gap) * 100));
-        const left = (next.threshold - wager).toLocaleString('ru');
+        const left = (next.threshold - wager).toLocaleString('de-DE');
         // gradient fill: current tier color → next tier color
         const fillBg = `linear-gradient(90deg, ${tier.id === 'NONE' ? '#c8c8d0' : tier.color}, ${next.color})`;
         progressHtml = `
@@ -636,13 +636,13 @@ function renderVipSheet() {
                 <div class="vip-cb-top">
                     <div class="vip-cb-col">
                         <div class="vip-cb-col-label">Потери</div>
-                        <div class="vip-cb-num">${loss.toLocaleString('ru')} 🐚</div>
+                        <div class="vip-cb-num">${loss.toLocaleString('de-DE')} 🐚</div>
                         <div class="vip-cb-sub">чистый минус</div>
                     </div>
                     <div class="vip-cb-divider"></div>
                     <div class="vip-cb-col">
                         <div class="vip-cb-col-label">Кешбэк ${tier.cb}%</div>
-                        <div class="vip-cb-num earn">+${estimated.toLocaleString('ru')} 🐚</div>
+                        <div class="vip-cb-num earn">+${estimated.toLocaleString('de-DE')} 🐚</div>
                         <div class="vip-cb-sub">к выплате</div>
                     </div>
                 </div>
@@ -678,7 +678,7 @@ function renderVipSheet() {
             <div class="vip-tier-icon">${t.emoji}</div>
             <div class="vip-tier-info">
                 <div class="vip-tier-name">${t.name}</div>
-                <div class="vip-tier-req">от ${t.threshold.toLocaleString('ru')} 🐚</div>
+                <div class="vip-tier-req">от ${t.threshold.toLocaleString('de-DE')} 🐚</div>
             </div>
             <div class="vip-tier-right">
                 <div class="vip-tier-cb">+${t.cb}%</div>
@@ -738,11 +738,11 @@ function renderLeaderboard(data, container) {
     const section = (title, entries, type) => {
         const rowsHtml = entries.slice(0, 10).map((e, i) => {
             const val = type === 'win'
-                ? `<span class="lb-val">+${e.profit} 🐚</span>`
+                ? `<span class="lb-val">+${(+e.profit).toLocaleString('de-DE')} 🐚</span>`
                 : `<span class="lb-val">×${(+e.multiplier).toFixed(0)}</span>`;
             const sub = type === 'win'
                 ? `×${(+e.multiplier).toFixed(0)}`
-                : `+${e.profit} 🐚`;
+                : `+${(+e.profit).toLocaleString('de-DE')} 🐚`;
             return `<div class="lb-row">
                 <span class="lb-rank">${MEDALS[i] || (i + 1)}</span>
                 <span class="lb-name">${escHtml(e.username || '?')}</span>

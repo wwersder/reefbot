@@ -11,6 +11,7 @@ import com.reefbot.service.game.BuildingService;
 import com.reefbot.service.game.FishingResult;
 import com.reefbot.service.game.FishingService;
 import com.reefbot.service.game.GameHandler;
+import com.reefbot.util.Fmt;
 import com.reefbot.util.KeyboardBuilder;
 import com.reefbot.util.ReefEmoji;
 import com.reefbot.util.RichText;
@@ -53,7 +54,7 @@ public class FishingResultHandler implements GameHandler {
         rt.emoji(ReefEmoji.PARTY).add(" ").bold("Улов!").add("\n\n")
           .bold("Место:").add(" ").emoji(FishingMenuHandler.spotEmojiDef(result.spot()))
                                   .add(" " + FishingMenuHandler.spotName(result.spot())).add("\n")
-          .bold("Поймал:").add(" ").emoji(ReefEmoji.FISH).add(" ×" + result.fishCaught());
+          .bold("Поймал:").add(" ").emoji(ReefEmoji.FISH).add(" ×" + Fmt.n(result.fishCaught()));
 
         if (result.bonusType() != null) {
             String bonusChar = switch (result.bonusType()) {
@@ -61,15 +62,15 @@ public class FishingResultHandler implements GameHandler {
                 case CORAL  -> "🪸";
                 default     -> "✨";
             };
-            rt.add(", " + bonusChar + " ×" + result.bonusAmount());
+            rt.add(", " + bonusChar + " ×" + Fmt.n(result.bonusAmount()));
         }
 
         rt.add("\n")
-          .bold("Опыт рыбака:").add(" +" + result.xpEarned() + " ").emoji(ReefEmoji.STAR);
+          .bold("Опыт рыбака:").add(" +" + Fmt.n(result.xpEarned()) + " ").emoji(ReefEmoji.STAR);
 
         int nextLevelXp = fishingService.xpForNextLevel(result.newLevel());
         if (nextLevelXp > 0) {
-            rt.add("  (всего " + result.totalXp() + "/" + nextLevelXp + ")");
+            rt.add("  (всего " + Fmt.n(result.totalXp()) + "/" + Fmt.n(nextLevelXp) + ")");
         }
 
         if (result.wasFirstCatch()) {

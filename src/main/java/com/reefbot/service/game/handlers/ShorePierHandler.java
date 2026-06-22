@@ -10,6 +10,7 @@ import com.reefbot.service.game.BuildingService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.service.game.TideService;
 import com.reefbot.repository.PlayerRepository;
+import com.reefbot.util.Fmt;
 import com.reefbot.util.KeyboardBuilder;
 import com.reefbot.util.RichText;
 import lombok.RequiredArgsConstructor;
@@ -82,7 +83,7 @@ public class ShorePierHandler implements GameHandler {
         rt.bold("📦 Улов собран").add("\n\n")
           .add("Рыба из воды — в твои руки.\n")
           .add("+").bold(fish + " 🐟")
-          .add("  |  всего: ").bold(String.valueOf(island.getFish()));
+          .add("  |  всего: ").bold(Fmt.n(island.getFish()));
         return rt.build().withFollowUp(buildPierScreen(island, refreshed));
     }
 
@@ -97,9 +98,9 @@ public class ShorePierHandler implements GameHandler {
             RichText rt = new RichText();
             rt.bold("❌ Не хватает ресурсов").add("\n\n")
               .add("Нужно: ").bold(costsText(BuildingType.FISHING_PIER, targetLevel)).add("\n")
-              .add("Есть:  ").bold(island.getFish() + " 🐟  "
-                  + island.getShells() + " 🐚  "
-                  + island.getWood() + " 🪵");
+              .add("Есть:  ").bold(Fmt.n(island.getFish()) + " 🐟  "
+                  + Fmt.n(island.getShells()) + " 🐚  "
+                  + Fmt.n(island.getWood()) + " 🪵");
             return rt.build().withFollowUp(buildPierScreen(island, pier));
         }
 

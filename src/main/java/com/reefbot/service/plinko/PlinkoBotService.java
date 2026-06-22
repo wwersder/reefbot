@@ -5,6 +5,7 @@ import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
 import com.reefbot.entity.PlinkoLog;
 import com.reefbot.repository.PlinkoLogRepository;
+import com.reefbot.util.Fmt;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -51,7 +52,7 @@ public class PlinkoBotService {
                 Брось жемчужину сквозь коралловые кольца и испытай удачу!
                 Выигрыши — в ракушках твоего острова.
 
-                Баланс: 🐚 %d""", balance);
+                Баланс: 🐚 %s""", Fmt.n(balance));
 
         // Append a timestamp so Telegram WebView never serves a cached version
         String freshUrl = miniAppUrl + "?t=" + (System.currentTimeMillis() / 60_000);
@@ -88,8 +89,8 @@ public class PlinkoBotService {
             Player    p = (Player)    row[1];
             String name = p.getUsername() != null ? "@" + p.getUsername() : "Игрок #" + p.getId();
             int profit  = l.getWon() - l.getBet();
-            sb.append(String.format("%d. %s — <b>+%d 🐚</b> (×%.0f) %s\n",
-                    rank++, name, profit, l.getMultiplier(), l.getPlayedAt().format(fmt)));
+            sb.append(String.format("%d. %s — <b>+%s 🐚</b> (×%.0f) %s\n",
+                    rank++, name, Fmt.n(profit), l.getMultiplier(), l.getPlayedAt().format(fmt)));
         }
 
         sb.append("\n🎯 <b>Лучший множитель</b>\n");
@@ -98,8 +99,8 @@ public class PlinkoBotService {
             PlinkoLog l = (PlinkoLog) row[0];
             Player    p = (Player)    row[1];
             String name = p.getUsername() != null ? "@" + p.getUsername() : "Игрок #" + p.getId();
-            sb.append(String.format("%d. %s — <b>×%.0f</b> (+%d 🐚) %s\n",
-                    rank++, name, l.getMultiplier(), l.getWon() - l.getBet(),
+            sb.append(String.format("%d. %s — <b>×%.0f</b> (+%s 🐚) %s\n",
+                    rank++, name, l.getMultiplier(), Fmt.n(l.getWon() - l.getBet()),
                     l.getPlayedAt().format(fmt)));
         }
 

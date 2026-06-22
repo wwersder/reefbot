@@ -12,6 +12,7 @@ import com.reefbot.service.game.BuildingService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.service.game.TideService;
 import com.reefbot.util.EmojiUtil;
+import com.reefbot.util.Fmt;
 import com.reefbot.util.KeyboardBuilder;
 import com.reefbot.util.RichText;
 import lombok.RequiredArgsConstructor;
@@ -97,7 +98,7 @@ public class MainMenuHandler implements GameHandler {
                 .bold("🏝 Остров «" + island.getName() + "»")
                 .add("\n")
                 .emoji(stageEmojiFor(dp)).add(" " + stageNameFor(dp))
-                .add(" · " + dp + " ОР");
+                .add(" · " + Fmt.n(dp) + " ОР");
 
         List<String> digest = buildDigest(player, tideService);
         rt.add("\n");
@@ -197,7 +198,7 @@ public class MainMenuHandler implements GameHandler {
         for (ZoneType zone : ZoneType.values()) {
             if (zone.getMinDevPoints() > 0 && !zone.isUnlocked(dp)) {
                 return "🔒 Следующая зона: " + zone.getDisplayName()
-                        + " — " + dp + "/" + zone.getMinDevPoints() + " ОР";
+                        + " — " + Fmt.n(dp) + "/" + Fmt.n(zone.getMinDevPoints()) + " ОР";
             }
         }
         return null;

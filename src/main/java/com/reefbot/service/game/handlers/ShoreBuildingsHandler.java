@@ -10,6 +10,7 @@ import com.reefbot.service.game.BuildingService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.service.game.TideService;
 import com.reefbot.repository.PlayerRepository;
+import com.reefbot.util.Fmt;
 import com.reefbot.util.KeyboardBuilder;
 import com.reefbot.util.RichText;
 import lombok.RequiredArgsConstructor;
@@ -75,9 +76,9 @@ public class ShoreBuildingsHandler implements GameHandler {
             RichText rt = new RichText();
             rt.bold("❌ Не хватает ресурсов").add("\n\n")
               .add("Нужно: ").bold(ShorePierHandler.costsText(BuildingType.FISHING_PIER, 1)).add("\n")
-              .add("Есть:  ").bold(island.getFish() + " 🐟  "
-                  + island.getShells() + " 🐚  "
-                  + island.getWood() + " 🪵");
+              .add("Есть:  ").bold(Fmt.n(island.getFish()) + " 🐟  "
+                  + Fmt.n(island.getShells()) + " 🐚  "
+                  + Fmt.n(island.getWood()) + " 🪵");
             return rt.build().withFollowUp(buildConstructionScreen(island, pier));
         }
 
