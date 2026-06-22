@@ -127,7 +127,7 @@ function bindEvents() {
     $('gs-close')       .addEventListener('click', closeGameSelector);
     $('gs-backdrop')    .addEventListener('click', closeGameSelector);
     $('gs-slot')        .addEventListener('click', closeGameSelector);
-    $('gs-plinko')      .addEventListener('click', () => { window.location.href = '/mini/plinko/'; });
+    $('gs-plinko')      .addEventListener('click', () => navigateToGame('/mini/plinko/', '🪷', 'Reef Plinko'));
     $('fss-collect')    .addEventListener('click', collectFsBonus);
     $('vip-btn')        .addEventListener('click', openVip);
     $('vip-close')      .addEventListener('click', closeVip);
@@ -798,6 +798,23 @@ function scheduleSync() {
             showFsBanner(s.freeSpinsRemaining, s.multiplier);
         } catch { /* silent */ }
     }, 600);
+}
+
+// ── Game navigation transition ────────────────────────────────────────────────
+
+function navigateToGame(url, icon, label) {
+    haptic('medium');
+    closeGameSelector();
+
+    const ov = document.createElement('div');
+    ov.id = 'game-transition-overlay';
+    ov.innerHTML = `<div class="gto-icon">${icon}</div><div class="gto-label">${label}</div>`;
+    document.body.appendChild(ov);
+
+    ov.offsetHeight; // force reflow before transition
+    ov.classList.add('visible');
+
+    setTimeout(() => { window.location.href = url; }, 440);
 }
 
 function rndSym() { return SYM_KEYS[Math.floor(Math.random() * SYM_KEYS.length)]; }
