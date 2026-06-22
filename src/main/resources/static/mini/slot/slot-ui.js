@@ -204,40 +204,45 @@ function applyResult(res) {
     _stickyWilds = res.stickyWilds || [];
     renderStickyWilds();
 
-    // Track running FS win + max mult
-    if (res.wasFreeSpins) {
-        _fsPendingWin = res.fsPendingWin || 0;
-    }
-
-    showFsBanner(res.freeSpinsRemaining, res.multiplier, _fsPendingWin);
-
     if (res.isFreeSpinTrigger) {
+        _fsPendingWin = 0; _maxMult = 1;
+        showFsBanner(res.freeSpinsRemaining, res.multiplier, 0);
         haptic('success');
         const n = res.scatterCount === 3 ? 10 : res.scatterCount === 4 ? 15 : 20;
         showWin(`🏺 БОНУС! ${n} Free Spins!`, 'bonus');
         _stickyWilds = [];
-        _fsPendingWin = 0;
-        _maxMult = 1;
         startFsAuto();
     } else if (isFsEnd) {
-        // Bonus ended — show summary popup; balance animates on collect
+        // Bonus ended — credit pending win, show summary popup; balance animates on collect
+        _fsPendingWin = res.fsPendingWin || 0;
+        showFsBanner(res.freeSpinsRemaining, res.multiplier, _fsPendingWin);
         clearTimeout(_fsBannerTimer);
         _stickyWilds = [];
         renderStickyWilds();
         _fsAutoRunning = false;
         showFsSummary(_fsPendingWin);
     } else if (isActiveFsSpin) {
-        // FS spin result — show win, then revert to accumulated total
-        if (res.totalWin > 0) {
-            haptic('light');
-            const mult = res.multiplier > 1 ? ` ×${res.multiplier}` : '';
-            showWin(`+${res.totalWin} 🐚${mult}`, 'win');
-            highlightWins(res.wins);
-            clearTimeout(_fsBannerTimer);
-            _fsBannerTimer = setTimeout(showFsTotal, 1800);
-        } else {
-            showFsTotal();
-        }
+        // Show banner with OLD pending win — don't spoil whether this spin won
+        showFsBanner(res.freeSpinsRemaining, res.multiplier, _fsPendingWin);
+        // Brief suspense pause, then reveal; both branches have identical delay
+        clearTimeout(_fsBannerTimer);
+        _fsBannerTimer = setTimeout(() => {
+            _fsPendingWin = res.fsPendingWin || 0; // update only after reveal
+            if (res.totalWin > 0) {
+                haptic('light');
+                const mult = res.multiplier > 1 ? ` ×${res.multiplier}` : '';
+                showWin(`+${res.totalWin} 🐚${mult}`, 'win');
+                highlightWins(res.wins);
+                _fsBannerTimer = setTimeout(() => {
+                    showFsTotal();
+                    // Sync banner pending win after win-bar reverts to total
+                    showFsBanner(res.freeSpinsRemaining, res.multiplier, _fsPendingWin);
+                }, 1800);
+            } else {
+                showFsTotal();
+                showFsBanner(res.freeSpinsRemaining, res.multiplier, _fsPendingWin);
+            }
+        }, 400);
     } else if (res.totalWin > 0) {
         haptic('success');
         const mult = res.multiplier > 1 ? `  ×${res.multiplier}` : '';
