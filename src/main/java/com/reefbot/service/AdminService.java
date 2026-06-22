@@ -272,7 +272,7 @@ public class AdminService {
         island.setShells(island.getShells() + cashback);
         islandRepository.save(island);
 
-        player.setVipPeriodNetLoss(0);
+        player.setVipPeriodNetLoss(0L);
         player.setVipPeriodStart(java.time.LocalDate.now());
         player.setVipCashbackPaidAt(java.time.LocalDateTime.now());
         playerRepository.save(player);
