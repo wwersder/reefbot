@@ -1160,3 +1160,323 @@ html, body {
     opacity: 1;
     transform: translateY(0);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Paytable — redesigned sections
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* How to play card */
+.pt-how-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04), inset 0 1px 0 rgba(255,255,255,1);
+}
+
+.pt-how-stats {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px 16px 12px;
+    background: linear-gradient(135deg, #e8f3ff, #f0f8ff);
+}
+
+.pt-how-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.pt-how-num {
+    font-size: 34px;
+    font-weight: 900;
+    color: var(--accent);
+    letter-spacing: -1.5px;
+    line-height: 1;
+}
+
+.pt-how-lbl {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+
+.pt-how-x {
+    font-size: 22px;
+    font-weight: 300;
+    color: #b0c8e8;
+    margin-top: -8px;
+}
+
+.pt-how-rule {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.55;
+    padding: 10px 14px 14px;
+    border-top: 0.5px solid var(--border);
+}
+
+.pt-how-rule b { color: var(--text); }
+
+/* Wild example inline */
+.pt-wild-ex {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.pt-wild-sym {
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    background: #f2f2f7;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+}
+
+.pt-wild-sym--wild {
+    background: #e0efff;
+    border-color: rgba(0,122,255,.3);
+    box-shadow: 0 0 0 1px rgba(0,122,255,.2);
+}
+
+.pt-wild-dim {
+    font-size: 13px;
+    color: var(--text2);
+    font-weight: 700;
+    background: #f8f8f8;
+}
+
+.pt-wild-arrow {
+    font-size: 14px;
+    color: var(--text2);
+    margin: 0 2px;
+}
+
+.pt-wild-result {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--green);
+    background: rgba(52,199,89,.1);
+    border-radius: 8px;
+    padding: 4px 8px;
+    white-space: nowrap;
+}
+
+/* Scatter table */
+.pt-scatter-table {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.pt-sc-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #f8f8fa;
+    border-radius: 9px;
+    padding: 6px 9px;
+    font-size: 12px;
+}
+
+.pt-sc-syms { font-size: 14px; letter-spacing: -1px; flex-shrink: 0; }
+.pt-sc-arrow { color: var(--text2); flex-shrink: 0; }
+.pt-sc-reward { color: var(--text); flex: 1; }
+.pt-sc-reward b { color: #a06a00; }
+
+/* Pay table — updated grid layout */
+.pt-pay-table {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04), inset 0 1px 0 rgba(255,255,255,1);
+}
+
+.pt-pay-header {
+    display: grid;
+    grid-template-columns: 28px 1fr 42px 42px 48px;
+    gap: 0;
+    padding: 6px 12px;
+    background: #f2f2f7;
+    border-bottom: 0.5px solid var(--border);
+}
+
+.pt-pay-col-hdr {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text2);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+
+.pt-pay-row {
+    display: grid;
+    grid-template-columns: 28px 1fr 42px 42px 48px;
+    align-items: center;
+    gap: 0;
+    padding: 8px 12px;
+    border-bottom: 0.5px solid var(--border);
+    transition: background .12s;
+}
+
+.pt-pay-row:last-child { border-bottom: none; }
+.pt-pay-row--dim { opacity: .65; }
+
+.pt-pay-row--premium {
+    background: linear-gradient(90deg, rgba(255,249,230,.8), transparent);
+}
+
+.pt-pay-sym  { font-size: 18px; }
+.pt-pay-name { font-size: 12px; font-weight: 500; color: var(--text); }
+
+.pt-pay-v {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text2);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.pt-pay-v--big {
+    font-size: 13px;
+    color: var(--gold);
+}
+
+.pt-pay-note {
+    font-size: 11px;
+    color: var(--text2);
+    text-align: center;
+    margin-top: 6px;
+    font-style: italic;
+}
+
+/* Paylines grid */
+.pt-info-note {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.45;
+    padding: 8px 10px;
+    background: var(--surface);
+    border-radius: 10px;
+    border: 0.5px solid var(--border);
+}
+
+.pt-paylines-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.pt-pl-item {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 11px;
+    padding: 9px 8px 7px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+
+.pt-pl-num {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: .3px;
+    line-height: 1;
+}
+
+.pt-pl-item svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 76px;
+}
+
+.pt-pl-name {
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--text2);
+    text-align: center;
+    letter-spacing: .1px;
+}
+
+/* Free Spins steps */
+.pt-fs-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04), inset 0 1px 0 rgba(255,255,255,1);
+}
+
+.pt-fs-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 14px;
+}
+
+.pt-fs-step-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: center;
+    line-height: 1;
+    margin-top: 1px;
+}
+
+.pt-fs-step-body { flex: 1; }
+
+.pt-fs-step-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+}
+
+.pt-fs-step-desc {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.5;
+}
+
+.pt-fs-divider {
+    height: 0.5px;
+    background: var(--border);
+    margin: 0 14px;
+}
+
+/* Multiplier badge chip */
+.pt-mult-chips {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+
+.pt-mult-chip {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 7px;
+    background: rgba(0,122,255,.1);
+    color: var(--accent);
+}
+
+.pt-mult-chip.rare {
+    background: rgba(255,149,0,.12);
+    color: #a05000;
+}

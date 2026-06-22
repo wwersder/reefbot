@@ -7,7 +7,7 @@
 <title>The Reef House</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="slot.css?v=3">
+<link rel="stylesheet" href="slot.css?v=4">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -137,60 +137,152 @@
         </div>
         <div id="pt-content">
 
+            <!-- 1. How to play -->
+            <div class="pt-section">
+                <div class="pt-section-title">Как играть</div>
+                <div class="pt-how-card">
+                    <div class="pt-how-stats">
+                        <div class="pt-how-stat">
+                            <span class="pt-how-num">5</span>
+                            <span class="pt-how-lbl">барабанов</span>
+                        </div>
+                        <span class="pt-how-x">×</span>
+                        <div class="pt-how-stat">
+                            <span class="pt-how-num">3</span>
+                            <span class="pt-how-lbl">ряда</span>
+                        </div>
+                        <span class="pt-how-x">=</span>
+                        <div class="pt-how-stat">
+                            <span class="pt-how-num">9</span>
+                            <span class="pt-how-lbl">линий</span>
+                        </div>
+                    </div>
+                    <div class="pt-how-rule">
+                        Цель — собрать <b>3 или больше одинаковых символа подряд</b>, начиная
+                        обязательно с <b>левого барабана</b>. Выигрыш считается по каждой из 9 линий.
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Special symbols -->
             <div class="pt-section">
                 <div class="pt-section-title">Специальные символы</div>
+
                 <div class="pt-sym-row">
                     <span class="pt-sym-icon">🌊</span>
                     <div class="pt-sym-body">
-                        <div class="pt-sym-name">Wild</div>
-                        <div class="pt-sym-desc">Заменяет любой платный символ на линии</div>
+                        <div class="pt-sym-name">Wild — Волна</div>
+                        <div class="pt-sym-desc">Заменяет <em>любой</em> обычный символ на линии. Помогает собрать выигрышную комбинацию.</div>
+                        <div class="pt-wild-ex">
+                            <span class="pt-wild-sym">🦀</span>
+                            <span class="pt-wild-sym pt-wild-sym--wild">🌊</span>
+                            <span class="pt-wild-sym">🦀</span>
+                            <span class="pt-wild-sym">🦀</span>
+                            <span class="pt-wild-sym pt-wild-dim">?</span>
+                            <span class="pt-wild-arrow">→</span>
+                            <span class="pt-wild-result">×4 краба = выигрыш!</span>
+                        </div>
                     </div>
                 </div>
+
                 <div class="pt-sym-row">
                     <span class="pt-sym-icon">🏺</span>
                     <div class="pt-sym-body">
-                        <div class="pt-sym-name">Scatter</div>
-                        <div class="pt-sym-desc">
-                            3 шт → +2× ставку + 10 Free Spins<br>
-                            4 шт → +5× ставку + 15 Free Spins<br>
-                            5 шт → +20× ставку + 20 Free Spins
+                        <div class="pt-sym-name">Scatter — Артефакт</div>
+                        <div class="pt-sym-desc">Выпадает <em>где угодно</em> на поле — не привязан к линиям. 3 и более — бонусный раунд!</div>
+                        <div class="pt-scatter-table">
+                            <div class="pt-sc-row">
+                                <span class="pt-sc-syms">🏺🏺🏺</span>
+                                <span class="pt-sc-arrow">→</span>
+                                <span class="pt-sc-reward"><b>10 Free Spins</b> + ×2 ставку</span>
+                            </div>
+                            <div class="pt-sc-row">
+                                <span class="pt-sc-syms">🏺🏺🏺🏺</span>
+                                <span class="pt-sc-arrow">→</span>
+                                <span class="pt-sc-reward"><b>15 Free Spins</b> + ×5 ставку</span>
+                            </div>
+                            <div class="pt-sc-row">
+                                <span class="pt-sc-syms">🏺🏺🏺🏺🏺</span>
+                                <span class="pt-sc-arrow">→</span>
+                                <span class="pt-sc-reward"><b>20 Free Spins</b> + ×20 ставку</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="pt-section">
-                <div class="pt-section-title">Free Spins — бонусный раунд</div>
-                <div class="pt-info-card">
-                    Каждый 🌊 Wild в бонусном раунде удваивает множитель (до ×32). Ставка не списывается.
-                    Выигрыши умножаются на текущий множитель.
-                </div>
-            </div>
-
-            <div class="pt-section">
-                <div class="pt-section-title">Покупка бонуса</div>
-                <div class="pt-info-card">
-                    Кнопка <b>🏺 БОНУС</b> стоит 100× ставку и мгновенно запускает 10 Free Spins.
-                </div>
-            </div>
-
+            <!-- 3. Payout table -->
             <div class="pt-section">
                 <div class="pt-section-title">Выплаты <span class="pt-section-sub">× ставку</span></div>
                 <div class="pt-pay-table">
-                    <div class="pt-pay-row"><span class="pt-pay-sym">🦈</span><span class="pt-pay-name">Акула</span><span class="pt-pay-vals shark">×3→30  ×4→80  ×5→250</span></div>
-                    <div class="pt-pay-row"><span class="pt-pay-sym">🦑</span><span class="pt-pay-name">Кальмар</span><span class="pt-pay-vals squid">×3→15  ×4→40  ×5→100</span></div>
-                    <div class="pt-pay-row"><span class="pt-pay-sym">🐙</span><span class="pt-pay-name">Осьминог</span><span class="pt-pay-vals">×3→8  ×4→20  ×5→60</span></div>
-                    <div class="pt-pay-row"><span class="pt-pay-sym">🦀</span><span class="pt-pay-name">Краб</span><span class="pt-pay-vals">×3→5  ×4→12  ×5→35</span></div>
-                    <div class="pt-pay-row pt-pay-row--dim"><span class="pt-pay-sym">🐟</span><span class="pt-pay-name">Рыба</span><span class="pt-pay-vals">×3→3  ×4→8  ×5→20</span></div>
-                    <div class="pt-pay-row pt-pay-row--dim"><span class="pt-pay-sym">🦐🐡🐠</span><span class="pt-pay-name">Малая рыба</span><span class="pt-pay-vals">×3→1–2.5  ×5→6–15</span></div>
+                    <div class="pt-pay-header">
+                        <span></span>
+                        <span></span>
+                        <span class="pt-pay-col-hdr">×3</span>
+                        <span class="pt-pay-col-hdr">×4</span>
+                        <span class="pt-pay-col-hdr">×5</span>
+                    </div>
+                    <div class="pt-pay-row pt-pay-row--premium"><span class="pt-pay-sym">🦈</span><span class="pt-pay-name">Акула</span><span class="pt-pay-v">27</span><span class="pt-pay-v">80</span><span class="pt-pay-v pt-pay-v--big">250</span></div>
+                    <div class="pt-pay-row pt-pay-row--premium"><span class="pt-pay-sym">🦑</span><span class="pt-pay-name">Кальмар</span><span class="pt-pay-v">14</span><span class="pt-pay-v">40</span><span class="pt-pay-v pt-pay-v--big">100</span></div>
+                    <div class="pt-pay-row"><span class="pt-pay-sym">🐙</span><span class="pt-pay-name">Осьминог</span><span class="pt-pay-v">7.5</span><span class="pt-pay-v">20</span><span class="pt-pay-v">60</span></div>
+                    <div class="pt-pay-row"><span class="pt-pay-sym">🦀</span><span class="pt-pay-name">Краб</span><span class="pt-pay-v">4.7</span><span class="pt-pay-v">12</span><span class="pt-pay-v">35</span></div>
+                    <div class="pt-pay-row pt-pay-row--dim"><span class="pt-pay-sym">🐟</span><span class="pt-pay-name">Синяя рыба</span><span class="pt-pay-v">2.8</span><span class="pt-pay-v">8</span><span class="pt-pay-v">20</span></div>
+                    <div class="pt-pay-row pt-pay-row--dim"><span class="pt-pay-sym">🦐</span><span class="pt-pay-name">Креветка</span><span class="pt-pay-v">2.3</span><span class="pt-pay-v">6</span><span class="pt-pay-v">15</span></div>
+                    <div class="pt-pay-row pt-pay-row--dim"><span class="pt-pay-sym">🐡</span><span class="pt-pay-name">Рыба-шар</span><span class="pt-pay-v">1.4</span><span class="pt-pay-v">4</span><span class="pt-pay-v">10</span></div>
+                    <div class="pt-pay-row pt-pay-row--dim"><span class="pt-pay-sym">🐠</span><span class="pt-pay-name">Рыба-клоун</span><span class="pt-pay-v">0.95</span><span class="pt-pay-v">2.5</span><span class="pt-pay-v">6</span></div>
+                </div>
+                <div class="pt-pay-note">Пример: ставка ×10 и 3× 🦈 Акулы = +270 🐚</div>
+            </div>
+
+            <!-- 4. Paylines -->
+            <div class="pt-section">
+                <div class="pt-section-title">9 линий выплат</div>
+                <div class="pt-info-note">Синие клетки — активная линия. Линии проверяются все 9 одновременно при каждом спине.</div>
+                <div class="pt-paylines-grid" id="pt-paylines-grid"></div>
+            </div>
+
+            <!-- 5. Free Spins mechanic -->
+            <div class="pt-section">
+                <div class="pt-section-title">Бонусный раунд — Free Spins</div>
+                <div class="pt-fs-card">
+                    <div class="pt-fs-step">
+                        <div class="pt-fs-step-icon">🌊</div>
+                        <div class="pt-fs-step-body">
+                            <div class="pt-fs-step-title">Wilds прилипают к барабану</div>
+                            <div class="pt-fs-step-desc">Каждый выпавший Wild остаётся на своём месте до конца раунда — не исчезает после спина</div>
+                        </div>
+                    </div>
+                    <div class="pt-fs-divider"></div>
+                    <div class="pt-fs-step">
+                        <div class="pt-fs-step-icon">✨</div>
+                        <div class="pt-fs-step-body">
+                            <div class="pt-fs-step-title">Каждый Wild несёт свой множитель</div>
+                            <div class="pt-fs-step-desc">При прилипании Wild получает случайный множитель. Чем больше прилипших Wild — тем выше суммарный множитель на все выигрыши</div>
+                            <div class="pt-mult-chips">
+                                <span class="pt-mult-chip">×1 — часто</span>
+                                <span class="pt-mult-chip">×2 — редко</span>
+                                <span class="pt-mult-chip rare">×3 — очень редко</span>
+                                <span class="pt-mult-chip rare">×5 — джекпот</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pt-fs-divider"></div>
+                    <div class="pt-fs-step">
+                        <div class="pt-fs-step-icon">💰</div>
+                        <div class="pt-fs-step-body">
+                            <div class="pt-fs-step-title">Пример</div>
+                            <div class="pt-fs-step-desc">Прилипли три Wild с множителями ×2, ×3 и ×5 → суммарный ×10. Все следующие выигрыши ×10 до конца бонуса</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
+            <!-- 6. Bonus buy -->
             <div class="pt-section">
-                <div class="pt-section-title">Линии выплат</div>
+                <div class="pt-section-title">Покупка бонуса</div>
                 <div class="pt-info-card">
-                    9 линий — горизонталь ×3, два V-образных, два ступенчатых, два зигзага.
-                    Оплачиваются совпадения слева направо от 1-го барабана.
+                    Кнопка <b>🏺 БОНУС</b> = 100× ставку → мгновенно запускает 10 Free Spins.
+                    Ставка во время бонуса не списывается — платишь только за вход.
                 </div>
             </div>
 
@@ -258,8 +350,87 @@
     </div>
 </div>
 
+<!-- Payline SVG diagram generator -->
+<script>
+(function () {
+    const PAYLINES = [
+        { r: [1,1,1,1,1], name: 'Средний ряд'  },
+        { r: [0,0,0,0,0], name: 'Верхний ряд'  },
+        { r: [2,2,2,2,2], name: 'Нижний ряд'   },
+        { r: [0,1,2,1,0], name: 'V вниз'        },
+        { r: [2,1,0,1,2], name: 'V вверх'       },
+        { r: [0,0,1,2,2], name: 'Ступень ↘'    },
+        { r: [2,2,1,0,0], name: 'Ступень ↗'    },
+        { r: [1,0,1,2,1], name: 'Зигзаг 1'     },
+        { r: [1,2,1,0,1], name: 'Зигзаг 2'     },
+    ];
+
+    function makeSVG(rows) {
+        const CW = 13, CH = 10, GX = 2, GY = 2;
+        const W = 5 * CW + 4 * GX;   // 73
+        const H = 3 * CH + 2 * GY;   // 34
+        const ns = 'http://www.w3.org/2000/svg';
+
+        const svg = document.createElementNS(ns, 'svg');
+        svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+        // Cells
+        for (let c = 0; c < 5; c++) {
+            for (let r = 0; r < 3; r++) {
+                const rect = document.createElementNS(ns, 'rect');
+                const x = c * (CW + GX);
+                const y = r * (CH + GY);
+                rect.setAttribute('x', x);
+                rect.setAttribute('y', y);
+                rect.setAttribute('width', CW);
+                rect.setAttribute('height', CH);
+                rect.setAttribute('rx', '2.5');
+                rect.setAttribute('fill', rows[c] === r ? '#007aff' : '#e5e5ea');
+                svg.appendChild(rect);
+            }
+        }
+
+        // Connecting polyline through active cells
+        const pts = rows.map((r, c) =>
+            `${c * (CW + GX) + CW / 2},${r * (CH + GY) + CH / 2}`
+        ).join(' ');
+        const line = document.createElementNS(ns, 'polyline');
+        line.setAttribute('points', pts);
+        line.setAttribute('fill', 'none');
+        line.setAttribute('stroke', 'rgba(255,255,255,0.75)');
+        line.setAttribute('stroke-width', '1.5');
+        line.setAttribute('stroke-linecap', 'round');
+        line.setAttribute('stroke-linejoin', 'round');
+        svg.appendChild(line);
+
+        return svg;
+    }
+
+    const container = document.getElementById('pt-paylines-grid');
+    if (!container) return;
+
+    PAYLINES.forEach(function (pl, i) {
+        const div = document.createElement('div');
+        div.className = 'pt-pl-item';
+
+        const num = document.createElement('div');
+        num.className = 'pt-pl-num';
+        num.textContent = 'ЛИНИЯ ' + (i + 1);
+
+        const name = document.createElement('div');
+        name.className = 'pt-pl-name';
+        name.textContent = pl.name;
+
+        div.appendChild(num);
+        div.appendChild(makeSVG(pl.r));
+        div.appendChild(name);
+        container.appendChild(div);
+    });
+})();
+</script>
+
 <script type="module">
-    import { init } from './slot-ui.js?v=3';
+    import { init } from './slot-ui.js?v=4';
     init();
 </script>
 </body>

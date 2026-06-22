@@ -15,14 +15,18 @@ package com.reefbot.enums;
 public enum SlotSymbol {
 
     //                      weight  pay3   pay4    pay5
-    FISH_CLOWN  (0.20,      1.0,   2.5,   6.0  ),
-    FISH_PUFFER (0.18,      1.5,   4.0,   10.0 ),
-    SHRIMP      (0.15,      2.5,   6.0,   15.0 ),
-    FISH_BLUE   (0.14,      3.0,   8.0,   20.0 ),
-    CRAB        (0.12,      5.0,   12.0,  35.0 ),
-    OCTOPUS     (0.09,      8.0,   20.0,  60.0 ),
-    SQUID       (0.06,      15.0,  40.0,  100.0),
-    SHARK       (0.03,      30.0,  80.0,  250.0),
+    //                      weight  pay3   pay4    pay5
+    // pay3 reduced ~5-8% from original. pay4/pay5 unchanged.
+    // Target: base-game RTP ~95%, total with free-spins ~97-98%.
+    // House edge ~2-3% — economy drains slowly, players still win often.
+    FISH_CLOWN  (0.20,      0.95,  2.5,   6.0  ),
+    FISH_PUFFER (0.18,      1.4,   4.0,   10.0 ),
+    SHRIMP      (0.15,      2.3,   6.0,   15.0 ),
+    FISH_BLUE   (0.14,      2.8,   8.0,   20.0 ),
+    CRAB        (0.12,      4.7,   12.0,  35.0 ),
+    OCTOPUS     (0.09,      7.5,   20.0,  60.0 ),
+    SQUID       (0.06,      14.0,  40.0,  100.0),
+    SHARK       (0.03,      27.0,  80.0,  250.0),
     WILD        (0.02,      0,     0,     0    ),
     SCATTER     (0.01,      0,     0,     0    );
 
