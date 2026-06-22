@@ -359,16 +359,6 @@ html, body {
     to   { opacity: 1; }
 }
 
-/* ── Win-line SVG overlay ─────────────────────────────────────────────────── */
-
-#win-lines-svg {
-    position: absolute;
-    top: 6px;            /* matches #slot-grid padding */
-    left: 0; right: 0;
-    height: 264px;       /* 3 rows × 88px */
-    pointer-events: none;
-    z-index: 6;          /* above reels, below sticky-overlay (z:10) */
-}
 
 /* ── Result text (below grid) ────────────────────────────────────────────── */
 

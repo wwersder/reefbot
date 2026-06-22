@@ -65,10 +65,9 @@ let _fsPendingWin  = 0;    // accumulated FS win (shown in banner, credited at e
 let _maxMult       = 1;    // max multiplier reached during current FS
 let _fsBannerTimer = null; // timer to revert win-bar to FS total after a win
 
-// Win-line animation
-const WIN_LINE_COLORS = ['#FFD700','#00D4FF','#FF6B6B','#7CFF6B','#FF9F43','#B388FF','#FF80AB','#00E5CC'];
-const WIN_LINE_STEP   = 300; // ms between sequential line draws
-let   _winTimers      = [];  // active timeouts for win-line sequence
+// Win highlight timing
+const WIN_LINE_STEP = 300; // ms between sequential cell highlights
+let   _winTimers    = [];  // active timeouts for highlight sequence
 
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
@@ -401,41 +400,19 @@ function renderReels(grid) {
 
 // ── Win display ───────────────────────────────────────────────────────────────
 
-/** Draw winning lines one-by-one with SVG animation. */
+/** Highlight winning cells sequentially (one line at a time). */
 function highlightWins(wins) {
     if (!wins?.length) return;
     clearWinHighlight();
-    const svg = $('win-lines-svg');
     wins.forEach((w, i) => {
         const t = setTimeout(() => {
-            // Highlight cells for this line
             for (let r = 0; r < REEL_COUNT; r++) {
                 const cells = $(`strip-${r}`)?.querySelectorAll('.slot-sym');
                 if (cells?.[w.rows[r]]) cells[w.rows[r]].classList.add('winning');
             }
-            // Draw animated SVG line
-            if (svg) {
-                const color = WIN_LINE_COLORS[i % WIN_LINE_COLORS.length];
-                const pts = Array.from({length: REEL_COUNT}, (_, r) =>
-                    `${r * 100 + 50},${w.rows[r] * 88 + 44}`).join(' ');
-                const el = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-                el.setAttribute('points', pts);
-                el.setAttribute('fill', 'none');
-                el.setAttribute('stroke', color);
-                el.setAttribute('stroke-width', '4');
-                el.setAttribute('stroke-linecap', 'round');
-                el.setAttribute('stroke-linejoin', 'round');
-                el.setAttribute('opacity', '0.92');
-                el.style.strokeDasharray = '900';
-                el.style.strokeDashoffset = '900';
-                el.style.transition = 'stroke-dashoffset 0.35s ease-out';
-                svg.appendChild(el);
-                requestAnimationFrame(() => { el.style.strokeDashoffset = '0'; });
-            }
         }, i * WIN_LINE_STEP);
         _winTimers.push(t);
     });
-    // Auto-clear after all lines are shown
     _winTimers.push(setTimeout(clearWinHighlight, wins.length * WIN_LINE_STEP + 1400));
 }
 
