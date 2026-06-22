@@ -169,9 +169,9 @@ public class ShoreZoneHandler implements GameHandler {
 
         RichText rt = new RichText();
         rt.beginBold().emoji(ReefEmoji.SHORE).add(" Берег").endBold()
-          .add("\n")
+          .add("\n\n")
           .add(flavor)
-          .add("\n");
+          .add("\n\n");
 
         // Compact status digest
         appendFishingStatus(rt, player);
