@@ -10,6 +10,7 @@ import com.reefbot.service.game.BuildingService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.service.game.TideService;
 import com.reefbot.repository.PlayerRepository;
+import com.reefbot.bot.handlers.PierDetailsCallbackHandler;
 import com.reefbot.util.Fmt;
 import com.reefbot.util.KeyboardBuilder;
 import com.reefbot.util.RichText;
@@ -33,8 +34,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ShorePierHandler implements GameHandler {
 
-    public static final String BTN_COLLECT = "📦 Собрать рыбу";
+    public static final String BTN_COLLECT = "🫳 Собрать рыбу";
     public static final String BTN_UPGRADE = "⬆️ Улучшить";
+    public static final String BTN_DETAILS = "📋 Детали";
     public static final String BTN_BACK    = "◀️ На берег";
 
     private final BuildingService buildingService;
@@ -63,6 +65,7 @@ public class ShorePierHandler implements GameHandler {
         return switch (text) {
             case BTN_COLLECT -> tryCollect(player, island, pier);
             case BTN_UPGRADE -> tryUpgrade(player, island, pier);
+            case BTN_DETAILS -> tryDetails(pier);
             case BTN_BACK    -> goBack(player, island, pier);
             default          -> buildPierScreen(island, pier);
         };
@@ -80,7 +83,7 @@ public class ShorePierHandler implements GameHandler {
         IslandBuilding refreshed = buildingService.find(island, BuildingType.FISHING_PIER).orElse(pier);
 
         RichText rt = new RichText();
-        rt.bold("📦 Улов собран").add("\n\n")
+        rt.bold("🫳 Улов собран").add("\n\n")
           .add("Рыба из воды — в твои руки.\n")
           .add("+").bold(fish + " 🐟")
           .add("  |  всего: ").bold(Fmt.n(island.getFish()));
@@ -108,6 +111,10 @@ public class ShorePierHandler implements GameHandler {
         return buildPierScreen(island, updated);
     }
 
+    private BotResponse tryDetails(IslandBuilding pier) {
+        return PierDetailsCallbackHandler.buildDetailsMessage(pier.getLevel(), pier.getLevel());
+    }
+
     private BotResponse goBack(Player player, Island island, IslandBuilding pier) {
         player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
         playerRepository.save(player);
@@ -117,7 +124,7 @@ public class ShorePierHandler implements GameHandler {
     // ── Static screen builder ──────────────────────────────────────────────
 
     /**
-     * Главный статический билдер экрана — вызывается из ShoreZoneHandler.routePier().
+     * Main screen builder — called from ShoreZoneHandler.routePier() and after actions.
      */
     public static BotResponse buildPierScreen(Island island, IslandBuilding pier) {
         int lvl  = pier.getLevel();
@@ -129,40 +136,24 @@ public class ShorePierHandler implements GameHandler {
 
         RichText rt = new RichText();
 
-        // Заголовок с текущим именем уровня
-        rt.bold("⚓ " + BuildingType.FISHING_PIER.nameAt(lvl)).add("\n\n");
+        // Header: name + level
+        rt.bold("⚓ " + BuildingType.FISHING_PIER.nameAt(lvl) + " (ур. " + lvl + ")").add("\n\n");
 
-        // Флейвор — описание места
-        rt.add(flavorText(lvl)).add("\n\n");
-
-        // Производство
-        rt.add("Уровень ").bold(String.valueOf(lvl))
-          .add("  ·  ").bold("+" + prod + " 🐟/ч")
-          .add("  ·  потолок " + BuildingType.CAP_HOURS + " ч\n");
-
-        // Накопленная рыба
+        // Accumulated fish — bold when full
+        rt.add("Накоплено: ");
         if (acc >= cap) {
-            rt.bold("⚡ Хранилище полно: " + acc + " 🐟").add(" — забирай скорее!\n");
-        } else if (acc > 0) {
-            rt.bold("Готово к сбору: " + acc + " / " + cap + " 🐟\n");
+            rt.bold(acc + "/" + cap + " 🐟");
         } else {
-            rt.add("Накоплено: " + acc + " / " + cap + " 🐟\n");
+            rt.add(acc + "/" + cap + " 🐟");
         }
+        rt.add("\n");
 
-        // Статус апгрейда или информация о следующем уровне
+        // Production rate
+        rt.add("Производительность: ").bold("+" + prod + " 🐟/ч");
+
+        // Upgrade timer if active
         if (upgrading) {
-            int targetLevel = lvl + 1;
-            rt.add("\n⏳ Улучшается до ")
-              .bold(BuildingType.FISHING_PIER.nameAt(targetLevel))
-              .add("\nОсталось: ").bold(remainingText(pier.getBuildFinishAt()));
-        } else {
-            int nextLvl = lvl + 1;
-            rt.add("\n")
-              .bold("→ " + BuildingType.FISHING_PIER.nameAt(nextLvl))
-              .add("  ур." + nextLvl + "\n")
-              .add("Производство: ").bold("+" + BuildingType.FISHING_PIER.productionPerHourAt(nextLvl) + " 🐟/ч")
-              .add("  ·  ").add(costsText(BuildingType.FISHING_PIER, nextLvl))
-              .add("  ·  ").add(minutesToText(BuildingType.FISHING_PIER.buildMinutesFor(nextLvl)));
+            rt.add("\n\n⏳ Улучшается... осталось ").bold(remainingText(pier.getBuildFinishAt()));
         }
 
         return rt.build(keyboard(island, pier, upgrading, acc, cap));
@@ -174,19 +165,23 @@ public class ShorePierHandler implements GameHandler {
                                           boolean upgrading, int acc, int cap) {
         KeyboardBuilder kb = KeyboardBuilder.builder();
 
+        // Row 1: collect — only when fish is ready
         if (acc > 0) {
             KeyboardButton collectBtn = new KeyboardButton(BTN_COLLECT);
             collectBtn.setStyle("success");
             kb.row(collectBtn);
         }
 
+        // Row 2: [Upgrade][Details] or just [Details] while upgrading
         if (!upgrading) {
             int nextLvl = pier.getLevel() + 1;
             KeyboardButton upgradeBtn = new KeyboardButton(BTN_UPGRADE);
             if (canAffordStatic(island, BuildingType.FISHING_PIER, nextLvl)) {
                 upgradeBtn.setStyle("success");
             }
-            kb.row(upgradeBtn);
+            kb.row(upgradeBtn, new KeyboardButton(BTN_DETAILS));
+        } else {
+            kb.row(new KeyboardButton(BTN_DETAILS));
         }
 
         kb.row(new KeyboardButton(BTN_BACK));
@@ -233,20 +228,4 @@ public class ShorePierHandler implements GameHandler {
         return totalSec + " сек";
     }
 
-    // ── Flavor texts ───────────────────────────────────────────────────────
-
-    private static String flavorText(int level) {
-        return switch (level) {
-            case 1 -> """
-                    Скрипучие доски над водой, обмотанные старым тросом.
-                    Рыба сходится к теням свай — больше и не нужно.""";
-            case 2 -> """
-                    Навес из парусины укрыл от брызг. Крючки на перилах,
-                    вёдра в углу — теперь здесь можно работать всерьёз.""";
-            case 3 -> """
-                    Настоящая пристань. Лодка у борта покачивается на волнах,
-                    рыбаки с соседних островов иногда причаливают сюда.""";
-            default -> "Помост тянется далеко в море. Сваи уходят в глубину.";
-        };
-    }
 }
