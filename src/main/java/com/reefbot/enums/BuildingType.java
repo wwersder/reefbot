@@ -85,9 +85,41 @@ public enum BuildingType {
         return baseProd + 2 * (level - namedLevels.length);
     }
 
-    /** Максимальное накопление (потолок) на указанном уровне. */
+    /**
+     * Максимальное накопление (потолок) на указанном уровне постройки.
+     * @deprecated Используй {@link #storageCapAt(int)} с уровнем хранилища.
+     */
+    @Deprecated
     public int capAt(int level) {
         return productionPerHourAt(level) * CAP_HOURS;
+    }
+
+    // ── Storage level (independent upgrade track) ──────────────────────────
+
+    /**
+     * Ёмкость хранилища на указанном уровне хранилища.
+     * Уровень 1: 40 🐟, каждый следующий удваивает.
+     */
+    public int storageCapAt(int storageLevel) {
+        return 40 * (1 << (storageLevel - 1));  // 40, 80, 160, 320, 640...
+    }
+
+    /**
+     * Стоимость улучшения хранилища до указанного уровня (рыба).
+     * Ур.2: 40, ур.3: 120, ур.4: 360... (×3 каждый уровень).
+     */
+    public int storageFishCostFor(int storageLevel) {
+        if (storageLevel <= 1) return 0;
+        return (int) Math.round(40.0 * Math.pow(3, storageLevel - 2));
+    }
+
+    /**
+     * Время улучшения хранилища до указанного уровня (минуты).
+     * Ур.2: 10, ур.3: 30, ур.4: 90... (×3, не более 24ч).
+     */
+    public int storageBuildMinutesFor(int storageLevel) {
+        if (storageLevel <= 1) return 0;
+        return Math.min((int) Math.round(10.0 * Math.pow(3, storageLevel - 2)), 24 * 60);
     }
 
     /** True если уровень требует древесины. */

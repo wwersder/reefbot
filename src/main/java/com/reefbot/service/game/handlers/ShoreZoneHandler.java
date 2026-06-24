@@ -234,7 +234,8 @@ public class ShoreZoneHandler implements GameHandler {
             rt.add("⚓ ").bold("Помост (lvl " + lvl + "):").add(" ⏳ улучшается (" + mins + " мин)");
         } else {
             int acc = ShorePierHandler.calcAccumulated(pier);
-            int cap = BuildingType.FISHING_PIER.capAt(lvl);
+            int storageLvl = pier.getStorageLevel() != null ? pier.getStorageLevel() : 1;
+            int cap = BuildingType.FISHING_PIER.storageCapAt(storageLvl);
             rt.add("⚓ ").bold("Помост (lvl " + lvl + "):").add(" ");
             if (acc >= cap) {
                 rt.bold(acc + "/" + cap + " 🐟");

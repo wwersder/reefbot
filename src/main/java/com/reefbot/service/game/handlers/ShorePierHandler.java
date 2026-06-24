@@ -33,12 +33,13 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ShorePierHandler implements GameHandler {
 
-    public static final String BTN_COLLECT         = "🫳 Собрать рыбу";
-    public static final String BTN_UPGRADE         = "⬆️ Улучшить";
-    public static final String BTN_UPGRADE_CONFIRM = "🔨 Возвести улучшение";
-    public static final String BTN_STORAGE         = "🗄 Хранилище";
-    public static final String BTN_SUBMENU_BACK    = "◀️ Назад";
-    public static final String BTN_BACK            = "◀️ На берег";
+    public static final String BTN_COLLECT          = "🫳 Собрать рыбу";
+    public static final String BTN_UPGRADE          = "⬆️ Улучшить";
+    public static final String BTN_UPGRADE_CONFIRM  = "🔨 Возвести улучшение";
+    public static final String BTN_STORAGE          = "🗄 Хранилище";
+    public static final String BTN_STORAGE_UPGRADE  = "⬆️ Расширить";
+    public static final String BTN_SUBMENU_BACK     = "◀️ Назад";
+    public static final String BTN_BACK             = "◀️ На берег";
 
     private final BuildingService buildingService;
     private final TideService tideService;
@@ -63,11 +64,17 @@ public class ShorePierHandler implements GameHandler {
             return goBack(player, island, null);
         }
 
+        // Auto-finalize storage upgrade if ready
+        if (buildingService.isStorageConstructionReady(pier)) {
+            pier = buildingService.finalizeStorage(pier);
+        }
+
         return switch (text) {
             case BTN_COLLECT         -> tryCollect(player, island, pier);
             case BTN_UPGRADE         -> showUpgradeMenu(island, pier);
             case BTN_UPGRADE_CONFIRM -> tryUpgradeConfirm(player, island, pier);
             case BTN_STORAGE         -> showStorage(island, pier);
+            case BTN_STORAGE_UPGRADE -> tryStorageUpgrade(island, pier);
             case BTN_SUBMENU_BACK    -> buildPierScreen(island, pier);
             case BTN_BACK            -> goBack(player, island, pier);
             default                  -> buildPierScreen(island, pier);
@@ -140,32 +147,67 @@ public class ShorePierHandler implements GameHandler {
         return buildPierScreen(island, updated);
     }
 
-    /** Storage sub-screen: shows current fish accumulation details. */
+    /** Storage sub-screen: capacity info + independent upgrade. */
     private BotResponse showStorage(Island island, IslandBuilding pier) {
-        int lvl  = pier.getLevel();
-        int acc  = calcAccumulated(pier);
-        int cap  = BuildingType.FISHING_PIER.capAt(lvl);
-        int prod = BuildingType.FISHING_PIER.productionPerHourAt(lvl);
-        int hLeft = prod > 0 ? (cap - acc) / prod : 0;
+        int storageLvl = pier.getStorageLevel() != null ? pier.getStorageLevel() : 1;
+        int cap  = BuildingType.FISHING_PIER.storageCapAt(storageLvl);
+        int prod = BuildingType.FISHING_PIER.productionPerHourAt(pier.getLevel());
+        boolean expanding = buildingService.isStorageUnderConstruction(pier);
 
         RichText rt = new RichText();
         rt.bold("🗄 Хранилище помоста").add("\n\n");
-        rt.add("Рыба: ");
-        if (acc >= cap) {
-            rt.bold(acc + "/" + cap + " 🐟").add(" — полное!\n");
-        } else {
-            rt.add(acc + "/" + cap + " 🐟").add("\n");
+        rt.add("Вместительность: ").bold(cap + " 🐟")
+          .add("  (ур. " + storageLvl + ")\n");
+        if (prod > 0) {
+            int fillHours = cap / prod;
+            rt.add("Заполнится за: ").bold(fillHours + " ч")
+              .add(" (при +" + prod + " 🐟/ч)\n");
+            int acc = calcAccumulated(pier);
+            if (acc < cap) {
+                int minsLeft = prod > 0 ? ((cap - acc) * 60 / prod) : 0;
+                rt.add("До заполнения: ").bold("~" + minutesToText(minsLeft));
+            } else {
+                rt.bold("Хранилище заполнено!");
+            }
         }
-        rt.add("Производство: ").bold("+" + prod + " 🐟/ч").add("\n");
-        rt.add("Потолок: ").bold(BuildingType.CAP_HOURS + " ч")
-          .add(" · накопление ").bold(cap + " 🐟");
-        if (acc < cap) {
-            rt.add("\nДо заполнения: ").bold("~" + hLeft + " ч");
+
+        if (expanding) {
+            rt.add("\n\n⏳ Расширяется... осталось ")
+              .bold(remainingText(pier.getStorageBuildFinishAt()));
+        } else {
+            int nextStorageLvl = storageLvl + 1;
+            int cost = BuildingType.FISHING_PIER.storageFishCostFor(nextStorageLvl);
+            int time = BuildingType.FISHING_PIER.storageBuildMinutesFor(nextStorageLvl);
+            int nextCap = BuildingType.FISHING_PIER.storageCapAt(nextStorageLvl);
+            rt.add("\n\n").bold("⬆️ До ур. " + nextStorageLvl + ":  " + nextCap + " 🐟")
+              .add("  ·  ").add(cost + " 🐟  ·  " + minutesToText(time));
         }
 
         KeyboardBuilder kb = KeyboardBuilder.builder();
-        kb.row(new KeyboardButton(BTN_SUBMENU_BACK));
+        if (!expanding) {
+            int nextStorageLvl = storageLvl + 1;
+            KeyboardButton expandBtn = new KeyboardButton(BTN_STORAGE_UPGRADE);
+            if (island.getFish() >= BuildingType.FISHING_PIER.storageFishCostFor(nextStorageLvl)) {
+                expandBtn.setStyle("success");
+            }
+            kb.row(expandBtn, new KeyboardButton(BTN_SUBMENU_BACK));
+        } else {
+            kb.row(new KeyboardButton(BTN_SUBMENU_BACK));
+        }
         return rt.build(kb.build());
+    }
+
+    /** Execute storage upgrade. */
+    private BotResponse tryStorageUpgrade(Island island, IslandBuilding pier) {
+        if (buildingService.isStorageUnderConstruction(pier)) {
+            return showStorage(island, pier);
+        }
+        int storageLvl = pier.getStorageLevel() != null ? pier.getStorageLevel() : 1;
+        if (!buildingService.canAffordStorageUpgrade(island, BuildingType.FISHING_PIER, storageLvl + 1)) {
+            return showStorage(island, pier);
+        }
+        IslandBuilding updated = buildingService.startStorageBuild(island, pier);
+        return showStorage(island, updated);
     }
 
     private BotResponse goBack(Player player, Island island, IslandBuilding pier) {
@@ -183,8 +225,9 @@ public class ShorePierHandler implements GameHandler {
         int lvl  = pier.getLevel();
         boolean upgrading = pier.getBuildFinishAt() != null
                 && LocalDateTime.now().isBefore(pier.getBuildFinishAt());
+        int storageLvl = pier.getStorageLevel() != null ? pier.getStorageLevel() : 1;
         int acc  = calcAccumulated(pier);
-        int cap  = BuildingType.FISHING_PIER.capAt(lvl);
+        int cap  = BuildingType.FISHING_PIER.storageCapAt(storageLvl);
         int prod = BuildingType.FISHING_PIER.productionPerHourAt(lvl);
 
         RichText rt = new RichText();
@@ -248,7 +291,8 @@ public class ShorePierHandler implements GameHandler {
         if (from == null) from = LocalDateTime.now().minusHours(BuildingType.CAP_HOURS);
         double elapsedHours = Duration.between(from, LocalDateTime.now()).toMinutes() / 60.0;
         int produced = (int) (b.getBuildingType().productionPerHourAt(b.getLevel()) * elapsedHours);
-        return Math.min(produced, b.getBuildingType().capAt(b.getLevel()));
+        int storageLvl = b.getStorageLevel() != null ? b.getStorageLevel() : 1;
+        return Math.min(produced, b.getBuildingType().storageCapAt(storageLvl));
     }
 
     private static boolean canAffordStatic(Island island, BuildingType type, int targetLevel) {

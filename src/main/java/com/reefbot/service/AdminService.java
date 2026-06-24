@@ -707,7 +707,8 @@ public class AdminService {
 
         int lvl        = building.getLevel();
         int prodPerHour = buildingType.productionPerHourAt(lvl);
-        int cap         = buildingType.capAt(lvl);
+        int storageLvl  = building.getStorageLevel() != null ? building.getStorageLevel() : 1;
+        int cap         = buildingType.storageCapAt(storageLvl);
 
         // Капаем по потолку и предупреждаем
         String capWarning = "";

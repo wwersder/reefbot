@@ -53,4 +53,17 @@ public class IslandBuilding {
      * (упрощение: считаем с момента первого сбора или с now()-CAP_HOURS).
      */
     private LocalDateTime productionCollectedAt;
+
+    /**
+     * Уровень хранилища (независимая ветка улучшений).
+     * Контролирует только ёмкость накопления, не зависит от {@code level}.
+     */
+    @Builder.Default
+    private Integer storageLevel = 1;
+
+    /**
+     * Когда завершится улучшение хранилища.
+     * NULL = не расширяется.
+     */
+    private LocalDateTime storageBuildFinishAt;
 }

@@ -49,6 +49,10 @@ public class BuildingService {
             && island.getWood()   >= type.woodCostFor(targetLevel);
     }
 
+    public boolean canAffordStorageUpgrade(Island island, BuildingType type, int targetStorageLevel) {
+        return island.getFish() >= type.storageFishCostFor(targetStorageLevel);
+    }
+
     /** True — идёт строительство, ещё не завершилось. */
     public boolean isUnderConstruction(IslandBuilding b) {
         return b.getBuildFinishAt() != null && LocalDateTime.now().isBefore(b.getBuildFinishAt());
@@ -62,6 +66,18 @@ public class BuildingService {
     /** True — здание работает (не строится). */
     public boolean isOperational(IslandBuilding b) {
         return b.getBuildFinishAt() == null && b.getLevel() > 0;
+    }
+
+    /** True — хранилище расширяется прямо сейчас. */
+    public boolean isStorageUnderConstruction(IslandBuilding b) {
+        return b.getStorageBuildFinishAt() != null
+                && LocalDateTime.now().isBefore(b.getStorageBuildFinishAt());
+    }
+
+    /** True — расширение хранилища завершено, нужен finalize. */
+    public boolean isStorageConstructionReady(IslandBuilding b) {
+        return b.getStorageBuildFinishAt() != null
+                && !LocalDateTime.now().isBefore(b.getStorageBuildFinishAt());
     }
 
     // ── Mutations ──────────────────────────────────────────────────────────
@@ -137,7 +153,8 @@ public class BuildingService {
 
         double elapsedHours = Duration.between(from, LocalDateTime.now()).toMinutes() / 60.0;
         int produced = (int)(building.getBuildingType().productionPerHourAt(building.getLevel()) * elapsedHours);
-        return Math.min(produced, building.getBuildingType().capAt(building.getLevel()));
+        int storageLvl = building.getStorageLevel() != null ? building.getStorageLevel() : 1;
+        return Math.min(produced, building.getBuildingType().storageCapAt(storageLvl));
     }
 
     /**
@@ -153,5 +170,45 @@ public class BuildingService {
         building.setProductionCollectedAt(LocalDateTime.now());
         buildingRepo.save(building);
         return fish;
+    }
+
+    // ── Storage upgrade ────────────────────────────────────────────────────
+
+    /**
+     * Запустить улучшение хранилища. Списывает рыбу немедленно.
+     */
+    @Transactional
+    public IslandBuilding startStorageBuild(Island island, IslandBuilding building) {
+        BuildingType type = building.getBuildingType();
+        int targetStorageLevel = (building.getStorageLevel() != null ? building.getStorageLevel() : 1) + 1;
+
+        if (!canAffordStorageUpgrade(island, type, targetStorageLevel)) {
+            throw new IllegalArgumentException("Недостаточно рыбы для расширения хранилища");
+        }
+
+        island.setFish(island.getFish() - type.storageFishCostFor(targetStorageLevel));
+        islandRepository.save(island);
+
+        int minutes = type.storageBuildMinutesFor(targetStorageLevel);
+        building.setStorageBuildFinishAt(
+                minutes > 0 ? LocalDateTime.now().plusMinutes(minutes) : null
+        );
+        // Instant upgrade (0 min) — finalize immediately
+        if (minutes == 0) {
+            building.setStorageLevel(targetStorageLevel);
+            building.setStorageBuildFinishAt(null);
+        }
+        return buildingRepo.save(building);
+    }
+
+    /**
+     * Завершить улучшение хранилища: увеличить storageLevel, обнулить таймер.
+     */
+    @Transactional
+    public IslandBuilding finalizeStorage(IslandBuilding building) {
+        int current = building.getStorageLevel() != null ? building.getStorageLevel() : 1;
+        building.setStorageLevel(current + 1);
+        building.setStorageBuildFinishAt(null);
+        return buildingRepo.save(building);
     }
 }
