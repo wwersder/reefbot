@@ -26,8 +26,8 @@ import java.util.List;
  */
 public class RichText {
 
-    private final StringBuilder        sb   = new StringBuilder();
-    private final List<MessageEntity>  ents = new ArrayList<>();
+    private final StringBuilder       sb   = new StringBuilder();
+    private final List<MessageEntity> ents = new ArrayList<>();
     private int boldStart = -1;
 
     /** Добавить обычный текст. */
@@ -57,6 +57,15 @@ public class RichText {
         return beginBold().add(s).endBold();
     }
 
+    /** Добавить {@code s} как monospace-код (entity type "code"). Хорошо смотрится для прогресс-баров. */
+    public RichText code(String s) {
+        int start = sb.length();
+        sb.append(s);
+        int len = sb.length() - start;
+        if (len > 0) ents.add(entity("code", null, start, len));
+        return this;
+    }
+
     /** Добавить кастомный эмодзи (custom_emoji entity). */
     public RichText emoji(EmojiUtil.Def def) {
         int start = sb.length();
@@ -80,10 +89,12 @@ public class RichText {
         return new BotResponse(sb.toString(), photoPath, keyboard, ents);
     }
 
-    private static MessageEntity entity(String type, String emojiId, int offset, int length) {
+    private static MessageEntity entity(String type, String customEmojiId, int offset, int length) {
         MessageEntity.MessageEntityBuilder b = MessageEntity.builder()
-                .type(type).offset(offset).length(length);
-        if (emojiId != null) b.customEmojiId(emojiId);
+                .type(type)
+                .offset(offset)
+                .length(length);
+        if (customEmojiId != null) b.customEmojiId(customEmojiId);
         return b.build();
     }
 }

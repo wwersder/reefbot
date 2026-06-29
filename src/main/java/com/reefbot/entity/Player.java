@@ -107,6 +107,18 @@ public class Player {
     /** Timestamp of the last cashback payment (null = never paid). */
     private LocalDateTime vipCashbackPaidAt;
 
+    // ── Forest zone ───────────────────────────────────────────────────────────
+
+    @OneToOne(mappedBy = "player", cascade = CascadeType.ALL,
+              fetch = FetchType.EAGER, orphanRemoval = true)
+    private PlayerForest forest;
+
+    // ── Hills zone / Mine ─────────────────────────────────────────────────────
+
+    @OneToOne(mappedBy = "player", cascade = CascadeType.ALL,
+              fetch = FetchType.EAGER, orphanRemoval = true)
+    private PlayerMine mine;
+
     // ── Slot state (The Reef House) ───────────────────────────────────────────
 
     @OneToOne(mappedBy = "player", cascade = CascadeType.ALL,

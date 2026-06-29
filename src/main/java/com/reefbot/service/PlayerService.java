@@ -2,6 +2,8 @@ package com.reefbot.service;
 
 import com.reefbot.entity.Player;
 import com.reefbot.entity.PlayerFishing;
+import com.reefbot.entity.PlayerForest;
+import com.reefbot.entity.PlayerMine;
 import com.reefbot.entity.PlayerState;
 import com.reefbot.entity.PlayerTide;
 import com.reefbot.enums.OnboardingStep;
@@ -57,7 +59,9 @@ public class PlayerService {
                 .fishingNotified(false)
                 .build();
 
-        PlayerTide tide = PlayerTide.builder().build();
+        PlayerTide   tide   = PlayerTide.builder().build();
+        PlayerForest forest = PlayerForest.builder().build();
+        PlayerMine   mine   = PlayerMine.builder().build();
 
         Player player = Player.builder()
                 .telegramId(telegramId)
@@ -67,12 +71,16 @@ public class PlayerService {
                 .state(state)
                 .fishing(fishing)
                 .tide(tide)
+                .forest(forest)
+                .mine(mine)
                 .build();
 
         // Wire back-references so cascade FK is set correctly
         state.setPlayer(player);
         fishing.setPlayer(player);
         tide.setPlayer(player);
+        forest.setPlayer(player);
+        mine.setPlayer(player);
 
         Player saved = playerRepository.save(player);
 

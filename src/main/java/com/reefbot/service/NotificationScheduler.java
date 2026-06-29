@@ -1,8 +1,13 @@
 package com.reefbot.service;
 
+import com.reefbot.entity.Player;
 import com.reefbot.entity.PlayerFishing;
+import com.reefbot.entity.PlayerForest;
+import com.reefbot.entity.PlayerMine;
 import com.reefbot.entity.PlayerTide;
 import com.reefbot.repository.PlayerFishingRepository;
+import com.reefbot.repository.PlayerForestRepository;
+import com.reefbot.repository.PlayerMineRepository;
 import com.reefbot.repository.PlayerRepository;
 import com.reefbot.repository.PlayerTideRepository;
 import com.reefbot.service.game.TideService;
@@ -47,7 +52,21 @@ public class NotificationScheduler {
             Загляни в зону Берега — окно открыто 40 минут.
             """;
 
+    private static final String FOREST_DONE_TEXT = """
+            🌲 Вылазка завершена!
+
+            Твоя добыча готова — заходи в Лес и забирай.
+            """;
+
+    private static final String MINE_DONE_TEXT = """
+            ⛰ Добыча завершена!
+
+            Шахта ждёт — заходи в Холмы и забирай камень.
+            """;
+
     private final PlayerFishingRepository playerFishingRepository;
+    private final PlayerForestRepository  playerForestRepository;
+    private final PlayerMineRepository    playerMineRepository;
     private final PlayerTideRepository    playerTideRepository;
     private final PlayerRepository        playerRepository;
     private final TideService             tideService;
@@ -65,7 +84,7 @@ public class NotificationScheduler {
 
     @Scheduled(fixedDelay = 30_000)
     public void notifyFishingComplete() {
-        // Фаза 1: короткая транзакция — отмечаем как уведомлённых, собираем данные
+        // Phase 1: short TX — mark notified, collect data
         record FishingNote(Long telegramId, String spotName) {}
 
         List<FishingNote> toNotify = txTemplate.execute(status -> {
@@ -83,7 +102,7 @@ public class NotificationScheduler {
 
         if (toNotify == null || toNotify.isEmpty()) return;
 
-        // Фаза 2: вне транзакции — шлём API-запросы
+        // Phase 2: outside TX — send API requests
         for (FishingNote note : toNotify) {
             sendMessage(note.telegramId(), FISHING_DONE_TEXT.formatted(note.spotName()));
         }
@@ -111,17 +130,58 @@ public class NotificationScheduler {
         }
     }
 
-    // ── Legacy migration ──────────────────────────────────────────────────
+    // ── Forest done ───────────────────────────────────────────────────────
 
-    /** Расписываем первый прилив для игроков, зарегистрированных до появления механики. */
-    @Scheduled(fixedDelay = 300_000)
-    public void scheduleFirstTidesForLegacyPlayers() {
-        List<Long> playerIds = txTemplate.execute(status -> {
-            return playerTideRepository.findByTideAvailableAtIsNull()
-                    .stream()
-                    .map(t -> t.getPlayer().getId())
+    @Scheduled(fixedDelay = 30_000)
+    public void notifyForestComplete() {
+        record ForestNote(Long telegramId) {}
+
+        List<ForestNote> toNotify = txTemplate.execute(status -> {
+            List<PlayerForest> ready = playerForestRepository.findForestReady(LocalDateTime.now());
+            ready.forEach(f -> f.setNotified(true));
+            playerForestRepository.saveAll(ready);
+            return ready.stream()
+                    .map(f -> new ForestNote(f.getPlayer().getTelegramId()))
                     .toList();
         });
+
+        if (toNotify == null || toNotify.isEmpty()) return;
+        for (ForestNote note : toNotify) {
+            sendMessage(note.telegramId(), FOREST_DONE_TEXT);
+        }
+    }
+
+    // ── Mine done ─────────────────────────────────────────────────────────
+
+    @Scheduled(fixedDelay = 30_000)
+    public void notifyMineComplete() {
+        record MineNote(Long telegramId) {}
+
+        List<MineNote> toNotify = txTemplate.execute(status -> {
+            List<PlayerMine> ready = playerMineRepository.findMineReady(LocalDateTime.now());
+            ready.forEach(m -> m.setNotified(true));
+            playerMineRepository.saveAll(ready);
+            return ready.stream()
+                    .map(m -> new MineNote(m.getPlayer().getTelegramId()))
+                    .toList();
+        });
+
+        if (toNotify == null || toNotify.isEmpty()) return;
+        for (MineNote note : toNotify) {
+            sendMessage(note.telegramId(), MINE_DONE_TEXT);
+        }
+    }
+
+    // ── Legacy migration: first tide for pre-tide players ─────────────────
+
+    /** Schedules the first tide for players registered before the tide mechanic existed. */
+    @Scheduled(fixedDelay = 300_000)
+    public void scheduleFirstTidesForLegacyPlayers() {
+        List<Long> playerIds = txTemplate.execute(status ->
+                playerTideRepository.findByTideAvailableAtIsNull()
+                        .stream()
+                        .map(t -> t.getPlayer().getId())
+                        .toList());
 
         if (playerIds == null || playerIds.isEmpty()) return;
 
@@ -131,6 +191,53 @@ public class NotificationScheduler {
                         .ifPresent(tideService::scheduleFirstTide);
                 return null;
             });
+        }
+    }
+
+    // ── Legacy migration: forest + mine rows for pre-V29 players ─────────
+
+    /**
+     * Creates missing PlayerForest / PlayerMine rows for players registered before V29.
+     * Runs every 5 minutes; once all rows exist the queries return nothing and this is free.
+     */
+    @Scheduled(fixedDelay = 300_000)
+    public void backfillForestAndMineForLegacyPlayers() {
+        List<Long> missingForest = txTemplate.execute(status ->
+                playerRepository.findPlayersWithoutForest()
+                        .stream().map(Player::getId).toList());
+
+        if (missingForest != null) {
+            for (Long playerId : missingForest) {
+                txTemplate.execute(status -> {
+                    playerRepository.findById(playerId).ifPresent(p -> {
+                        PlayerForest forest = PlayerForest.builder().build();
+                        forest.setPlayer(p);
+                        p.setForest(forest);
+                        playerRepository.save(p);
+                        log.info("Created PlayerForest for legacy player {}", playerId);
+                    });
+                    return null;
+                });
+            }
+        }
+
+        List<Long> missingMine = txTemplate.execute(status ->
+                playerRepository.findPlayersWithoutMine()
+                        .stream().map(Player::getId).toList());
+
+        if (missingMine != null) {
+            for (Long playerId : missingMine) {
+                txTemplate.execute(status -> {
+                    playerRepository.findById(playerId).ifPresent(p -> {
+                        PlayerMine mine = PlayerMine.builder().build();
+                        mine.setPlayer(p);
+                        p.setMine(mine);
+                        playerRepository.save(p);
+                        log.info("Created PlayerMine for legacy player {}", playerId);
+                    });
+                    return null;
+                });
+            }
         }
     }
 

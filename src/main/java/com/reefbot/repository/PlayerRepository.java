@@ -3,7 +3,9 @@ package com.reefbot.repository;
 import com.reefbot.entity.Player;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface PlayerRepository extends JpaRepository<Player, Long> {
@@ -17,4 +19,12 @@ public interface PlayerRepository extends JpaRepository<Player, Long> {
     Optional<Player> findByTelegramId(Long telegramId);
 
     Optional<Player> findByUsernameIgnoreCase(String username);
+
+    /** Players created before V29 migration — need PlayerForest row created. */
+    @Query("SELECT p FROM Player p WHERE p.forest IS NULL")
+    List<Player> findPlayersWithoutForest();
+
+    /** Players created before V29 migration — need PlayerMine row created. */
+    @Query("SELECT p FROM Player p WHERE p.mine IS NULL")
+    List<Player> findPlayersWithoutMine();
 }

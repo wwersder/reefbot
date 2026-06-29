@@ -9,7 +9,10 @@ import com.reefbot.entity.IslandBuilding;
 import com.reefbot.enums.BuildingType;
 import com.reefbot.repository.PlayerRepository;
 import com.reefbot.service.game.BuildingService;
+import com.reefbot.service.game.DailyBonusService;
+import com.reefbot.service.game.ForestService;
 import com.reefbot.service.game.GameHandler;
+import com.reefbot.service.game.MineService;
 import com.reefbot.service.game.TideService;
 import com.reefbot.util.EmojiUtil;
 import com.reefbot.util.Fmt;
@@ -42,6 +45,9 @@ public class MainMenuHandler implements GameHandler {
     private final PlayerRepository playerRepository;
     private final TideService tideService;
     private final BuildingService buildingService;
+    private final ForestService forestService;
+    private final MineService mineService;
+    private final DailyBonusService dailyBonusService;
 
     @Override
     public PlayerScreen getScreen() {
@@ -70,9 +76,9 @@ public class MainMenuHandler implements GameHandler {
                 IslandBuilding pier = buildingService.find(island, BuildingType.FISHING_PIER).orElse(null);
                 yield ShoreZoneHandler.buildZoneScreen(player, tideService, pier);
             }
-            case FOREST     -> ForestZoneHandler.buildZoneScreen(player);
-            case SETTLEMENT -> SettlementZoneHandler.buildZoneScreen(player);
-            case HILLS      -> HillsZoneHandler.buildZoneScreen(player);
+            case FOREST     -> ForestZoneHandler.buildZoneScreen(player, forestService);
+            case SETTLEMENT -> SettlementZoneHandler.buildZoneScreen(player, dailyBonusService);
+            case HILLS      -> HillsZoneHandler.buildZoneScreen(player, mineService);
             case PLAINS     -> PlainsZoneHandler.buildZoneScreen(player);
             case PORT       -> PortZoneHandler.buildZoneScreen(player);
         };
@@ -100,6 +106,9 @@ public class MainMenuHandler implements GameHandler {
                 .emoji(stageEmojiFor(dp)).add(" " + stageNameFor(dp))
                 .add(" · " + Fmt.n(dp) + " ОР");
 
+        // Resource dashboard — compact one-liner
+        rt.add("\n\n").add(buildResourceLine(island));
+
         List<String> digest = buildDigest(player, tideService);
         rt.add("\n");
         if (digest.isEmpty()) {
@@ -116,6 +125,36 @@ public class MainMenuHandler implements GameHandler {
         return rt.build(keyboard(player, island, tideService));
     }
 
+    /**
+     * Compact resource line, e.g. "🪵 45 · 🐟 8 · 🐚 3  📦 56/200"
+     * Only non-zero resources are shown.
+     */
+    private static String buildResourceLine(Island island) {
+        StringBuilder sb = new StringBuilder();
+        appendRes(sb, "🪵", island.getWood());
+        appendRes(sb, "🪨", island.getStone());
+        appendRes(sb, "🐟", island.getFish());
+        appendRes(sb, "🐚", island.getShells());
+        appendRes(sb, "🪸", island.getCoral());
+
+        int total = island.getWood() + island.getStone() + island.getFish()
+                + island.getShells() + island.getCoral();
+        int cap   = island.getStorageCapacity();
+
+        // Storage fill indicator
+        String storageIcon = total >= cap ? "🔴" : total >= cap * 0.8 ? "🟡" : "📦";
+        if (sb.length() > 0) sb.append("  ");
+        sb.append(storageIcon).append(" ").append(total).append("/").append(cap);
+
+        return sb.toString();
+    }
+
+    private static void appendRes(StringBuilder sb, String emoji, int value) {
+        if (value <= 0) return;
+        if (sb.length() > 0) sb.append(" · ");
+        sb.append(emoji).append(" ").append(value);
+    }
+
     public static ReplyKeyboard keyboard(Player player, Island island) {
         return keyboard(player, island, null);
     }
@@ -126,9 +165,9 @@ public class MainMenuHandler implements GameHandler {
 
         // Row 1: always-open zones
         kb.row(
-                new KeyboardButton(ZoneType.FOREST.getDisplayName()),
+                forestButton(player),
                 shoreButton(player, tideService),
-                new KeyboardButton(ZoneType.SETTLEMENT.getDisplayName())
+                settlementButton(player)
         );
 
         // Row 2: zones unlocked via ОР (appear when earned)
@@ -148,27 +187,43 @@ public class MainMenuHandler implements GameHandler {
         return kb.build();
     }
 
-    /**
-     * Shore button turns green when any of the following is true:
-     * — fishing catch is ready to collect
-     * — tide is currently active
-     * — beach is ready to scan (cooldown elapsed)
-     */
+    /** Shore: green when fishing ready, tide active, or beach ready. */
     private static KeyboardButton shoreButton(Player player, TideService tideService) {
         KeyboardButton btn = new KeyboardButton(ZoneType.SHORE.getDisplayName());
         LocalDateTime finishAt = player.getFishing().getFishingFinishAt();
         boolean fishingReady = finishAt != null && !LocalDateTime.now().isBefore(finishAt);
         boolean beachAlert   = tideService != null
                 && (tideService.isActive(player) || tideService.isBeachReady(player));
-        if (fishingReady || beachAlert) {
-            btn.setStyle("success");
+        if (fishingReady || beachAlert) btn.setStyle("success");
+        return btn;
+    }
+
+    /** Forest: green when yield is ready to collect. */
+    private static KeyboardButton forestButton(Player player) {
+        KeyboardButton btn = new KeyboardButton(ZoneType.FOREST.getDisplayName());
+        if (player.getForest() != null) {
+            LocalDateTime forestAt = player.getForest().getFinishAt();
+            if (forestAt != null && !LocalDateTime.now().isBefore(forestAt)) {
+                btn.setStyle("success");
+            }
         }
         return btn;
     }
 
-    /** Дайджест: активности, которые требуют внимания. Макс. 4 строки. */
+    /** Settlement: green when daily bonus is available. */
+    private static KeyboardButton settlementButton(Player player) {
+        KeyboardButton btn = new KeyboardButton(ZoneType.SETTLEMENT.getDisplayName());
+        LocalDateTime last = player.getState().getDailyBonusAt();
+        boolean bonusReady = last == null
+                || Duration.between(last, LocalDateTime.now()).toHours() >= 20;
+        if (bonusReady) btn.setStyle("success");
+        return btn;
+    }
+
+    /** Дайджест: активности, которые требуют внимания. Макс. 5 строк. */
     private static List<String> buildDigest(Player player, TideService tideService) {
         List<String> lines = new ArrayList<>();
+
         // Shore: fishing
         LocalDateTime finishAt = player.getFishing().getFishingFinishAt();
         if (finishAt != null) {
@@ -188,7 +243,41 @@ public class MainMenuHandler implements GameHandler {
                 lines.add("🏖 Пляж: есть что подобрать");
             }
         }
-        // TODO: ZoneStatusProvider per zone when more activities are implemented
+
+        // Forest
+        if (player.getForest() != null) {
+            LocalDateTime forestAt = player.getForest().getFinishAt();
+            if (forestAt != null) {
+                if (!LocalDateTime.now().isBefore(forestAt)) {
+                    lines.add("🌲 Добыча из леса готова!");
+                } else {
+                    long mins = Math.max(1,
+                            (Duration.between(LocalDateTime.now(), forestAt).getSeconds() + 59) / 60);
+                    lines.add("🌲 Вылазка в лес — ещё ~" + mins + " мин");
+                }
+            }
+        }
+
+        // Hills / Mine
+        if (player.getMine() != null) {
+            LocalDateTime mineAt = player.getMine().getFinishAt();
+            if (mineAt != null) {
+                if (!LocalDateTime.now().isBefore(mineAt)) {
+                    lines.add("⛰ Добыча из шахты готова!");
+                } else {
+                    long mins = Math.max(1,
+                            (Duration.between(LocalDateTime.now(), mineAt).getSeconds() + 59) / 60);
+                    lines.add("⛰ Шахта — ещё ~" + mins + " мин");
+                }
+            }
+        }
+
+        // Settlement: daily bonus
+        if (player.getState().getDailyBonusAt() == null
+                || Duration.between(player.getState().getDailyBonusAt(), LocalDateTime.now()).toHours() >= 20) {
+            lines.add("🎁 Ежедневный бонус доступен!");
+        }
+
         return lines;
     }
 
