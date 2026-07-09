@@ -66,6 +66,21 @@ public class RichText {
         return this;
     }
 
+    /**
+     * Добавить {@code s} как цитату (blockquote entity) — серая полоса слева, как в Telegram.
+     * Идеально для описаний предметов в инвентаре.
+     * <p>
+     * Важно: blockquote не может быть внутри bold/italic и наоборот.
+     * Используй отдельным блоком.
+     */
+    public RichText blockquote(String s) {
+        int start = sb.length();
+        sb.append(s);
+        int len = sb.length() - start;
+        if (len > 0) ents.add(entity("blockquote", null, start, len));
+        return this;
+    }
+
     /** Добавить кастомный эмодзи (custom_emoji entity). */
     public RichText emoji(EmojiUtil.Def def) {
         int start = sb.length();

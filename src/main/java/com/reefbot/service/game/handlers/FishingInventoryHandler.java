@@ -152,28 +152,28 @@ public class FishingInventoryHandler implements GameHandler {
         } else {
             // ── Item list ─────────────────────────────────────────────
             if (scrollCount > 0 || scrollActive) {
-                rt.add("📜 Свиток ускорения");
-                if (scrollCount > 0) rt.add(" ×" + scrollCount);
-                if (scrollActive) rt.add(" — ").beginBold().add("✅ активен").endBold();
-                rt.add("\n   Следующий заброс −50% времени\n\n");
+                rt.bold("📜 Свиток ускорения");
+                if (scrollCount > 0) rt.add("  (" + scrollCount + " шт.)");
+                if (scrollActive) rt.add("  ✅ активен");
+                rt.add("\n").blockquote("Следующий заброс удочки −50% времени. Расходуется при забросе.").add("\n\n");
             }
             if (baitCount > 0 || baitActive) {
-                rt.add("🪱 Морская наживка");
-                if (baitCount > 0) rt.add(" ×" + baitCount);
-                if (baitActive) rt.add(" — ").beginBold().add("✅ активна").endBold();
-                rt.add("\n   Следующий улов +50% рыбы\n\n");
+                rt.bold("🪱 Морская наживка");
+                if (baitCount > 0) rt.add("  (" + baitCount + " шт.)");
+                if (baitActive) rt.add("  ✅ активна");
+                rt.add("\n").blockquote("Следующий улов +50% рыбы. Расходуется при сборе улова.").add("\n\n");
             }
             if (hookCount > 0 || hookActive) {
-                rt.add("🪝 Старый крюк");
-                if (hookCount > 0) rt.add(" ×" + hookCount);
-                if (hookActive) rt.add(" — ").beginBold().add("✅ активен").endBold();
-                rt.add("\n   +40 XP к следующему улову\n\n");
+                rt.bold("🪝 Старый крюк");
+                if (hookCount > 0) rt.add("  (" + hookCount + " шт.)");
+                if (hookActive) rt.add("  ✅ активен");
+                rt.add("\n").blockquote("+40 XP к следующему улову. Расходуется при сборе улова.").add("\n\n");
             }
             if (vialCount > 0 || vialQueued) {
-                rt.add("🫙 Склянка прилива");
-                if (vialCount > 0) rt.add(" ×" + vialCount);
-                if (vialQueued) rt.add(" — ").beginBold().add("✅ в очереди").endBold();
-                rt.add("\n   Мгновенно завершает рыбалку\n\n");
+                rt.bold("🫙 Склянка прилива");
+                if (vialCount > 0) rt.add("  (" + vialCount + " шт.)");
+                if (vialQueued) rt.add("  ✅ в очереди");
+                rt.add("\n").blockquote("Мгновенно завершает активную рыбалку. Можно применить во время ожидания.").add("\n\n");
             }
         }
 
