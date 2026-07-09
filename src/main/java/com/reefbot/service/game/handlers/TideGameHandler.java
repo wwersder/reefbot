@@ -44,12 +44,14 @@ public class TideGameHandler implements GameHandler {
 
     // ── Button labels ──────────────────────────────────────────────────────
 
-    public static final String BTN_OPEN = "🗝 Попробовать удачу";
-    public static final String BTN_HIGH = "⬆️ Больше трёх";
-    public static final String BTN_LOW  = "⬇️ Три или меньше";
-    public static final String BTN_NEXT = "🎲 Рискнуть ещё раз";
-    public static final String BTN_TAKE = "🎁 Забрать улов";
-    public static final String BTN_BACK = "◀️ На берег";
+    public static final String BTN_OPEN         = "🗝 Попробовать удачу";
+    public static final String BTN_HIGH         = "⬆️ Больше трёх";
+    public static final String BTN_LOW          = "⬇️ Три или меньше";
+    public static final String BTN_NEXT         = "🎲 Рискнуть ещё раз";
+    public static final String BTN_TAKE         = "🎁 Забрать улов";
+    public static final String BTN_BACK         = "◀️ На берег";
+    /** Shown when player presses Back mid-game with hits > 0 — confirms forfeit. */
+    public static final String BTN_BACK_CONFIRM = "🌊 Уйти и потерять улов";
 
     private final TideService tideService;
     private final TelegramClient telegramClient;
@@ -64,18 +66,35 @@ public class TideGameHandler implements GameHandler {
 
     @Override
     public BotResponse handle(Player player, Island island, String text) {
+        // Bug fix: completed game (3 rounds won) must allow collection even if window expired.
+        // isActive() returns false after 40 min, but the reward must still be claimable.
+        if (tideService.isCompleted(player)) {
+            return switch (text) {
+                case BTN_TAKE -> handleTake(player, island);
+                case BTN_BACK -> goBack(player, island);
+                default       -> buildDefaultScreen(player);
+            };
+        }
+
         if (!tideService.isActive(player)) {
-            // Tide expired mid-session — route back to shore
+            // Tide expired — clear any stale rollPending left by a server crash
+            if (Boolean.TRUE.equals(player.getTide().getRollPending())) {
+                player.getTide().setRollPending(false);
+                playerRepository.save(player);
+                log.warn("Cleared stale rollPending for player {} on expired tide", player.getId());
+            }
             return goBack(player, island);
         }
+
         return switch (text) {
-            case BTN_OPEN -> buildGuessScreen(player);
-            case BTN_HIGH -> handleGuess(player, true);
-            case BTN_LOW  -> handleGuess(player, false);
-            case BTN_NEXT -> buildGuessScreen(player);
-            case BTN_TAKE -> handleTake(player, island);
-            case BTN_BACK -> goBack(player, island);
-            default       -> buildDefaultScreen(player);
+            case BTN_OPEN         -> buildGuessScreen(player);
+            case BTN_HIGH         -> handleGuess(player, true);
+            case BTN_LOW          -> handleGuess(player, false);
+            case BTN_NEXT         -> buildGuessScreen(player);
+            case BTN_TAKE         -> handleTake(player, island);
+            case BTN_BACK         -> handleBack(player, island);
+            case BTN_BACK_CONFIRM -> goBack(player, island);
+            default               -> buildDefaultScreen(player);
         };
     }
 
@@ -207,10 +226,10 @@ public class TideGameHandler implements GameHandler {
     // ── Action handlers ────────────────────────────────────────────────────
 
     private BotResponse handleGuess(Player player, boolean guessHigh) {
-        // Защита от двойного нажатия: если кубик уже в воздухе — игнорируем
+        // Защита от двойного нажатия: кубик уже в воздухе
         if (Boolean.TRUE.equals(player.getTide().getRollPending())) {
             log.warn("Duplicate guess ignored for player {} — roll already pending", player.getId());
-            return null;
+            return new BotResponse("⏳ Кубик уже в воздухе — дождись результата.");
         }
 
         int roundNumber = player.getTide().getTideRoundIndex() + 1; // 1-based, до инкремента
@@ -230,12 +249,12 @@ public class TideGameHandler implements GameHandler {
 
         if (fresh.getState().getCurrentScreen() != PlayerScreen.ZONE_SHORE_TIDE
                 || !tideService.isActive(fresh)) {
-            // Игра уже завершена другим потоком — снимаем флаг и молчим
+            // Игра уже завершена другим потоком — снимаем флаг и уходим на берег
             fresh.getTide().setRollPending(false);
             playerRepository.save(fresh);
             log.warn("Tide dice orphaned for player {} (value={}) — game already ended concurrently",
                     player.getId(), diceValue);
-            return null;
+            return goBack(fresh, fresh.getIsland());
         }
 
         // Флаг снимается внутри resolveCorrectRound / failGame
@@ -247,6 +266,26 @@ public class TideGameHandler implements GameHandler {
             tideService.failGame(fresh);
             return buildFailureScreen(diceValue, roundNumber, hitsBefore);
         }
+    }
+
+    /**
+     * BTN_BACK handler: if player has won at least one round warn before forfeiting.
+     * If no hits yet — leave freely.
+     */
+    private BotResponse handleBack(Player player, Island island) {
+        int hits = player.getTide().getTideHits();
+        if (hits > 0) {
+            // Show warning — player risks losing their earned loot
+            RichText rt = new RichText();
+            rt.beginBold().add("⚠️ Осторожно!").endBold()
+              .add("\n\nТы уже угадал ").bold(hits + " из 3").add(" — уйдя сейчас потеряешь заработанное.\n")
+              .add("Прилив схлынет, ящик смоет волной.");
+            return rt.build(KeyboardBuilder.builder()
+                    .row(btn(BTN_TAKE, true))
+                    .row(new KeyboardButton(BTN_BACK_CONFIRM))
+                    .build());
+        }
+        return goBack(player, island);
     }
 
     private BotResponse handleTake(Player player, Island island) {

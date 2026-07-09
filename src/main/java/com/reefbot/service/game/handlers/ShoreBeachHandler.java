@@ -91,7 +91,8 @@ public class ShoreBeachHandler implements GameHandler {
             rt.add("+").beginBold().add(String.valueOf(result.shells())).add(" 🐚").endBold();
         }
 
-        rt.add("\n\nСледующее прочёсывание через 4 часа.");
+        // Use beachCooldownText() so the text stays in sync with the BEACH_COOLDOWN_HOURS constant
+        rt.add("\n\nСледующее прочёсывание ").add(tideService.beachCooldownText(player)).add(".");
 
         // Остаёмся на экране пляжа — followUp показывает обновлённое состояние
         return rt.build().withFollowUp(buildBeachScreen(player, tideService));

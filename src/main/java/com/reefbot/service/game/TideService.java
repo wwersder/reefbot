@@ -135,7 +135,10 @@ public class TideService {
 
     /** Set timestamps and pick reward/narrative for the tide window starting at {@code available}. */
     private void initTide(Player player, LocalDateTime available) {
-        int rewardIndex    = ThreadLocalRandom.current().nextInt(REWARD_POOLS.get(3).size());
+        // Sample rewardIndex from the max pool size across all tiers so every bundle is reachable.
+        // pool[2] has 4 elements (largest); using pool[3].size()=3 previously made index 3 unreachable.
+        int maxPoolSize    = REWARD_POOLS.stream().mapToInt(List::size).max().orElse(1);
+        int rewardIndex    = ThreadLocalRandom.current().nextInt(maxPoolSize);
         int narrativeIndex = ThreadLocalRandom.current().nextInt(NARRATIVES.length);
 
         PlayerTide tide = player.getTide();
