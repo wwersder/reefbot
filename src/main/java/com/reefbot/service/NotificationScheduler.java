@@ -172,6 +172,37 @@ public class NotificationScheduler {
         }
     }
 
+    // ── Tide recovery: reschedule expired tides ───────────────────────────
+
+    /**
+     * Reschedules tides that expired without the player interacting with them.
+     * This happens when a player ignores the tide window (no BTN_TIDE press)
+     * or exits the tide screen via Back before guessing — neither path calls scheduleNextTide().
+     * Detected by: tideExpiresAt in the past AND tideAvailableAt in the past
+     * (if scheduled, tideAvailableAt would be 5–10 h in the future).
+     */
+    @Scheduled(fixedDelay = 300_000)
+    public void rescheduleExpiredTides() {
+        List<Long> playerIds = txTemplate.execute(status ->
+                playerTideRepository.findExpiredWithoutNextTide(LocalDateTime.now())
+                        .stream()
+                        .map(t -> t.getPlayer().getId())
+                        .toList());
+
+        if (playerIds == null || playerIds.isEmpty()) return;
+
+        for (Long playerId : playerIds) {
+            txTemplate.execute(status -> {
+                playerRepository.findById(playerId).ifPresent(p -> {
+                    tideService.scheduleNextTide(p);
+                    playerRepository.save(p);
+                    log.info("Rescheduled expired tide for player {}", p.getId());
+                });
+                return null;
+            });
+        }
+    }
+
     // ── Legacy migration: first tide for pre-tide players ─────────────────
 
     /** Schedules the first tide for players registered before the tide mechanic existed. */

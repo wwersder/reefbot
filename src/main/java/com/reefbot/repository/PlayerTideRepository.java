@@ -19,4 +19,17 @@ public interface PlayerTideRepository extends JpaRepository<PlayerTide, Long> {
     List<PlayerTide> findActiveTidesNotNotified(@Param("now") LocalDateTime now);
 
     List<PlayerTide> findByTideAvailableAtIsNull();
+
+    /**
+     * Finds tides that expired without a next tide being scheduled.
+     * Detected by: tideExpiresAt in the past AND tideAvailableAt in the past.
+     * If scheduleNextTide() was called, tideAvailableAt would be 5–10 h in the future.
+     */
+    @Query("""
+        SELECT pt FROM PlayerTide pt
+        WHERE pt.tideExpiresAt IS NOT NULL
+          AND pt.tideExpiresAt   < :now
+          AND pt.tideAvailableAt < :now
+        """)
+    List<PlayerTide> findExpiredWithoutNextTide(@Param("now") LocalDateTime now);
 }
