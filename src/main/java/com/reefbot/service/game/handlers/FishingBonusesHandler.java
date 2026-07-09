@@ -50,9 +50,9 @@ public class FishingBonusesHandler implements GameHandler {
 
         boolean anyBonus = false;
         if (level >= 2) { sb.append("• +1 к мин. улову на всех местах\n"); anyBonus = true; }
-        if (level >= 4) { sb.append("• +10% XP за рыбалку\n"); anyBonus = true; }
+        if (level >= 7)      { sb.append("• +30% XP за рыбалку\n"); anyBonus = true; }
+        else if (level >= 4) { sb.append("• +10% XP за рыбалку\n"); anyBonus = true; }
         if (level >= 5) { sb.append("• +20% шанс бонусного ресурса\n"); anyBonus = true; }
-        if (level >= 7) { sb.append("• +30% XP за рыбалку (вместо +10%)\n"); anyBonus = true; }
         if (level >= 8) { sb.append("• +2 к макс. улову на всех местах\n"); anyBonus = true; }
 
         if (!anyBonus) {

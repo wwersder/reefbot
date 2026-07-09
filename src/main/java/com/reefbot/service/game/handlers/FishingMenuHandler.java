@@ -19,6 +19,8 @@ import com.reefbot.util.RichText;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -66,7 +68,7 @@ public class FishingMenuHandler implements GameHandler {
 
         return switch (text) {
             case BTN_SHORE                                   -> spotDetail(FishingSpot.SHORE, player);
-            case BTN_REEF                                    -> spotDetail(FishingSpot.REEF, player);
+            case BTN_REEF                                    -> handleReef(player);
             case BTN_OPEN_SEA_LOCKED, BTN_OPEN_SEA_UNLOCKED -> handleOpenSea(player);
             case BTN_BACK                                    -> goBack(player, island);
             case BTN_CAST                                    -> castLine(player, island);
@@ -81,6 +83,18 @@ public class FishingMenuHandler implements GameHandler {
         player.getFishing().setFishingSpot(spot);
         playerRepository.save(player);
         return buildSpotDetail(spot, player);
+    }
+
+    private BotResponse handleReef(Player player) {
+        if (player.getFishing().getFishingLevel() < FishingSpot.REEF.getMinLevel()) {
+            return new BotResponse(
+                    "🔒 Риф доступен с уровня рыбака 2.\nСейчас у тебя уровень "
+                            + player.getFishing().getFishingLevel() + ".",
+                    null,
+                    buildFishingKeyboard(player)
+            );
+        }
+        return spotDetail(FishingSpot.REEF, player);
     }
 
     private BotResponse handleOpenSea(Player player) {
@@ -111,11 +125,14 @@ public class FishingMenuHandler implements GameHandler {
         player.getState().setCurrentScreen(PlayerScreen.FISHING_ACTIVE);
         playerRepository.save(player);
 
+        // Use actual finish time (may differ from base if Speed Scroll was applied)
+        long actualMins = Math.max(1, Duration.between(
+                LocalDateTime.now(), player.getFishing().getFishingFinishAt()).toMinutes());
         String text = String.format("""
                 ⏳ Удочка заброшена %s
 
                 Возвращайся через %d мин — улов будет ждать.
-                """, spot.getDisplayName().toLowerCase(), spot.getDurationMinutes());
+                """, spot.getDisplayName().toLowerCase(), actualMins);
 
         return new BotResponse(text, null, FishingActiveHandler.activeKeyboard());
     }
@@ -204,7 +221,15 @@ public class FishingMenuHandler implements GameHandler {
     }
 
     public static BotResponse buildSpotDetail(FishingSpot spot, Player player) {
-        boolean hasBonuses = player.getFishing().getFishingLevel() >= 2;
+        int level = player.getFishing().getFishingLevel();
+        boolean hasBonuses = level >= 2;
+
+        // Effective stats (accounting for level bonuses)
+        int effectiveMin        = spot.getMinFish() + (level >= 2 ? 1 : 0);
+        int effectiveMax        = spot.getMaxFish() + (level >= 8 ? 2 : 0);
+        int xpMultPct           = level >= 7 ? 130 : (level >= 4 ? 110 : 100);
+        int effectiveXp         = (int) Math.round(spot.getXpReward() * xpMultPct / 100.0);
+        int effectiveBonusPct   = spot.getBonusChance() + (level >= 5 ? 20 : 0);
 
         RichText rt = new RichText();
 
@@ -216,11 +241,11 @@ public class FishingMenuHandler implements GameHandler {
           .add(spotRandomDesc(spot)).add("\n\n")
           .add(spotRandomSub(spot)).add("\n\n")
           .emoji(ReefEmoji.TIMER).add(" ").bold("Время:").add(" " + spot.getDurationMinutes() + " мин\n")
-          .emoji(ReefEmoji.FISH).add(" ").bold("Улов:").add(" " + spot.getMinFish() + "–" + spot.getMaxFish() + " рыбы\n")
-          .emoji(ReefEmoji.STAR).add(" ").bold("Опыт:").add(" +" + spot.getXpReward() + " XP");
+          .emoji(ReefEmoji.FISH).add(" ").bold("Улов:").add(" " + effectiveMin + "–" + effectiveMax + " рыбы\n")
+          .emoji(ReefEmoji.STAR).add(" ").bold("Опыт:").add(" +" + effectiveXp + " XP");
 
         if (spot.getBonusResource() != null) {
-            rt.add("\n" + bonusEmoji(spot) + " ").bold("Шанс " + bonusName(spot) + ":").add(" " + spot.getBonusChance() + "%");
+            rt.add("\n" + bonusEmoji(spot) + " ").bold("Шанс " + bonusName(spot) + ":").add(" " + effectiveBonusPct + "%");
         }
         if (hasBonuses) {
             rt.add("\n\n").emoji(ReefEmoji.SPARKLES).add(" У вас активны бонусы рыбака");

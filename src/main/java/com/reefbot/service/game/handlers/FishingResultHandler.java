@@ -23,6 +23,7 @@ import org.springframework.stereotype.Component;
 public class FishingResultHandler implements GameHandler {
 
     public static final String BTN_COLLECT = "✅ Забрать улов";
+    public static final String BTN_LATER   = "↩️ Потом";
 
     private final FishingService fishingService;
     private final PlayerRepository playerRepository;
@@ -36,6 +37,13 @@ public class FishingResultHandler implements GameHandler {
 
     @Override
     public BotResponse handle(Player player, Island island, String text) {
+        if (BTN_LATER.equals(text)) {
+            // Player defers collection — go back to Shore, catch stays ready
+            player.getState().setCurrentScreen(PlayerScreen.ZONE_SHORE);
+            playerRepository.save(player);
+            IslandBuilding pier = buildingService.find(island, BuildingType.FISHING_PIER).orElse(null);
+            return ShoreZoneHandler.buildZoneScreen(player, tideService, pier);
+        }
         if (!BTN_COLLECT.equals(text)) {
             return buildResultScreen(player, island, fishingService);
         }
@@ -117,6 +125,6 @@ public class FishingResultHandler implements GameHandler {
                 """, spot);
 
         return new BotResponse(text, null,
-                KeyboardBuilder.builder().row(BTN_COLLECT).build());
+                KeyboardBuilder.builder().row(BTN_COLLECT).row(BTN_LATER).build());
     }
 }
