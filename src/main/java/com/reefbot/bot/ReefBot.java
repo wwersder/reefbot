@@ -2,7 +2,11 @@ package com.reefbot.bot;
 
 import com.reefbot.config.SupportProperties;
 import com.reefbot.dto.BotResponse;
+import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
+import com.reefbot.enums.PlayerStatus;
+import com.reefbot.repository.IslandRepository;
+import com.reefbot.service.InventoryImageGenerator;
 import com.reefbot.service.MessageDispatcher;
 import com.reefbot.service.PlayerService;
 import com.reefbot.service.support.SupportGroupHandler;
@@ -56,13 +60,15 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
         return t;
     });
 
-    private final MessageDispatcher dispatcher;
-    private final CallbackDispatcher callbackDispatcher;
-    private final TelegramClient telegramClient;
-    private final SupportGroupHandler supportGroupHandler;
-    private final SupportService supportService;
-    private final SupportProperties supportProperties;
-    private final PlayerService playerService;
+    private final MessageDispatcher       dispatcher;
+    private final CallbackDispatcher      callbackDispatcher;
+    private final TelegramClient          telegramClient;
+    private final SupportGroupHandler     supportGroupHandler;
+    private final SupportService          supportService;
+    private final SupportProperties       supportProperties;
+    private final PlayerService           playerService;
+    private final InventoryImageGenerator inventoryImageGenerator;
+    private final IslandRepository        islandRepository;
 
     // ── Consume ───────────────────────────────────────────────────────────
 
@@ -122,6 +128,28 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
             }
 
             String text = message.getText();
+
+            // /inv — inventory card; works in private chats and groups
+            if ("/inv".equals(text) || text.startsWith("/inv@")) {
+                Optional<Player> pOpt = playerService.findByTelegramId(telegramId);
+                if (pOpt.isPresent() && pOpt.get().getStatus() == PlayerStatus.ACTIVE) {
+                    Player p      = pOpt.get();
+                    Island island = islandRepository.findByPlayer(p).orElse(new Island());
+                    try {
+                        byte[] img = inventoryImageGenerator.generate(p, island);
+                        String caption = (p.getUsername() != null ? "@" + p.getUsername() : "Игрок")
+                                + ", ваш инвентарь";
+                        sendInventoryPhoto(chatId, img, caption);
+                    } catch (Exception e) {
+                        log.error("Failed to generate inventory for player {}", telegramId, e);
+                        sendResponse(chatId, new BotResponse("Не удалось сгенерировать инвентарь. Попробуй ещё раз."));
+                    }
+                } else if (isPrivate) {
+                    sendResponse(chatId, new BotResponse("Сначала пройди регистрацию: напиши /start"));
+                }
+                return;
+            }
+
             BotResponse response = dispatcher.dispatch(telegramId, username, text, isPrivate);
 
             if (response != null) {
@@ -229,6 +257,21 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
         }
         String fileName = photoPath.substring(photoPath.lastIndexOf('/') + 1);
         return new InputFile(stream, fileName);
+    }
+
+    /** Sends a dynamically generated image (byte array) as a Telegram photo with caption. */
+    private void sendInventoryPhoto(Long chatId, byte[] imageBytes, String caption) {
+        try {
+            InputFile photo = new InputFile(
+                    new java.io.ByteArrayInputStream(imageBytes), "inventory.png");
+            telegramClient.execute(SendPhoto.builder()
+                    .chatId(chatId)
+                    .photo(photo)
+                    .caption(caption)
+                    .build());
+        } catch (TelegramApiException e) {
+            log.error("Failed to send inventory photo to chat {}: {}", chatId, e.getMessage());
+        }
     }
 
     private boolean isSupportGroup(Long chatId) {
