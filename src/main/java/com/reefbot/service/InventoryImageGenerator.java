@@ -6,49 +6,87 @@ import com.reefbot.enums.ConsumableItem;
 import com.reefbot.service.game.FishingService;
 import com.reefbot.service.game.TideService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.geom.Ellipse2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLConnection;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Generates a pixel-art style inventory card as a PNG byte array.
- * Used by the /inv Telegram command (works in both private chats and groups).
+ * Generates an inventory card as a PNG byte array for the /inv command.
  *
- * Java2D runs fine in headless mode — no display required on VPS.
- * Cyrillic text requires a font with Cyrillic support; DejaVu Sans
- * (fonts-dejavu-core, pre-installed on Ubuntu) is mapped to Font.SANS_SERIF.
+ * Emoji rendering: Twemoji 14.0.2 PNG images loaded from jsDelivr CDN at runtime
+ * and cached in-process. Requires outbound HTTPS access from the VPS.
+ *
+ * Custom font: place a TTF in src/main/resources/fonts/Nunito-Regular.ttf and
+ * src/main/resources/fonts/Nunito-Bold.ttf (download from fonts.google.com).
+ * Falls back to system SansSerif if the files are absent.
+ *
+ * On VPS install Ubuntu font as a decent fallback:
+ *   sudo apt-get install -y fonts-ubuntu
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class InventoryImageGenerator {
 
-    private final TideService   tideService;
+    private final TideService    tideService;
     private final FishingService fishingService;
 
     // ── Canvas ────────────────────────────────────────────────────────────────
     private static final int W = 700;
-    private static final int H = 410;
+    private static final int H = 430;
 
     // ── Layout ────────────────────────────────────────────────────────────────
-    private static final int HDR_H  = 65;
-    private static final int XP_H   = 24;
-    private static final int BODY_Y = HDR_H + XP_H;          // 89
-    private static final int FOOT_H = 40;
-    private static final int BODY_H = H - BODY_Y - FOOT_H;   // 281
-    private static final int DIV_X  = 476;                    // left/right split
+    private static final int HDR_H  = 72;
+    private static final int XP_H   = 26;
+    private static final int BODY_Y = HDR_H + XP_H;
+    private static final int FOOT_H = 42;
+    private static final int BODY_H = H - BODY_Y - FOOT_H;
+    private static final int DIV_X  = 478;
 
     // ── Fishing XP thresholds (mirrors FishingService.XP_THRESHOLDS) ─────────
-    // index = level-1, value = cumulative XP to reach that level
     private static final int[] FISHING_XP =
             {0, 50, 150, 350, 700, 1200, 2000, 3500, 6000, 10000, Integer.MAX_VALUE};
+
+    // ── Emoji → Twemoji filename mapping ─────────────────────────────────────
+    // Twemoji 14.0.2 CDN: https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/
+    private static final String TWEMOJI_CDN =
+            "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/";
+
+    private static final Map<String, String> EMOJI_HEX = Map.ofEntries(
+        Map.entry("🏝",  "1f3dd"),       // island (header)
+        Map.entry("🐚",  "1f41a"),       // shells
+        Map.entry("🐟",  "1f41f"),       // fish
+        Map.entry("🪵",  "1fab5"),       // wood
+        Map.entry("🪨",  "1faa8"),       // stone
+        Map.entry("🪸",  "1fab8"),       // coral
+        Map.entry("⭐",  "2b50"),        // dev points
+        Map.entry("📜",  "1f4dc"),       // speed scroll
+        Map.entry("🪱",  "1fab1"),       // bait
+        Map.entry("🪝",  "1fa9d"),       // hook
+        Map.entry("🫙",  "1fad9")        // tide vial
+    );
+
+    // In-process emoji image cache: key = emoji char, value = Optional (empty if load failed)
+    private static final ConcurrentHashMap<String, Optional<BufferedImage>> EMOJI_CACHE
+            = new ConcurrentHashMap<>();
 
     // ── Colors ────────────────────────────────────────────────────────────────
     private static final Color BG        = c(0x0d1b2a);
@@ -64,24 +102,59 @@ public class InventoryImageGenerator {
     private static final Color FOOT_BG   = c(0x07111e);
     private static final Color XP_FILL   = c(0x1a6aff);
     private static final Color XP_TRACK  = c(0x0a1e30);
-    // Resource accent colors
-    private static final Color C_SHELLS  = c(0xf0c84a);
-    private static final Color C_FISH    = c(0x4a9eff);
-    private static final Color C_WOOD    = c(0x8b5e3c);
-    private static final Color C_STONE   = c(0x7a8a9a);
-    private static final Color C_CORAL   = c(0xff6b8a);
-    private static final Color C_DEV     = c(0x9b59b6);
-    // Item accent colors
-    private static final Color C_SCROLL  = c(0x2a9a8a);
-    private static final Color C_BAIT    = c(0x5a9a3a);
-    private static final Color C_HOOK    = c(0xe08030);
-    private static final Color C_VIAL    = c(0x3a8acf);
+
+    // Resource accent colors (used as fallback stripe when emoji fails to load)
+    private static final Color C_SHELLS = c(0xf0c84a);
+    private static final Color C_FISH   = c(0x4a9eff);
+    private static final Color C_WOOD   = c(0x8b5e3c);
+    private static final Color C_STONE  = c(0x7a8a9a);
+    private static final Color C_CORAL  = c(0xff6b8a);
+    private static final Color C_DEV    = c(0x9b59b6);
+    private static final Color C_SCROLL = c(0x2a9a8a);
+    private static final Color C_BAIT   = c(0x5a9a3a);
+    private static final Color C_HOOK   = c(0xe08030);
+    private static final Color C_VIAL   = c(0x3a8acf);
 
     private static Color c(int rgb) { return new Color(rgb); }
 
+    // ── Fonts ─────────────────────────────────────────────────────────────────
+
+    private static Font fontRegular(float size) {
+        return loadFont("/fonts/Nunito-Regular.ttf", Font.PLAIN, size);
+    }
+
+    private static Font fontBold(float size) {
+        return loadFont("/fonts/Nunito-Bold.ttf", Font.BOLD, size);
+    }
+
+    private static Font loadFont(String classpathPath, int style, float size) {
+        InputStream is = InventoryImageGenerator.class.getResourceAsStream(classpathPath);
+        if (is != null) {
+            try {
+                return Font.createFont(Font.TRUETYPE_FONT, is).deriveFont(style, size);
+            } catch (Exception e) {
+                log.debug("Could not load font from {}: {}", classpathPath, e.getMessage());
+            }
+        }
+        // Try common system fonts with Cyrillic support
+        for (String name : new String[]{"Nunito", "Ubuntu", "Noto Sans", "DejaVu Sans"}) {
+            Font f = new Font(name, style, (int) size);
+            if (!f.getFamily().equalsIgnoreCase("Dialog")) {
+                return f.deriveFont(style, size);
+            }
+        }
+        return new Font(Font.SANS_SERIF, style, (int) size);
+    }
+
     // ── Public API ────────────────────────────────────────────────────────────
 
+    /** Generate without avatar (falls back to placeholder icon). */
     public byte[] generate(Player player, Island island) {
+        return generate(player, island, null);
+    }
+
+    /** Generate with optional avatar bytes (JPEG/PNG from Telegram). */
+    public byte[] generate(Player player, Island island, @Nullable byte[] avatarBytes) {
         System.setProperty("java.awt.headless", "true");
 
         BufferedImage img = new BufferedImage(W, H, BufferedImage.TYPE_INT_RGB);
@@ -89,11 +162,12 @@ public class InventoryImageGenerator {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,      RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_RENDERING,          RenderingHints.VALUE_RENDER_QUALITY);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,      RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
         g.setColor(BG);
         g.fillRect(0, 0, W, H);
 
-        drawHeader(g, player);
+        drawHeader(g, player, avatarBytes);
         drawXpBar(g, player);
         drawBody(g, player, island);
         drawFooter(g, player, island);
@@ -116,51 +190,87 @@ public class InventoryImageGenerator {
 
     // ── Header ────────────────────────────────────────────────────────────────
 
-    private void drawHeader(Graphics2D g, Player player) {
+    private void drawHeader(Graphics2D g, Player player, @Nullable byte[] avatarBytes) {
         g.setColor(HDR_BG);
         g.fillRect(0, 0, W, HDR_H);
         g.setColor(c(0x1a4a7a));
         g.fillRect(0, HDR_H - 2, W, 2);
 
-        // Left icon circle
-        g.setColor(c(0x1a4a8a));
-        g.fillOval(14, 12, 42, 42);
-        g.setColor(c(0x2a6acc));
-        g.setStroke(new BasicStroke(1.5f));
-        g.drawOval(14, 12, 42, 42);
-        g.setColor(c(0x5aacff));
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
-        drawCentered(g, "~", 14, 12, 42, 42);
+        // Avatar circle (56×56) at left
+        int avX = 10, avY = 8, avD = 56;
+        drawAvatar(g, avatarBytes, avX, avY, avD);
 
         // Title row
         g.setColor(ACCENT);
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 9));
-        g.drawString("REEFBOT  ·  ИНВЕНТАРЬ", 68, 26);
+        g.setFont(fontBold(9f));
+        g.drawString("REEFBOT  ·  ИНВЕНТАРЬ", avX + avD + 12, 27);
 
         // Player name
         String name = player.getUsername() != null
                 ? "@" + player.getUsername()
                 : "#" + player.getTelegramId();
         g.setColor(TXT_PRI);
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 20));
-        g.drawString(name, 68, 52);
+        g.setFont(fontBold(21f));
+        g.drawString(name, avX + avD + 12, 57);
 
-        // Level box
+        // Level box (top-right)
         int lvl = player.getFishing() != null ? player.getFishing().getFishingLevel() : 1;
-        int lx = W - 64, ly = 11, lw = 50, lh = 44;
+        int lx = W - 66, ly = 12, lw = 52, lh = 48;
         g.setColor(c(0x0a3055));
-        g.fill(new RoundRectangle2D.Float(lx, ly, lw, lh, 4, 4));
+        g.fill(new RoundRectangle2D.Float(lx, ly, lw, lh, 6, 6));
         g.setColor(c(0x1a6aaa));
         g.setStroke(new BasicStroke(1f));
-        g.draw(new RoundRectangle2D.Float(lx, ly, lw, lh, 4, 4));
+        g.draw(new RoundRectangle2D.Float(lx, ly, lw, lh, 6, 6));
 
         g.setColor(ACCENT);
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 8));
-        drawCentered(g, "LVL", lx, ly, lw, 20);
+        g.setFont(fontBold(8f));
+        drawCentered(g, "LVL", lx, ly, lw, 22);
 
         g.setColor(Color.WHITE);
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
-        drawCentered(g, String.valueOf(lvl), lx, ly + 18, lw, 26);
+        g.setFont(fontBold(23f));
+        drawCentered(g, String.valueOf(lvl), lx, ly + 20, lw, 28);
+    }
+
+    // ── Avatar ────────────────────────────────────────────────────────────────
+
+    private void drawAvatar(Graphics2D g, @Nullable byte[] avatarBytes, int x, int y, int d) {
+        if (avatarBytes != null) {
+            try {
+                BufferedImage src = ImageIO.read(new ByteArrayInputStream(avatarBytes));
+                // Scale to square
+                BufferedImage circle = new BufferedImage(d, d, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D gc = circle.createGraphics();
+                gc.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                gc.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                // Clip to circle
+                gc.setClip(new Ellipse2D.Float(0, 0, d, d));
+                gc.drawImage(src, 0, 0, d, d, null);
+                gc.dispose();
+                g.drawImage(circle, x, y, null);
+                // Border
+                g.setColor(c(0x2a6acc));
+                g.setStroke(new BasicStroke(2f));
+                g.drawOval(x, y, d, d);
+                return;
+            } catch (Exception e) {
+                log.debug("Could not render avatar image: {}", e.getMessage());
+            }
+        }
+        // Placeholder: colored circle with island emoji
+        g.setColor(c(0x1a4a8a));
+        g.fillOval(x, y, d, d);
+        g.setColor(c(0x2a6acc));
+        g.setStroke(new BasicStroke(2f));
+        g.drawOval(x, y, d, d);
+        BufferedImage islandEmoji = getEmoji("🏝");
+        if (islandEmoji != null) {
+            int es = d - 14;
+            g.drawImage(islandEmoji, x + 7, y + 7, es, es, null);
+        } else {
+            g.setColor(c(0x5aacff));
+            g.setFont(fontBold(24f));
+            drawCentered(g, "~", x, y, d, d);
+        }
     }
 
     // ── XP Bar ────────────────────────────────────────────────────────────────
@@ -174,36 +284,34 @@ public class InventoryImageGenerator {
 
         int xp  = player.getFishing() != null ? player.getFishing().getFishingXp() : 0;
         int lvl = player.getFishing() != null ? player.getFishing().getFishingLevel() : 1;
+        int xpPrev = (lvl - 1 < FISHING_XP.length) ? FISHING_XP[lvl - 1] : 0;
+        int xpNext = (lvl     < FISHING_XP.length) ? FISHING_XP[lvl]     : xpPrev + 1;
 
-        int xpPrev = lvl - 1 < FISHING_XP.length ? FISHING_XP[lvl - 1] : 0;
-        int xpNext = lvl     < FISHING_XP.length ? FISHING_XP[lvl]     : xpPrev + 1;
-
-        // Label
         g.setColor(ACCENT);
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 9));
-        g.drawString("XP", 16, y + 16);
+        g.setFont(fontBold(8f));
+        g.drawString("XP", 16, y + 17);
 
         // Track
-        int tx = 44, ty = y + 7, tw = W - 155, th = 10;
+        int tx = 44, ty = y + 8, tw = W - 158, th = 10;
         g.setColor(XP_TRACK);
-        g.fill(new RoundRectangle2D.Float(tx, ty, tw, th, 3, 3));
+        g.fill(new RoundRectangle2D.Float(tx, ty, tw, th, 4, 4));
         g.setColor(BORDER);
-        g.draw(new RoundRectangle2D.Float(tx, ty, tw, th, 3, 3));
+        g.draw(new RoundRectangle2D.Float(tx, ty, tw, th, 4, 4));
 
         // Fill
         if (xpNext > xpPrev) {
-            float pct    = Math.min(1f, (float)(xp - xpPrev) / (xpNext - xpPrev));
-            int   fillW  = Math.max(4, (int)(tw * pct));
+            float pct   = Math.min(1f, (float)(xp - xpPrev) / (xpNext - xpPrev));
+            int   fillW = Math.max(6, (int)(tw * pct));
             g.setColor(XP_FILL);
-            g.fill(new RoundRectangle2D.Float(tx, ty, fillW, th, 3, 3));
+            g.fill(new RoundRectangle2D.Float(tx, ty, fillW, th, 4, 4));
         }
 
-        // XP text
+        // Text
         g.setColor(c(0x6ab0d0));
-        g.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 9));
+        g.setFont(fontRegular(9f));
         String xpStr = lvl >= 10 ? "MAX" : fmt(xp) + " / " + fmt(xpNext);
         FontMetrics fm = g.getFontMetrics();
-        g.drawString(xpStr, W - 14 - fm.stringWidth(xpStr), y + 16);
+        g.drawString(xpStr, W - 14 - fm.stringWidth(xpStr), y + 17);
     }
 
     // ── Body ──────────────────────────────────────────────────────────────────
@@ -211,35 +319,31 @@ public class InventoryImageGenerator {
     private void drawBody(Graphics2D g, Player player, Island island) {
         g.setColor(BORDER);
         g.fillRect(DIV_X, BODY_Y, 2, BODY_H);
-
         drawResources(g, island);
         drawItems(g, player);
     }
 
     // ── Resources grid ────────────────────────────────────────────────────────
 
-    private record Res(String name, int value, Color color, boolean altColor) {}
+    private record Res(String name, int value, String emoji, Color fallbackColor, boolean hiColor) {}
 
     private void drawResources(Graphics2D g, Island island) {
-        int padX = 16, padY = 12;
+        int padX = 14, padY = 12;
 
         // Section label
         g.setColor(TXT_DIM);
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 9));
-        // "РЕСУРСЫ ОСТРОВА"
-        g.drawString("РЕСУРСЫ ОСТРОВА",
-                padX, BODY_Y + padY + 9);
+        g.setFont(fontBold(8f));
+        g.drawString("РЕСУРСЫ ОСТРОВА", padX, BODY_Y + padY + 9);
         g.setColor(c(0x1a3050));
         g.fillRect(padX, BODY_Y + padY + 13, DIV_X - padX * 2, 1);
 
-        Res[] resources = {
-            // РАКУШКИ, РЫБА, ДЕРЕВО, КАМЕНЬ, КОРАЛЛ, ОЧКИ
-            new Res("РАКУШКИ", safe(island.getShells()),   C_SHELLS, true),
-            new Res("РЫБА",                  safe(island.getFish()),      C_FISH,   false),
-            new Res("ДЕРЕВО",      safe(island.getWood()),      C_WOOD,   false),
-            new Res("КАМЕНЬ",      safe(island.getStone()),     C_STONE,  false),
-            new Res("КОРАЛЛ",      safe(island.getCoral()),     C_CORAL,  false),
-            new Res("ОЧКИ",                  safe(island.getDevPoints()), C_DEV,    true),
+        Res[] res = {
+            new Res("РАКУШКИ", safe(island.getShells()),   "🐚", C_SHELLS, true),
+            new Res("РЫБА",    safe(island.getFish()),      "🐟", C_FISH,   false),
+            new Res("ДЕРЕВО",  safe(island.getWood()),      "🪵", C_WOOD,   false),
+            new Res("КАМЕНЬ",  safe(island.getStone()),     "🪨", C_STONE,  false),
+            new Res("КОРАЛЛ",  safe(island.getCoral()),     "🪸", C_CORAL,  false),
+            new Res("ОЧКИ",    safe(island.getDevPoints()), "⭐", C_DEV,    true),
         };
 
         int cols  = 3, rows = 2;
@@ -250,68 +354,71 @@ public class InventoryImageGenerator {
         int colW  = (gridW - (cols - 1) * 8) / cols;
         int rowH  = (gridH - (rows - 1) * 8) / rows;
 
-        for (int i = 0; i < resources.length; i++) {
-            int col = i % cols;
-            int row = i / cols;
+        for (int i = 0; i < res.length; i++) {
             drawResSlot(g,
-                    gridX + col * (colW + 8),
-                    gridY + row * (rowH + 8),
-                    colW, rowH, resources[i]);
+                    gridX + (i % cols) * (colW + 8),
+                    gridY + (i / cols) * (rowH + 8),
+                    colW, rowH, res[i]);
         }
     }
 
     private void drawResSlot(Graphics2D g, int x, int y, int w, int h, Res res) {
         g.setColor(PANEL);
-        g.fill(new RoundRectangle2D.Float(x, y, w, h, 3, 3));
+        g.fill(new RoundRectangle2D.Float(x, y, w, h, 4, 4));
         g.setColor(BORDER);
         g.setStroke(new BasicStroke(1f));
-        g.draw(new RoundRectangle2D.Float(x, y, w, h, 3, 3));
+        g.draw(new RoundRectangle2D.Float(x, y, w, h, 4, 4));
 
-        // Left color stripe
-        g.setColor(res.color());
-        g.fill(new RoundRectangle2D.Float(x + 1, y + 8, 4, h - 16, 2, 2));
+        // Emoji icon (44×44 centered in left 54px zone)
+        int iconSize = 36;
+        int iconX    = x + (54 - iconSize) / 2;
+        int iconY    = y + (h - iconSize) / 2;
+        BufferedImage emoji = getEmoji(res.emoji());
+        if (emoji != null) {
+            g.drawImage(emoji, iconX, iconY, iconSize, iconSize, null);
+        } else {
+            // Fallback: colored stripe
+            g.setColor(res.fallbackColor());
+            g.fill(new RoundRectangle2D.Float(x + 1, y + 8, 5, h - 16, 2, 2));
+        }
 
-        // Name
+        // Vertical separator after icon zone
+        g.setColor(c(0x1a3050));
+        g.fillRect(x + 54, y + 8, 1, h - 16);
+
+        // Name (small, dimmed)
         g.setColor(TXT_SEC);
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 8));
-        g.drawString(res.name(), x + 13, y + 17);
+        g.setFont(fontBold(8f));
+        g.drawString(res.name(), x + 62, y + 20);
 
-        // Count
-        Color valColor = res.altColor()
-                ? (res.color() == C_DEV ? RARE_COL : HIGHLIGHT)
+        // Count (large, bright)
+        Color valColor = res.hiColor()
+                ? (res.fallbackColor() == C_DEV ? RARE_COL : HIGHLIGHT)
                 : TXT_PRI;
         g.setColor(valColor);
-        g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 20));
-        g.drawString(fmt(res.value()), x + 13, y + h - 11);
+        g.setFont(fontBold(22f));
+        g.drawString(fmt(res.value()), x + 62, y + h - 12);
     }
 
     // ── Items list ────────────────────────────────────────────────────────────
 
-    private record Item(String name, int qty, Color color) {}
+    private record Item(String name, int qty, String emoji, Color fallbackColor) {}
 
     private void drawItems(Graphics2D g, Player player) {
         int x0 = DIV_X + 2, w0 = W - DIV_X - 2;
         int padX = 12, padY = 12;
 
-        // Section label
         g.setColor(TXT_DIM);
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 9));
-        // "ПРЕДМЕТЫ"
-        g.drawString("ПРЕДМЕТЫ",
-                x0 + padX, BODY_Y + padY + 9);
+        g.setFont(fontBold(8f));
+        g.drawString("ПРЕДМЕТЫ", x0 + padX, BODY_Y + padY + 9);
         g.setColor(c(0x1a3050));
         g.fillRect(x0 + padX, BODY_Y + padY + 13, w0 - padX * 2, 1);
 
         Item[] items = {
-            // Свиток, Наживка, Крюк, Склянка
-            new Item("Свиток",
-                    tideService.getItemCount(player, ConsumableItem.SPEED_SCROLL), C_SCROLL),
-            new Item("Наживка",
-                    tideService.getItemCount(player, ConsumableItem.BAIT),         C_BAIT),
-            new Item("Крюк",
-                    tideService.getItemCount(player, ConsumableItem.FISHING_HOOK), C_HOOK),
-            new Item("Склянка",
-                    tideService.getItemCount(player, ConsumableItem.TIDE_VIAL),    C_VIAL),
+            new Item("Свиток",  tideService.getItemCount(player, ConsumableItem.SPEED_SCROLL), "📜", C_SCROLL),
+            new Item("Наживка", tideService.getItemCount(player, ConsumableItem.BAIT),         "🪱", C_BAIT),
+            new Item("Крюк",    tideService.getItemCount(player, ConsumableItem.FISHING_HOOK), "🪝", C_HOOK),
+            new Item("Склянка", tideService.getItemCount(player, ConsumableItem.TIDE_VIAL),    "🫙", C_VIAL),
         };
 
         int ix = x0 + padX;
@@ -319,8 +426,8 @@ public class InventoryImageGenerator {
         int iw = w0 - padX * 2;
 
         for (Item item : items) {
-            drawItemSlot(g, ix, iy, iw, 46, item);
-            iy += 46 + 7;
+            drawItemSlot(g, ix, iy, iw, 52, item);
+            iy += 52 + 6;
         }
     }
 
@@ -328,29 +435,46 @@ public class InventoryImageGenerator {
         boolean has = item.qty() > 0;
 
         g.setColor(PANEL);
-        g.fill(new RoundRectangle2D.Float(x, y, w, h, 3, 3));
+        g.fill(new RoundRectangle2D.Float(x, y, w, h, 4, 4));
         g.setColor(has ? BORDER : c(0x101820));
         g.setStroke(new BasicStroke(1f));
-        g.draw(new RoundRectangle2D.Float(x, y, w, h, 3, 3));
+        g.draw(new RoundRectangle2D.Float(x, y, w, h, 4, 4));
 
-        // Color stripe
-        g.setColor(has ? item.color() : c(0x1a2a3a));
-        g.fill(new RoundRectangle2D.Float(x + 1, y + 6, 4, h - 12, 2, 2));
+        // Emoji icon
+        int iconSize = 28;
+        int iconX    = x + (44 - iconSize) / 2;
+        int iconY    = y + (h - iconSize) / 2;
+        BufferedImage emoji = getEmoji(item.emoji());
+        if (emoji != null) {
+            if (!has) {
+                g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.35f));
+            }
+            g.drawImage(emoji, iconX, iconY, iconSize, iconSize, null);
+            g.setComposite(AlphaComposite.SrcOver);
+        } else {
+            // Fallback stripe
+            g.setColor(has ? item.fallbackColor() : c(0x1a2a3a));
+            g.fill(new RoundRectangle2D.Float(x + 1, y + 6, 4, h - 12, 2, 2));
+        }
+
+        // Separator
+        g.setColor(c(0x1a3050));
+        g.fillRect(x + 44, y + 8, 1, h - 16);
 
         // Name
         g.setColor(has ? TXT_SEC : c(0x2a4a6a));
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 8));
-        g.drawString(item.name(), x + 12, y + 15);
+        g.setFont(fontBold(8f));
+        g.drawString(item.name(), x + 52, y + 18);
 
-        // Quantity
+        // Qty
         if (has) {
             g.setColor(TXT_PRI);
-            g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 17));
-            g.drawString("×" + item.qty(), x + 12, y + h - 9);   // ×N
+            g.setFont(fontBold(18f));
+            g.drawString("×" + item.qty(), x + 52, y + h - 10);
         } else {
             g.setColor(c(0x2a4a6a));
-            g.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
-            g.drawString("—", x + 12, y + h - 11);                // —
+            g.setFont(fontRegular(14f));
+            g.drawString("—", x + 52, y + h - 12);
         }
     }
 
@@ -363,40 +487,30 @@ public class InventoryImageGenerator {
         g.setColor(BORDER);
         g.fillRect(0, y, W, 2);
 
-        int    lvl        = player.getFishing() != null ? player.getFishing().getFishingLevel() : 1;
-        String fishTitle  = fishingService.levelName(lvl);
-        // "ур. N"
-        String fishVal    = fishTitle + " (ур. " + lvl + ")";
+        int    lvl       = player.getFishing() != null ? player.getFishing().getFishingLevel() : 1;
+        String fishTitle = fishingService.levelName(lvl);
         String islandName = island != null && island.getName() != null ? island.getName() : "—";
 
-        // Col 1: fishing level
-        // "РЫБАК"
-        drawFooterCol(g, 24, y,
-                "РЫБАК", fishVal);
+        drawFooterCol(g, 24,           y, "РЫБАК",   fishTitle + " (ур. " + lvl + ")");
+        drawFooterCol(g, W / 3 + 14,  y, "ОСТРОВ",  islandName);
 
-        // Col 2: island name
-        // "ОСТРОВ"
-        drawFooterCol(g, W / 3 + 18, y,
-                "ОСТРОВ", islandName);
-
-        // Col 3: brand
         g.setColor(TXT_DIM);
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 10));
-        g.drawString("REEFBOT", 2 * W / 3 + 18, y + 27);
+        g.setFont(fontBold(10f));
+        g.drawString("REEFBOT", 2 * W / 3 + 14, y + 28);
 
         // Dividers
         g.setColor(BORDER);
-        g.fillRect(W / 3, y + 7, 1, FOOT_H - 14);
-        g.fillRect(2 * W / 3, y + 7, 1, FOOT_H - 14);
+        g.fillRect(W / 3,     y + 8, 1, FOOT_H - 16);
+        g.fillRect(2 * W / 3, y + 8, 1, FOOT_H - 16);
     }
 
     private void drawFooterCol(Graphics2D g, int x, int panelY, String label, String value) {
         g.setColor(TXT_DIM);
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 8));
-        g.drawString(label, x, panelY + 16);
+        g.setFont(fontBold(8f));
+        g.drawString(label, x, panelY + 17);
         g.setColor(c(0x7aaad0));
-        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
-        g.drawString(value, x, panelY + 32);
+        g.setFont(fontBold(12f));
+        g.drawString(value, x, panelY + 33);
     }
 
     // ── Corner accents ────────────────────────────────────────────────────────
@@ -404,14 +518,38 @@ public class InventoryImageGenerator {
     private void drawCorners(Graphics2D g) {
         g.setColor(c(0x2a6aaa));
         g.setStroke(new BasicStroke(2f));
-        int s = 14;
-        g.drawLine(3, 3, 3 + s, 3);           g.drawLine(3, 3, 3, 3 + s);            // TL
-        g.drawLine(W - 4 - s, 3, W - 4, 3);   g.drawLine(W - 4, 3, W - 4, 3 + s);   // TR
-        g.drawLine(3, H - 4, 3 + s, H - 4);   g.drawLine(3, H - 4 - s, 3, H - 4);   // BL
-        g.drawLine(W - 4 - s, H - 4, W - 4, H - 4); g.drawLine(W - 4, H - 4 - s, W - 4, H - 4); // BR
+        int s = 16;
+        g.drawLine(3, 3, 3 + s, 3);           g.drawLine(3, 3, 3, 3 + s);
+        g.drawLine(W - 4 - s, 3, W - 4, 3);   g.drawLine(W - 4, 3, W - 4, 3 + s);
+        g.drawLine(3, H - 4, 3 + s, H - 4);   g.drawLine(3, H - 4 - s, 3, H - 4);
+        g.drawLine(W - 4 - s, H - 4, W - 4, H - 4); g.drawLine(W - 4, H - 4 - s, W - 4, H - 4);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Emoji loading (Twemoji CDN) ───────────────────────────────────────────
+
+    @Nullable
+    private static BufferedImage getEmoji(String emoji) {
+        String hex = EMOJI_HEX.get(emoji);
+        if (hex == null) return null;
+
+        return EMOJI_CACHE.computeIfAbsent(hex, key -> {
+            try {
+                String urlStr = TWEMOJI_CDN + key + ".png";
+                URLConnection conn = new URL(urlStr).openConnection();
+                conn.setConnectTimeout(3_000);
+                conn.setReadTimeout(3_000);
+                conn.setRequestProperty("User-Agent", "ReefBot/1.0");
+                BufferedImage img = ImageIO.read(conn.getInputStream());
+                if (img != null) log.debug("Loaded Twemoji: {}", key);
+                return Optional.ofNullable(img);
+            } catch (Exception e) {
+                log.warn("Failed to load Twemoji '{}' ({}): {}", emoji, key, e.getMessage());
+                return Optional.empty();
+            }
+        }).orElse(null);
+    }
+
+    // ── Drawing helpers ───────────────────────────────────────────────────────
 
     private static void drawCentered(Graphics2D g, String text, int x, int y, int w, int h) {
         FontMetrics fm = g.getFontMetrics();
@@ -422,7 +560,7 @@ public class InventoryImageGenerator {
 
     private static String fmt(int n) {
         DecimalFormatSymbols sym = new DecimalFormatSymbols(Locale.ROOT);
-        sym.setGroupingSeparator(' '); // non-breaking space
+        sym.setGroupingSeparator(' ');
         return new DecimalFormat("#,###", sym).format(n);
     }
 
