@@ -51,7 +51,7 @@ public class InventoryImageGenerator {
 
     // ── Canvas ────────────────────────────────────────────────────────────────
     private static final int W = 700;
-    private static final int H = 430;
+    private static final int H = 460;
 
     // ── Layout ────────────────────────────────────────────────────────────────
     private static final int HDR_H  = 72;
@@ -328,14 +328,14 @@ public class InventoryImageGenerator {
     private record Res(String name, int value, String emoji, Color fallbackColor, boolean hiColor) {}
 
     private void drawResources(Graphics2D g, Island island) {
-        int padX = 14, padY = 12;
+        int padX = 12, padY = 8;
 
-        // Section label
-        g.setColor(TXT_DIM);
-        g.setFont(fontBold(8f));
-        g.drawString("РЕСУРСЫ ОСТРОВА", padX, BODY_Y + padY + 9);
+        // Section label — brighter and larger
+        g.setColor(c(0x4a7aaa));
+        g.setFont(fontBold(10f));
+        g.drawString("РЕСУРСЫ ОСТРОВА", padX, BODY_Y + padY + 10);
         g.setColor(c(0x1a3050));
-        g.fillRect(padX, BODY_Y + padY + 13, DIV_X - padX * 2, 1);
+        g.fillRect(padX, BODY_Y + padY + 14, DIV_X - padX * 2, 1);
 
         Res[] res = {
             new Res("РАКУШКИ", safe(island.getShells()),   "🐚", C_SHELLS, true),
@@ -350,54 +350,64 @@ public class InventoryImageGenerator {
         int gridX = padX;
         int gridY = BODY_Y + padY + 22;
         int gridW = DIV_X - padX * 2;
-        int gridH = BODY_H - padY - 22 - 8;
-        int colW  = (gridW - (cols - 1) * 8) / cols;
-        int rowH  = (gridH - (rows - 1) * 8) / rows;
+        int gridH = BODY_H - padY - 22 - 6;
+        int colW  = (gridW - (cols - 1) * 7) / cols;
+        int rowH  = (gridH - (rows - 1) * 7) / rows;
 
         for (int i = 0; i < res.length; i++) {
             drawResSlot(g,
-                    gridX + (i % cols) * (colW + 8),
-                    gridY + (i / cols) * (rowH + 8),
+                    gridX + (i % cols) * (colW + 7),
+                    gridY + (i / cols) * (rowH + 7),
                     colW, rowH, res[i]);
         }
     }
 
     private void drawResSlot(Graphics2D g, int x, int y, int w, int h, Res res) {
+        boolean isEmpty = (res.value() == 0);
+
+        // Dim entire cell when empty (matches opacity: 0.38 effect)
+        java.awt.Composite savedComp = g.getComposite();
+        if (isEmpty) {
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.38f));
+        }
+
         g.setColor(PANEL);
         g.fill(new RoundRectangle2D.Float(x, y, w, h, 4, 4));
-        g.setColor(BORDER);
+        g.setColor(isEmpty ? c(0x101820) : BORDER);
         g.setStroke(new BasicStroke(1f));
         g.draw(new RoundRectangle2D.Float(x, y, w, h, 4, 4));
 
-        // Emoji icon (44×44 centered in left 54px zone)
-        int iconSize = 36;
-        int iconX    = x + (54 - iconSize) / 2;
-        int iconY    = y + (h - iconSize) / 2;
+        // Emoji icon — large, centered horizontally at top
+        int iconSize = 44;
+        int iconX    = x + (w - iconSize) / 2;
+        int iconY    = y + 9;
         BufferedImage emoji = getEmoji(res.emoji());
         if (emoji != null) {
             g.drawImage(emoji, iconX, iconY, iconSize, iconSize, null);
         } else {
-            // Fallback: colored stripe
+            // Fallback: colored circle
             g.setColor(res.fallbackColor());
-            g.fill(new RoundRectangle2D.Float(x + 1, y + 8, 5, h - 16, 2, 2));
+            int dot = 14;
+            g.fillOval(x + (w - dot) / 2, iconY + (iconSize - dot) / 2, dot, dot);
         }
 
-        // Vertical separator after icon zone
-        g.setColor(c(0x1a3050));
-        g.fillRect(x + 54, y + 8, 1, h - 16);
-
-        // Name (small, dimmed)
+        // Name label — centered, below emoji
         g.setColor(TXT_SEC);
-        g.setFont(fontBold(8f));
-        g.drawString(res.name(), x + 62, y + 20);
+        g.setFont(fontBold(9.5f));
+        drawCentered(g, res.name(), x, y + 9 + iconSize + 4, w, 15);
 
-        // Count (large, bright)
+        // Count — large, centered, below name
         Color valColor = res.hiColor()
                 ? (res.fallbackColor() == C_DEV ? RARE_COL : HIGHLIGHT)
                 : TXT_PRI;
         g.setColor(valColor);
-        g.setFont(fontBold(22f));
-        g.drawString(fmt(res.value()), x + 62, y + h - 12);
+        g.setFont(fontBold(24f));
+        int countY = y + 9 + iconSize + 4 + 15 + 2;
+        drawCentered(g, fmt(res.value()), x, countY, w, h - countY + y - 6);
+
+        if (isEmpty) {
+            g.setComposite(savedComp);
+        }
     }
 
     // ── Items list ────────────────────────────────────────────────────────────
@@ -406,13 +416,13 @@ public class InventoryImageGenerator {
 
     private void drawItems(Graphics2D g, Player player) {
         int x0 = DIV_X + 2, w0 = W - DIV_X - 2;
-        int padX = 12, padY = 12;
+        int padX = 12, padY = 8;
 
-        g.setColor(TXT_DIM);
-        g.setFont(fontBold(8f));
-        g.drawString("ПРЕДМЕТЫ", x0 + padX, BODY_Y + padY + 9);
+        g.setColor(c(0x4a7aaa));
+        g.setFont(fontBold(10f));
+        g.drawString("ПРЕДМЕТЫ", x0 + padX, BODY_Y + padY + 10);
         g.setColor(c(0x1a3050));
-        g.fillRect(x0 + padX, BODY_Y + padY + 13, w0 - padX * 2, 1);
+        g.fillRect(x0 + padX, BODY_Y + padY + 14, w0 - padX * 2, 1);
 
         Item[] items = {
             new Item("Свиток",  tideService.getItemCount(player, ConsumableItem.SPEED_SCROLL), "📜", C_SCROLL),
@@ -421,18 +431,24 @@ public class InventoryImageGenerator {
             new Item("Склянка", tideService.getItemCount(player, ConsumableItem.TIDE_VIAL),    "🫙", C_VIAL),
         };
 
-        int ix = x0 + padX;
-        int iy = BODY_Y + padY + 22;
-        int iw = w0 - padX * 2;
+        int ix   = x0 + padX;
+        int iw   = w0 - padX * 2;
+        int topY = BODY_Y + padY + 22;
+        int avail = BODY_H - padY - 22 - 6;
+        int ih   = (avail - 3 * 7) / 4;  // 4 items, 3 gaps of 7px
 
-        for (Item item : items) {
-            drawItemSlot(g, ix, iy, iw, 52, item);
-            iy += 52 + 6;
+        for (int i = 0; i < items.length; i++) {
+            drawItemSlot(g, ix, topY + i * (ih + 7), iw, ih, items[i]);
         }
     }
 
     private void drawItemSlot(Graphics2D g, int x, int y, int w, int h, Item item) {
         boolean has = item.qty() > 0;
+
+        java.awt.Composite savedComp = g.getComposite();
+        if (!has) {
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.38f));
+        }
 
         g.setColor(PANEL);
         g.fill(new RoundRectangle2D.Float(x, y, w, h, 4, 4));
@@ -440,19 +456,14 @@ public class InventoryImageGenerator {
         g.setStroke(new BasicStroke(1f));
         g.draw(new RoundRectangle2D.Float(x, y, w, h, 4, 4));
 
-        // Emoji icon
-        int iconSize = 28;
+        // Emoji icon — centered vertically in left 44px zone
+        int iconSize = 30;
         int iconX    = x + (44 - iconSize) / 2;
         int iconY    = y + (h - iconSize) / 2;
         BufferedImage emoji = getEmoji(item.emoji());
         if (emoji != null) {
-            if (!has) {
-                g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.35f));
-            }
             g.drawImage(emoji, iconX, iconY, iconSize, iconSize, null);
-            g.setComposite(AlphaComposite.SrcOver);
         } else {
-            // Fallback stripe
             g.setColor(has ? item.fallbackColor() : c(0x1a2a3a));
             g.fill(new RoundRectangle2D.Float(x + 1, y + 6, 4, h - 12, 2, 2));
         }
@@ -461,20 +472,24 @@ public class InventoryImageGenerator {
         g.setColor(c(0x1a3050));
         g.fillRect(x + 44, y + 8, 1, h - 16);
 
-        // Name
-        g.setColor(has ? TXT_SEC : c(0x2a4a6a));
-        g.setFont(fontBold(8f));
-        g.drawString(item.name(), x + 52, y + 18);
+        // Name — slightly brighter than before
+        g.setColor(TXT_SEC);
+        g.setFont(fontBold(10f));
+        g.drawString(item.name(), x + 53, y + h / 2 - 2);
 
-        // Qty
+        // Qty or dash
         if (has) {
             g.setColor(TXT_PRI);
-            g.setFont(fontBold(18f));
-            g.drawString("×" + item.qty(), x + 52, y + h - 10);
+            g.setFont(fontBold(17f));
+            g.drawString("×" + item.qty(), x + 53, y + h / 2 + 16);
         } else {
             g.setColor(c(0x2a4a6a));
             g.setFont(fontRegular(14f));
-            g.drawString("—", x + 52, y + h - 12);
+            g.drawString("—", x + 53, y + h / 2 + 14);
+        }
+
+        if (!has) {
+            g.setComposite(savedComp);
         }
     }
 
@@ -533,17 +548,32 @@ public class InventoryImageGenerator {
         if (hex == null) return null;
 
         return EMOJI_CACHE.computeIfAbsent(hex, key -> {
+            // Priority 1: bundled Apple emoji PNGs from classpath.
+            // Place files in src/main/resources/emoji/{hex}.png
+            // Download from: https://emojipedia.org/apple (right-click image → Save as {hex}.png)
+            InputStream bundled = InventoryImageGenerator.class.getResourceAsStream("/emoji/" + key + ".png");
+            if (bundled != null) {
+                try (InputStream is = bundled) {
+                    BufferedImage img = ImageIO.read(is);
+                    if (img != null) {
+                        log.debug("Loaded bundled emoji (Apple): {}", key);
+                        return Optional.of(img);
+                    }
+                } catch (IOException e) {
+                    log.debug("Bundled emoji {} unreadable: {}", key, e.getMessage());
+                }
+            }
+            // Priority 2: Twemoji CDN fallback (MIT, looks great on non-Apple clients)
             try {
-                String urlStr = TWEMOJI_CDN + key + ".png";
-                URLConnection conn = new URL(urlStr).openConnection();
+                URLConnection conn = new URL(TWEMOJI_CDN + key + ".png").openConnection();
                 conn.setConnectTimeout(3_000);
                 conn.setReadTimeout(3_000);
                 conn.setRequestProperty("User-Agent", "ReefBot/1.0");
                 BufferedImage img = ImageIO.read(conn.getInputStream());
-                if (img != null) log.debug("Loaded Twemoji: {}", key);
+                if (img != null) log.debug("Loaded Twemoji CDN: {}", key);
                 return Optional.ofNullable(img);
             } catch (Exception e) {
-                log.warn("Failed to load Twemoji '{}' ({}): {}", emoji, key, e.getMessage());
+                log.warn("Failed to load emoji '{}' ({}): {}", emoji, key, e.getMessage());
                 return Optional.empty();
             }
         }).orElse(null);
