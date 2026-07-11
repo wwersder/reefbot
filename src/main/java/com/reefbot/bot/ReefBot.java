@@ -8,6 +8,7 @@ import com.reefbot.entity.Player;
 import com.reefbot.enums.PlayerStatus;
 import com.reefbot.repository.IslandRepository;
 import com.reefbot.service.InventoryImageGenerator;
+import com.reefbot.service.IslandMapGenerator;
 import com.reefbot.service.MessageDispatcher;
 import com.reefbot.service.PlayerService;
 import com.reefbot.service.support.SupportGroupHandler;
@@ -76,6 +77,7 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
     private final SupportProperties       supportProperties;
     private final PlayerService           playerService;
     private final InventoryImageGenerator inventoryImageGenerator;
+    private final IslandMapGenerator      islandMapGenerator;
     private final IslandRepository        islandRepository;
 
     // ── Consume ───────────────────────────────────────────────────────────
@@ -120,11 +122,15 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
                 }
             }
 
-            // /inv — inventory card; works in groups and private chats
+            // /inv and /island — image commands; work in groups and private chats
             if (message.hasText() && telegramId != null) {
                 String t = message.getText();
                 if ("/inv".equals(t) || t.startsWith("/inv@")) {
                     handleInvCommand(chatId, telegramId, isPrivate);
+                    return;
+                }
+                if ("/island".equals(t) || t.startsWith("/island@")) {
+                    handleIslandCommand(chatId, telegramId, isPrivate);
                     return;
                 }
             }
@@ -182,6 +188,30 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
         } catch (Exception e) {
             log.error("Failed to generate inventory for player {}", telegramId, e);
             sendResponse(chatId, new BotResponse("Не удалось сгенерировать инвентарь. Попробуй ещё раз."));
+        }
+    }
+
+    // ── /island command ───────────────────────────────────────────────────────
+
+    private void handleIslandCommand(Long chatId, Long telegramId, boolean isPrivate) {
+        Optional<Player> pOpt = playerService.findByTelegramId(telegramId);
+        if (pOpt.isEmpty() || pOpt.get().getStatus() != PlayerStatus.ACTIVE) {
+            if (isPrivate) {
+                sendResponse(chatId, new BotResponse("Сначала пройди регистрацию: напиши /start"));
+            }
+            return;
+        }
+
+        Player p      = pOpt.get();
+        Island island = islandRepository.findByPlayer(p).orElse(new Island());
+
+        try {
+            byte[] img = islandMapGenerator.generate(p, island);
+            String caption = "🗺 Карта острова «" + (island.getName() != null ? island.getName() : "—") + "»";
+            sendIslandPhoto(chatId, img, caption);
+        } catch (Exception e) {
+            log.error("Failed to generate island map for player {}", telegramId, e);
+            sendResponse(chatId, new BotResponse("Не удалось сгенерировать карту острова. Попробуй ещё раз."));
         }
     }
 
@@ -327,6 +357,21 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
                     .build());
         } catch (TelegramApiException e) {
             log.error("Failed to send inventory photo to chat {}: {}", chatId, e.getMessage());
+        }
+    }
+
+    /** Sends a dynamically generated island map image as a Telegram photo with caption. */
+    private void sendIslandPhoto(Long chatId, byte[] imageBytes, String caption) {
+        try {
+            InputFile photo = new InputFile(
+                    new java.io.ByteArrayInputStream(imageBytes), "island.png");
+            telegramClient.execute(SendPhoto.builder()
+                    .chatId(chatId)
+                    .photo(photo)
+                    .caption(caption)
+                    .build());
+        } catch (TelegramApiException e) {
+            log.error("Failed to send island photo to chat {}: {}", chatId, e.getMessage());
         }
     }
 
