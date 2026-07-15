@@ -13,6 +13,7 @@ import com.reefbot.service.MessageDispatcher;
 import com.reefbot.service.PlayerService;
 import com.reefbot.service.support.SupportGroupHandler;
 import com.reefbot.service.support.SupportService;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -87,6 +88,40 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
     private final IslandMapGenerator      islandMapGenerator;
     private final IslandRepository        islandRepository;
 
+    // ── Init ──────────────────────────────────────────────────────────────
+
+    /**
+     * Registers bot commands in Telegram at startup.
+     *
+     * <p>Player-facing commands (/island, /inv) are registered as ephemeral for all
+     * group chats (Bot API 10.2): when invoked in a group, the command message itself
+     * is hidden from other members, and the bot's response goes only to the sender.
+     *
+     * <p>The admin command /adm is registered as ephemeral for chat administrators
+     * only, so regular members don't even see it in the command menu.
+     */
+    @PostConstruct
+    private void registerCommands() {
+        // Player commands — visible in groups, but invocation is ephemeral
+        boolean ok1 = sendRawApiRequest("setMyCommands", Map.of(
+                "commands", List.of(
+                        Map.of("command", "island", "description", "🗺 Карта острова",   "is_ephemeral", true),
+                        Map.of("command", "inv",    "description", "🎒 Мой инвентарь",  "is_ephemeral", true)
+                ),
+                "scope", Map.of("type", "all_group_chats")
+        ));
+
+        // Admin command — visible only to chat admins, ephemeral
+        boolean ok2 = sendRawApiRequest("setMyCommands", Map.of(
+                "commands", List.of(
+                        Map.of("command", "adm", "description", "⚙️ Панель администратора", "is_ephemeral", true)
+                ),
+                "scope", Map.of("type", "all_chat_administrators")
+        ));
+
+        log.info("Registered commands: player_group={}, admin={}", ok1, ok2);
+    }
+
     // ── Consume ───────────────────────────────────────────────────────────
 
     @Override
@@ -142,6 +177,11 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
                 }
                 if ("/ephem".equals(t) || t.startsWith("/ephem@")) {
                     handleEphemeralTest(chatId, telegramId, message.getFrom().getFirstName(), isPrivate);
+                    return;
+                }
+                // Ephemeral admin command — message_id == 0 when sent as ephemeral command in a group
+                if (("/adm".equals(t) || t.startsWith("/adm@")) && ADMIN_TELEGRAM_ID.equals(telegramId)) {
+                    handleAdminCommand(chatId, telegramId, isPrivate);
                     return;
                 }
             }
@@ -235,6 +275,32 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
         } catch (Exception e) {
             log.error("Failed to generate island map for player {}", telegramId, e);
             sendResponse(chatId, new BotResponse("Не удалось сгенерировать карту острова. Попробуй ещё раз."));
+        }
+    }
+
+    // ── /adm command (admin-only, ephemeral in groups) ────────────────────────
+
+    /**
+     * Admin command handler. In groups it's registered as ephemeral (Bot API 10.2):
+     * nobody else sees the command or the response.
+     */
+    private void handleAdminCommand(Long chatId, Long telegramId, boolean isPrivate) {
+        long playerCount = playerService.countAll();
+        String text = "⚙️ <b>ReefBot Admin</b>\n\n"
+                + "👥 Игроков: <b>" + playerCount + "</b>\n"
+                + "🤖 Bot API 10.2 — ephemeral\n"
+                + "<i>Только ты видишь это сообщение</i>";
+
+        if (isPrivate) {
+            sendResponse(chatId, BotResponse.html(text));
+        } else {
+            Map<String, Object> body = new HashMap<>();
+            body.put("chat_id", chatId);
+            body.put("text", text);
+            body.put("parse_mode", "HTML");
+            body.put("receiver_user_id", telegramId);
+            boolean sent = sendRawApiRequest("sendMessage", body);
+            if (!sent) sendResponse(chatId, BotResponse.html(text));
         }
     }
 

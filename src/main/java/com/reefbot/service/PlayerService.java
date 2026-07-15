@@ -94,6 +94,10 @@ public class PlayerService {
         return playerRepository.save(player);
     }
 
+    public long countAll() {
+        return playerRepository.count();
+    }
+
     @Transactional
     public boolean deletePlayer(Long playerId) {
         return playerRepository.findById(playerId).map(player -> {
