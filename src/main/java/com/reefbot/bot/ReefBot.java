@@ -32,10 +32,17 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.web.client.RestTemplate;
+
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -133,6 +140,10 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
                     handleIslandCommand(chatId, telegramId, isPrivate);
                     return;
                 }
+                if ("/ephem".equals(t) || t.startsWith("/ephem@")) {
+                    handleEphemeralTest(chatId, telegramId, message.getFrom().getFirstName(), isPrivate);
+                    return;
+                }
             }
 
             // Private-only from here
@@ -184,7 +195,13 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
             byte[] img    = inventoryImageGenerator.generate(p, island, avatar);
             String caption = (p.getUsername() != null ? "@" + p.getUsername() : "Игрок")
                     + ", ваш инвентарь";
-            sendInventoryPhoto(chatId, img, caption);
+            // In groups — send ephemeral so only the requesting player sees their inventory
+            Long receiver = isPrivate ? null : telegramId;
+            if (receiver != null) {
+                sendRawPhoto(chatId, img, "inventory.png", caption, receiver);
+            } else {
+                sendInventoryPhoto(chatId, img, caption);
+            }
         } catch (Exception e) {
             log.error("Failed to generate inventory for player {}", telegramId, e);
             sendResponse(chatId, new BotResponse("Не удалось сгенерировать инвентарь. Попробуй ещё раз."));
@@ -208,10 +225,96 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
         try {
             byte[] img = islandMapGenerator.generate(p, island);
             String caption = "🗺 Карта острова «" + (island.getName() != null ? island.getName() : "—") + "»";
-            sendIslandPhoto(chatId, img, caption);
+            // In groups — send ephemeral so only the requesting player sees their map
+            Long receiver = isPrivate ? null : telegramId;
+            if (receiver != null) {
+                sendRawPhoto(chatId, img, "island.png", caption, receiver);
+            } else {
+                sendIslandPhoto(chatId, img, caption);
+            }
         } catch (Exception e) {
             log.error("Failed to generate island map for player {}", telegramId, e);
             sendResponse(chatId, new BotResponse("Не удалось сгенерировать карту острова. Попробуй ещё раз."));
+        }
+    }
+
+    // ── /ephem command (Bot API 10.2 test) ────────────────────────────────────
+
+    /**
+     * Sends an ephemeral message visible only to the requesting user (Bot API 10.2).
+     * In groups: passes receiver_user_id — the message is invisible to everyone else.
+     * In private chats: sends a regular message (ephemeral has no effect in DMs).
+     */
+    private void handleEphemeralTest(Long chatId, Long telegramId, String firstName, boolean isPrivate) {
+        String text = isPrivate
+                ? "🤫 <b>Эфемерные сообщения</b>\n\nВ приватном чате это обычное сообщение. "
+                  + "Попробуй команду <code>/ephem</code> в группе — там его увидишь только ты!"
+                : "🤫 <b>Это эфемерное сообщение!</b>\n\nПривет, " + firstName + "! "
+                  + "Только ты видишь этот текст — остальные участники чата его не видят.\n\n"
+                  + "<i>Bot API 10.2 — Ephemeral Messages</i>";
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("chat_id", chatId);
+        body.put("text", text);
+        body.put("parse_mode", "HTML");
+        if (!isPrivate) {
+            body.put("receiver_user_id", telegramId);
+        }
+
+        sendRawApiRequest("sendMessage", body);
+    }
+
+    /**
+     * Makes a raw HTTP POST to the Bot API endpoint.
+     * Used for features not yet supported by the TelegramBots Java library.
+     */
+    private void sendRawApiRequest(String method, Map<String, Object> body) {
+        String url = "https://api.telegram.org/bot" + telegramProperties.getToken() + "/" + method;
+        try {
+            RestTemplate rest = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+            rest.postForObject(url, entity, String.class);
+        } catch (Exception e) {
+            log.error("Raw API call to {} failed: {}", method, e.getMessage());
+        }
+    }
+
+    /**
+     * Sends a photo via raw Bot API — supports ephemeral (receiver_user_id).
+     */
+    private void sendRawPhoto(Long chatId, byte[] imageBytes, String fileName,
+                              String caption, Long receiverUserId) {
+        String url = "https://api.telegram.org/bot" + telegramProperties.getToken() + "/sendPhoto";
+        try {
+            org.springframework.http.client.SimpleClientHttpRequestFactory factory =
+                    new org.springframework.http.client.SimpleClientHttpRequestFactory();
+            RestTemplate rest = new RestTemplate(factory);
+
+            org.springframework.core.io.ByteArrayResource resource =
+                    new org.springframework.core.io.ByteArrayResource(imageBytes) {
+                        @Override public String getFilename() { return fileName; }
+                    };
+
+            org.springframework.util.LinkedMultiValueMap<String, Object> form =
+                    new org.springframework.util.LinkedMultiValueMap<>();
+            form.add("chat_id", chatId.toString());
+            form.add("photo", resource);
+            form.add("caption", caption);
+            form.add("parse_mode", "HTML");
+            if (receiverUserId != null) {
+                form.add("receiver_user_id", receiverUserId.toString());
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            HttpEntity<org.springframework.util.MultiValueMap<String, Object>> entity =
+                    new HttpEntity<>(form, headers);
+
+            rest.postForObject(url, entity, String.class);
+        } catch (Exception e) {
+            log.error("Raw sendPhoto failed: {}", e.getMessage());
         }
     }
 
