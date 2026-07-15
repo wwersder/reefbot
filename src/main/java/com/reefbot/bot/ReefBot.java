@@ -243,41 +243,54 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
     /**
      * Sends an ephemeral message visible only to the requesting user (Bot API 10.2).
      * In groups: passes receiver_user_id — the message is invisible to everyone else.
-     * In private chats: sends a regular message (ephemeral has no effect in DMs).
+     * In private chats: uses sendResponse() directly (ephemeral has no meaning in DMs).
      */
     private void handleEphemeralTest(Long chatId, Long telegramId, String firstName, boolean isPrivate) {
-        String text = isPrivate
-                ? "🤫 <b>Эфемерные сообщения</b>\n\nВ приватном чате это обычное сообщение. "
-                  + "Попробуй команду <code>/ephem</code> в группе — там его увидишь только ты!"
-                : "🤫 <b>Это эфемерное сообщение!</b>\n\nПривет, " + firstName + "! "
-                  + "Только ты видишь этот текст — остальные участники чата его не видят.\n\n"
-                  + "<i>Bot API 10.2 — Ephemeral Messages</i>";
+        if (isPrivate) {
+            sendResponse(chatId, BotResponse.html(
+                    "🤫 <b>Эфемерные сообщения</b>\n\n"
+                    + "В личке эффекта нет — тут и так только ты. "
+                    + "Попробуй <code>/ephem</code> в группе: бот ответит так, что только ты увидишь!"));
+            return;
+        }
+
+        // Group: send ephemeral via raw API (Bot API 10.2 feature)
+        String text = "🤫 <b>Это эфемерное сообщение!</b>\n\n"
+                + "Привет, " + firstName + "! Только ты видишь этот текст — "
+                + "остальные участники чата его не видят.\n\n"
+                + "<i>Bot API 10.2 — Ephemeral Messages</i>";
 
         Map<String, Object> body = new HashMap<>();
         body.put("chat_id", chatId);
         body.put("text", text);
         body.put("parse_mode", "HTML");
-        if (!isPrivate) {
-            body.put("receiver_user_id", telegramId);
-        }
+        body.put("receiver_user_id", telegramId);
 
-        sendRawApiRequest("sendMessage", body);
+        boolean sent = sendRawApiRequest("sendMessage", body);
+        if (!sent) {
+            // Fallback: send as regular public message
+            sendResponse(chatId, BotResponse.html(text + "\n\n⚠️ <i>(ephemeral не поддерживается)</i>"));
+        }
     }
 
     /**
      * Makes a raw HTTP POST to the Bot API endpoint.
      * Used for features not yet supported by the TelegramBots Java library.
+     * Returns true on success, false on any error.
      */
-    private void sendRawApiRequest(String method, Map<String, Object> body) {
+    private boolean sendRawApiRequest(String method, Map<String, Object> body) {
         String url = "https://api.telegram.org/bot" + telegramProperties.getToken() + "/" + method;
         try {
             RestTemplate rest = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-            rest.postForObject(url, entity, String.class);
+            String response = rest.postForObject(url, entity, String.class);
+            log.debug("Raw API {} response: {}", method, response);
+            return response != null && response.contains("\"ok\":true");
         } catch (Exception e) {
             log.error("Raw API call to {} failed: {}", method, e.getMessage());
+            return false;
         }
     }
 
