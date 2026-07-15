@@ -20,7 +20,9 @@ public enum PlayerScreen {
 
     // Forest zone
     ZONE_FOREST,
-    ZONE_FOREST_CHOPPING,   // depth selection sub-screen
+    ZONE_FOREST_HUNT_MENU,    // spot selection sub-screen
+    ZONE_FOREST_HUNT_ACTIVE,  // waiting for hunt to finish
+    ZONE_FOREST_HUNT_RESULT,  // collect hunt yield
 
     // Hills zone
     ZONE_HILLS,

@@ -36,6 +36,12 @@ public class Island {
     private Integer coral = 0;
 
     @Builder.Default
+    private Integer meat = 0;
+
+    @Builder.Default
+    private Integer fur = 0;
+
+    @Builder.Default
     private Integer storageCapacity = 100;
 
     @Builder.Default

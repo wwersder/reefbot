@@ -10,7 +10,7 @@ import com.reefbot.enums.BuildingType;
 import com.reefbot.repository.PlayerRepository;
 import com.reefbot.service.game.BuildingService;
 import com.reefbot.service.game.DailyBonusService;
-import com.reefbot.service.game.ForestService;
+import com.reefbot.service.game.HuntingService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.service.game.MineService;
 import com.reefbot.service.game.TideService;
@@ -45,7 +45,7 @@ public class MainMenuHandler implements GameHandler {
     private final PlayerRepository playerRepository;
     private final TideService tideService;
     private final BuildingService buildingService;
-    private final ForestService forestService;
+    private final HuntingService huntingService;
     private final MineService mineService;
     private final DailyBonusService dailyBonusService;
 
@@ -76,7 +76,7 @@ public class MainMenuHandler implements GameHandler {
                 IslandBuilding pier = buildingService.find(island, BuildingType.FISHING_PIER).orElse(null);
                 yield ShoreZoneHandler.buildZoneScreen(player, tideService, pier);
             }
-            case FOREST     -> ForestZoneHandler.buildZoneScreen(player, forestService);
+            case FOREST     -> ForestZoneHandler.buildZoneScreen(player, huntingService);
             case SETTLEMENT -> SettlementZoneHandler.buildZoneScreen(player, dailyBonusService);
             case HILLS      -> HillsZoneHandler.buildZoneScreen(player, mineService);
             case PLAINS     -> PlainsZoneHandler.buildZoneScreen(player);
@@ -136,9 +136,12 @@ public class MainMenuHandler implements GameHandler {
         appendRes(sb, "🐟", island.getFish());
         appendRes(sb, "🐚", island.getShells());
         appendRes(sb, "🪸", island.getCoral());
+        appendRes(sb, "🥩", island.getMeat());
+        appendRes(sb, "🪶", island.getFur());
 
         int total = island.getWood() + island.getStone() + island.getFish()
-                + island.getShells() + island.getCoral();
+                + island.getShells() + island.getCoral()
+                + island.getMeat() + island.getFur();
         int cap   = island.getStorageCapacity();
 
         // Storage fill indicator

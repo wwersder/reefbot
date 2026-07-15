@@ -53,9 +53,9 @@ public class NotificationScheduler {
             """;
 
     private static final String FOREST_DONE_TEXT = """
-            🌲 Вылазка завершена!
+            🏹 Охота завершена!
 
-            Твоя добыча готова — заходи в Лес и забирай.
+            Добыча ждёт тебя — заходи в Лес и забирай.
             """;
 
     private static final String MINE_DONE_TEXT = """

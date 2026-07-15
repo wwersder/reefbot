@@ -1,6 +1,6 @@
 package com.reefbot.entity;
 
-import com.reefbot.enums.ForestActivity;
+import com.reefbot.enums.HuntingSpot;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,19 +24,23 @@ public class PlayerForest {
     private Player player;
 
     @Builder.Default
-    private Integer level = 1;
+    @Column(name = "hunter_level")
+    private Integer hunterLevel = 1;
 
     @Builder.Default
-    private Integer xp = 0;
+    @Column(name = "hunter_xp")
+    private Integer hunterXp = 0;
 
-    /** Active activity; null when idle. */
+    /** Selected or active hunting spot; null when idle and no spot chosen. */
     @Enumerated(EnumType.STRING)
-    private ForestActivity activity;
+    @Column(name = "hunting_spot")
+    private HuntingSpot huntingSpot;
 
-    /** When the active activity finishes; null when idle. */
+    /** When the active hunt finishes; null when idle. */
+    @Column(name = "finish_at")
     private LocalDateTime finishAt;
 
-    /** True once the "activity done" notification has been sent. */
+    /** True once the "hunt done" push notification has been sent. */
     @Builder.Default
     private Boolean notified = false;
 }
