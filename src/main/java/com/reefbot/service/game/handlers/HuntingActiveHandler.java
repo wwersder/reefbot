@@ -19,7 +19,6 @@ public class HuntingActiveHandler implements GameHandler {
 
     public static final String BTN_REFRESH = "🔄 Обновить";
     public static final String BTN_BACK    = "◀️ В лес";
-    public static final String BTN_ISLAND  = "🏝 На остров";
 
     private final HuntingService huntingService;
     private final PlayerRepository playerRepository;
@@ -36,13 +35,6 @@ public class HuntingActiveHandler implements GameHandler {
             player.getState().setCurrentScreen(PlayerScreen.ZONE_FOREST);
             playerRepository.save(player);
             return ForestZoneHandler.buildZoneScreen(player, huntingService);
-        }
-
-        // "На остров" — straight to main menu
-        if (BTN_ISLAND.equals(text)) {
-            player.getState().setCurrentScreen(PlayerScreen.MAIN);
-            playerRepository.save(player);
-            return MainMenuHandler.showMainMenu(player, island);
         }
 
         // Hunt finished — redirect to collect screen
@@ -70,7 +62,7 @@ public class HuntingActiveHandler implements GameHandler {
 
     public static ReplyKeyboard activeKeyboard() {
         return KeyboardBuilder.builder()
-                .row(BTN_REFRESH, BTN_BACK, BTN_ISLAND)
+                .row(BTN_REFRESH, BTN_BACK)
                 .build();
     }
 }
