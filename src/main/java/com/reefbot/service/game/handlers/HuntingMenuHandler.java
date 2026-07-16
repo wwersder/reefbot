@@ -1,6 +1,5 @@
 package com.reefbot.service.game.handlers;
 
-import com.reefbot.bot.handlers.HuntingLevelsCallbackHandler;
 import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
@@ -29,7 +28,6 @@ public class HuntingMenuHandler implements GameHandler {
     public static final String BTN_WILD_LOCKED   = "🐾 Урочище 🔒 ур. 6";
     public static final String BTN_WILD_UNLOCKED = "🐾 Урочище";
     public static final String BTN_START         = "✅ Начать охоту";
-    public static final String BTN_LEVELS        = "📋 Уровни";
     public static final String BTN_BACK          = "◀️ Назад";
 
     // Spot descriptions shown in spot-detail screen
@@ -98,7 +96,6 @@ public class HuntingMenuHandler implements GameHandler {
             case BTN_DEEP_LOCKED, BTN_DEEP_UNLOCKED          -> handleDeep(player, level);
             case BTN_WILD_LOCKED, BTN_WILD_UNLOCKED          -> handleWild(player, level);
             case BTN_START                                    -> startHunt(player);
-            case BTN_LEVELS                                   -> HuntingLevelsCallbackHandler.buildInitialMessage(player);
             case BTN_BACK                                     -> goBack(player);
             default                                           -> buildHuntingMenu(player);
         };
@@ -179,7 +176,7 @@ public class HuntingMenuHandler implements GameHandler {
         String wildLabel = level >= HuntingSpot.WILD.getMinLevel() ? BTN_WILD_UNLOCKED : BTN_WILD_LOCKED;
         return KeyboardBuilder.builder()
                 .row(BTN_EDGE, deepLabel, wildLabel)
-                .row(BTN_LEVELS, BTN_BACK)
+                .row(BTN_BACK)
                 .build();
     }
 
