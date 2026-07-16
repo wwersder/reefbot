@@ -19,6 +19,7 @@ public class HuntingActiveHandler implements GameHandler {
 
     public static final String BTN_REFRESH = "🔄 Обновить";
     public static final String BTN_BACK    = "◀️ В лес";
+    public static final String BTN_ISLAND  = "🏝 На остров";
 
     private final HuntingService huntingService;
     private final PlayerRepository playerRepository;
@@ -30,27 +31,36 @@ public class HuntingActiveHandler implements GameHandler {
 
     @Override
     public BotResponse handle(Player player, Island island, String text) {
+        // "В лес" — back to forest hub (no redirect loop now, hub shows inline status)
         if (BTN_BACK.equals(text)) {
             player.getState().setCurrentScreen(PlayerScreen.ZONE_FOREST);
             playerRepository.save(player);
             return ForestZoneHandler.buildZoneScreen(player, huntingService);
         }
 
+        // "На остров" — straight to main menu
+        if (BTN_ISLAND.equals(text)) {
+            player.getState().setCurrentScreen(PlayerScreen.MAIN);
+            playerRepository.save(player);
+            return MainMenuHandler.showMainMenu(player, island);
+        }
+
+        // Hunt finished — redirect to collect screen
         if (huntingService.isReady(player)) {
             player.getState().setCurrentScreen(PlayerScreen.ZONE_FOREST_HUNT_RESULT);
             playerRepository.save(player);
             return HuntingResultHandler.buildResultScreen(player);
         }
 
-        // BTN_REFRESH or any input — refresh the wait screen
+        // BTN_REFRESH or any other input — refresh the wait screen
         return buildStatusScreen(player, huntingService);
     }
 
-    // ── Static builders (also called from ForestZoneHandler on redirect) ──────
+    // ── Static builders (called from ForestZoneHandler.goActiveScreen) ────────
 
     public static BotResponse buildStatusScreen(Player player, HuntingService huntingService) {
         HuntingSpot spot = player.getForest().getHuntingSpot();
-        String spotName = spot != null ? spot.getDisplayName().toLowerCase() : "лес";
+        String spotName  = spot != null ? spot.getDisplayName().toLowerCase() : "лес";
         String remaining = huntingService.timeRemainingText(player);
 
         String text = "⏳ Охота идёт " + spotName + "\n\n"
@@ -60,7 +70,7 @@ public class HuntingActiveHandler implements GameHandler {
 
     public static ReplyKeyboard activeKeyboard() {
         return KeyboardBuilder.builder()
-                .row(BTN_REFRESH, BTN_BACK)
+                .row(BTN_REFRESH, BTN_BACK, BTN_ISLAND)
                 .build();
     }
 }

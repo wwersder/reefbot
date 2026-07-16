@@ -3,6 +3,7 @@ package com.reefbot.service.game.handlers;
 import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
+import com.reefbot.enums.HuntingSpot;
 import com.reefbot.enums.PlayerScreen;
 import com.reefbot.enums.ZoneType;
 import com.reefbot.repository.PlayerRepository;
@@ -13,6 +14,7 @@ import com.reefbot.util.RichText;
 import com.reefbot.util.XpBar;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 
 import java.util.List;
@@ -22,8 +24,11 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class ForestZoneHandler implements GameHandler {
 
-    public static final String BTN_HUNT = "🏹 На охоту";
-    public static final String BTN_BACK = "◀️ На остров";
+    public static final String BTN_HUNT    = "🏹 На охоту";
+    public static final String BTN_REFRESH = "🔄 Обновить";
+    public static final String BTN_COLLECT = "✅ Забрать добычу";
+    public static final String BTN_LEVELS  = "📋 Уровни";
+    public static final String BTN_BACK    = "◀️ На остров";
 
     private static final List<String> FLAVOR = List.of(
             "Густой лес уходит вглубь острова.\nПахнет смолой и влажной землёй.",
@@ -45,29 +50,39 @@ public class ForestZoneHandler implements GameHandler {
 
     @Override
     public BotResponse handle(Player player, Island island, String text) {
-        // Redirect if a hunt is already running — prevents nav abuse
-        if (huntingService.isActive(player)) {
-            player.getState().setCurrentScreen(PlayerScreen.ZONE_FOREST_HUNT_ACTIVE);
-            playerRepository.save(player);
-            return HuntingActiveHandler.buildStatusScreen(player, huntingService);
-        }
-        if (huntingService.isReady(player)) {
-            player.getState().setCurrentScreen(PlayerScreen.ZONE_FOREST_HUNT_RESULT);
-            playerRepository.save(player);
-            return HuntingResultHandler.buildResultScreen(player);
-        }
-
         return switch (text) {
-            case BTN_HUNT -> goHunt(player);
-            case BTN_BACK -> goBack(player, island);
-            default       -> buildZoneScreen(player, huntingService);
+            case BTN_HUNT    -> goHunt(player);
+            case BTN_REFRESH -> goActiveScreen(player);
+            case BTN_COLLECT -> goResultScreen(player);
+            case BTN_LEVELS  -> buildLevelsScreen(player);
+            case BTN_BACK    -> goBack(player, island);
+            default          -> buildZoneScreen(player, huntingService);
         };
     }
 
+    // ── Actions ──────────────────────────────────────────────────────────────
+
     private BotResponse goHunt(Player player) {
+        if (!huntingService.isIdle(player)) return buildZoneScreen(player, huntingService);
         player.getState().setCurrentScreen(PlayerScreen.ZONE_FOREST_HUNT_MENU);
         playerRepository.save(player);
         return HuntingMenuHandler.buildHuntingMenu(player);
+    }
+
+    /** Open the detailed wait screen (from "Обновить"). */
+    private BotResponse goActiveScreen(Player player) {
+        if (!huntingService.isActive(player)) return buildZoneScreen(player, huntingService);
+        player.getState().setCurrentScreen(PlayerScreen.ZONE_FOREST_HUNT_ACTIVE);
+        playerRepository.save(player);
+        return HuntingActiveHandler.buildStatusScreen(player, huntingService);
+    }
+
+    /** Collect yield — go to result screen. */
+    private BotResponse goResultScreen(Player player) {
+        if (!huntingService.isReady(player)) return buildZoneScreen(player, huntingService);
+        player.getState().setCurrentScreen(PlayerScreen.ZONE_FOREST_HUNT_RESULT);
+        playerRepository.save(player);
+        return HuntingResultHandler.buildResultScreen(player);
     }
 
     private BotResponse goBack(Player player, Island island) {
@@ -76,7 +91,61 @@ public class ForestZoneHandler implements GameHandler {
         return MainMenuHandler.showMainMenu(player, island);
     }
 
-    // ── Static helpers (called from MainMenuHandler) ─────────────────────────
+    // ── Levels screen ─────────────────────────────────────────────────────────
+
+    private BotResponse buildLevelsScreen(Player player) {
+        int currentLevel = player.getForest().getHunterLevel();
+        int currentXp    = player.getForest().getHunterXp();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("📋 <b>Уровни охотника</b>\n\n");
+
+        int[] thresholds = {0, 100, 350, 850, 1750, 3250, 5750, 9750, 15950, 25450};
+        String[] names = {
+                "🗡 Новичок", "🏹 Следопыт", "🐾 Охотник", "🦌 Загонщик",
+                "🌿 Лесной страж", "🐺 Волк", "🪃 Ловчий", "🦅 Сокольничий",
+                "🌑 Тень леса", "🌟 Мастер охоты"
+        };
+        String[] bonuses = {
+                "Старт охотничьего пути. Опушка доступна.",
+                "+1 к добыче мяса на всех угодьях.",
+                "+10% XP. 🌲 Чаща разблокирована.",
+                "⚡ Время охоты −5%.",
+                "+25% XP за каждую охоту.",
+                "+2 к мясу на всех угодьях. 🐾 Урочище разблокировано.",
+                "🪶 15% шанс двойного меха.",
+                "⚡ Время охоты ещё −10% (итого −15%).",
+                "+50% XP за каждую охоту.",
+                "🌟 Легендарная добыча: +30% к максимальному улову."
+        };
+
+        for (int i = 0; i < 10; i++) {
+            int lv = i + 1;
+            boolean done    = currentLevel > lv;
+            boolean current = currentLevel == lv;
+            boolean locked  = currentLevel < lv;
+
+            String prefix = done ? "✅" : (current ? "▶️" : "🔒");
+            sb.append(prefix).append(" <b>Ур. ").append(lv).append(" — ").append(names[i]).append("</b>");
+            sb.append(" <i>(").append(thresholds[i]).append(" XP)</i>\n");
+            sb.append("   ").append(bonuses[i]).append("\n");
+
+            if (current) {
+                int xpNext = lv < 10 ? thresholds[lv] : 0;
+                if (xpNext > 0) {
+                    sb.append("   📊 ").append(currentXp).append("/").append(xpNext).append(" XP\n");
+                } else {
+                    sb.append("   📊 МАКС. УРОВЕНЬ\n");
+                }
+            }
+            sb.append("\n");
+        }
+
+        ReplyKeyboard kb = KeyboardBuilder.builder().row(BTN_BACK).build();
+        return BotResponse.html(sb.toString(), kb);
+    }
+
+    // ── Static helpers (called from MainMenuHandler + HuntingResultHandler) ──
 
     public static BotResponse buildZoneScreen(Player player, HuntingService huntingService) {
         String flavor = FLAVOR.get(ThreadLocalRandom.current().nextInt(FLAVOR.size()));
@@ -89,17 +158,40 @@ public class ForestZoneHandler implements GameHandler {
         int xpPrev = huntingService.xpForLevel(level);
 
         rt.bold("Охотник:").add(" " + HuntingService.levelName(level) + " (ур. " + level + ")\n");
-        if (xpNext > 0) {
-            rt.code(XpBar.render(xp - xpPrev, xpNext - xpPrev));
+        rt.code(xpNext > 0 ? XpBar.render(xp - xpPrev, xpNext - xpPrev) : "★ МАКС. УРОВЕНЬ");
+        rt.add("\n\n");
+
+        // Inline activity status
+        if (huntingService.isActive(player)) {
+            HuntingSpot spot = player.getForest().getHuntingSpot();
+            String spotName = spot != null ? spot.getDisplayName() : "лес";
+            rt.add("⏳ Охота " + spotName.toLowerCase()
+                    + " — ещё " + huntingService.timeRemainingText(player));
+        } else if (huntingService.isReady(player)) {
+            HuntingSpot spot = player.getForest().getHuntingSpot();
+            String spotName = spot != null ? spot.getDisplayName() : "лес";
+            rt.add("✅ Охота " + spotName.toLowerCase() + " завершена! Добыча ждёт.");
         } else {
-            rt.code("★ МАКС. УРОВЕНЬ");
+            rt.add("Лес свободен. Выбери угодье и начни охоту.");
         }
-        rt.add("\n\nЛес ждёт. Выбери угодье и начни охоту.");
 
+        return rt.build(ZoneType.FOREST.getBannerPath(), buildKeyboard(player, huntingService));
+    }
+
+    private static ReplyKeyboard buildKeyboard(Player player, HuntingService huntingService) {
         KeyboardBuilder kb = KeyboardBuilder.builder();
-        kb.row(BTN_HUNT);
-        kb.row(new KeyboardButton(BTN_BACK));
 
-        return rt.build(ZoneType.FOREST.getBannerPath(), kb.build());
+        if (huntingService.isActive(player)) {
+            kb.row(BTN_REFRESH);
+        } else if (huntingService.isReady(player)) {
+            KeyboardButton collect = new KeyboardButton(BTN_COLLECT);
+            collect.setStyle("success");
+            kb.row(collect);
+        } else {
+            kb.row(BTN_HUNT, BTN_LEVELS);
+        }
+
+        kb.row(new KeyboardButton(BTN_BACK));
+        return kb.build();
     }
 }
