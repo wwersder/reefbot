@@ -9,9 +9,14 @@ import com.reefbot.repository.PlayerRepository;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.service.game.HuntingService;
 import com.reefbot.service.game.HuntingService.HuntResult;
+import com.reefbot.service.game.HuntingService.InteractiveHuntEvent;
+import com.reefbot.service.game.HuntingService.RolledEvent;
 import com.reefbot.util.KeyboardBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 
 @Component
 @RequiredArgsConstructor
@@ -39,14 +44,50 @@ public class HuntingResultHandler implements GameHandler {
             return buildResultScreen(player);
         }
 
+        // Roll interactive event before collecting
+        HuntingSpot spot = player.getForest().getHuntingSpot();
+        long seed = player.getForest().getFinishAt() != null
+                ? player.getForest().getFinishAt().toEpochSecond(java.time.ZoneOffset.UTC)
+                : 0L;
+        RolledEvent rolled = HuntingService.rollInteractiveEvent(spot != null ? spot : HuntingSpot.EDGE, seed);
+
+        if (rolled != null) {
+            // Show event choice — do NOT collect yet; player must pick A or B
+            return buildEventChoiceScreen(rolled.event(), rolled.index());
+        }
+
+        // No event — collect directly
         HuntResult result = huntingService.collectYield(player, island);
         player.getState().setCurrentScreen(PlayerScreen.ZONE_FOREST);
         playerRepository.save(player);
 
-        return buildCollectedResponse(result, player);
+        return buildCollectedResponse(result, player, huntingService);
     }
 
-    private BotResponse buildCollectedResponse(HuntResult result, Player player) {
+    // ── Event choice screen ───────────────────────────────────────────────────
+
+    private static BotResponse buildEventChoiceScreen(InteractiveHuntEvent event, int idx) {
+        String text = "🎲 <b>Событие!</b>\n\n"
+                + event.narrative()
+                + "\n\n<i>Что делаешь?</i>";
+
+        InlineKeyboardRow row = new InlineKeyboardRow();
+        row.add(InlineKeyboardButton.builder()
+                .text("🎲 " + event.choiceALabel())
+                .callbackData("hunt_ev:" + idx + ":a")
+                .build());
+        row.add(InlineKeyboardButton.builder()
+                .text("🛡 " + event.choiceBLabel())
+                .callbackData("hunt_ev:" + idx + ":b")
+                .build());
+        InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder().keyboardRow(row).build();
+
+        return new BotResponse(text, null, kb, null, null, "HTML");
+    }
+
+    // ── Collect response chain ────────────────────────────────────────────────
+
+    public static BotResponse buildCollectedResponse(HuntResult result, Player player, HuntingService huntingService) {
         StringBuilder sb = new StringBuilder();
         sb.append("🏹 <b>Охота завершена!</b>\n\n");
         sb.append("<i>").append(result.narrative()).append("</i>\n\n");
@@ -60,29 +101,18 @@ public class HuntingResultHandler implements GameHandler {
             sb.append("\n");
         }
         sb.append("⭐ Опыт: <b>+").append(result.xpEarned()).append("</b>");
+        sb.append("  (").append(result.totalXp()).append(" накоплено)");
 
-        int nextLevelXp = huntingService.xpForNextLevel(result.newLevel());
-        if (nextLevelXp > 0) {
-            sb.append("  (").append(result.totalXp()).append("/").append(nextLevelXp).append(")");
-        }
-
-        BotResponse collectMsg  = BotResponse.html(sb.toString());
-        BotResponse forestZone  = ForestZoneHandler.buildZoneScreen(player, huntingService);
+        BotResponse collectMsg = BotResponse.html(sb.toString());
+        BotResponse forestZone = ForestZoneHandler.buildZoneScreen(player, huntingService);
 
         BotResponse tail = forestZone;
 
         if (result.leveledUp()) {
             tail = buildLevelUpMessage(result.newLevel()).withFollowUp(tail);
         }
-        if (result.hasEvent()) {
-            tail = buildEventMessage(result).withFollowUp(tail);
-        }
 
         return collectMsg.withFollowUp(tail);
-    }
-
-    private static BotResponse buildEventMessage(HuntResult result) {
-        return BotResponse.html("🎲 <b>Событие</b>\n\n" + result.event().text());
     }
 
     private static BotResponse buildLevelUpMessage(int newLevel) {

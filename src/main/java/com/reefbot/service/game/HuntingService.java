@@ -36,31 +36,118 @@ public class HuntingService {
             "🌟 Мастер охоты"   // 10
     };
 
-    // ── Random events per spot ───────────────────────────────────────────────
+    // ── Interactive event records ─────────────────────────────────────────────
 
-    public record HuntEvent(String text, int meatDelta, int furDelta, int xpDelta) {}
+    /** Outcome of a single event choice. */
+    public record EventOutcome(int meatDelta, int furDelta, int xpDelta, String text) {}
 
-    private static final List<HuntEvent> EVENTS_EDGE = List.of(
-            new HuntEvent("🐿 Белка разбудила птиц — дичь ушла глубже. Пришлось довольствоваться малым.", -1, 0, 0),
-            new HuntEvent("🍄 По пути нашёл следы зверя — опыт охотника растёт.", 0, 0, 8),
-            new HuntEvent("🐇 Повезло: кролик выскочил прямо под руку.", 2, 0, 0),
-            new HuntEvent("🌧 Дождь смыл следы — пришлось возвращаться раньше.", -1, 0, 0)
+    /**
+     * An interactive event shown to the player during hunt collection.
+     * Player picks choice A (risky) or B (safe) via inline buttons.
+     */
+    public record InteractiveHuntEvent(
+            String narrative,
+            String choiceALabel,
+            String choiceBLabel,
+            int successChanceA,
+            EventOutcome outcomeASuccess,
+            EventOutcome outcomeAFail,
+            EventOutcome outcomeB
+    ) {}
+
+    /** Result of rolling an interactive event — carries the event index for callback routing. */
+    public record RolledEvent(int index, InteractiveHuntEvent event) {}
+
+    // ── Events per spot ──────────────────────────────────────────────────────
+
+    private static final List<InteractiveHuntEvent> EVENTS_EDGE = List.of(
+            new InteractiveHuntEvent(
+                    "На тропе замер ёж — рядом с ним что-то торчит из земли.",
+                    "Спугнуть и взять",
+                    "Пройти мимо",
+                    60,
+                    new EventOutcome( 3,  1, 0, "Под ёжом оказалась заначка. Взял всё что было."),
+                    new EventOutcome(-1,  0, 5, "Ёж напугал тебя самого. Дичь разбежалась."),
+                    new EventOutcome( 1,  0, 5, "Обошёл стороной. Охота как охота.")
+            ),
+            new InteractiveHuntEvent(
+                    "Свежие следы кролика — совсем рядом. Можно догнать.",
+                    "Пойти по следу",
+                    "Продолжить как есть",
+                    50,
+                    new EventOutcome( 5,  0, 0, "Кролик попался. Удача!"),
+                    new EventOutcome( 0,  0, 10, "Ушёл в нору. Зато опыт — твой."),
+                    new EventOutcome( 0,  0,  8, "Не стал отвлекаться. Охота прошла ровно.")
+            ),
+            new InteractiveHuntEvent(
+                    "Поляна с грибами. Можно задержаться и поискать дичь рядом.",
+                    "Задержаться, поискать",
+                    "Взять грибы и уйти",
+                    70,
+                    new EventOutcome( 2,  0, 15, "Нашёл и грибы, и зверя. Двойная удача!"),
+                    new EventOutcome( 0,  0,  5, "Гриб оказался несъедобным. Вернулся ни с чем."),
+                    new EventOutcome( 0,  0, 12, "Грибы в корзине. Дичь в другой раз.")
+            )
     );
 
-    private static final List<HuntEvent> EVENTS_DEEP = List.of(
-            new HuntEvent("🦌 Встретил оленя — удача! Добыча богаче обычного.", 3, 0, 10),
-            new HuntEvent("🐗 Кабан прогнал с охотничьей тропы — добыча меньше.", -2, 0, 0),
-            new HuntEvent("🪶 Нашёл перья редкой птицы — ценный трофей.", 0, 1, 12),
-            new HuntEvent("🌿 Густой подлесок замедлил охоту, но метка оказалась верной.", 1, 0, 5),
-            new HuntEvent("⚡ Внезапный шквал спугнул дичь.", -2, 0, 0)
+    private static final List<InteractiveHuntEvent> EVENTS_DEEP = List.of(
+            new InteractiveHuntEvent(
+                    "Раненый олень медленно уходит от тебя. Стадо — совсем рядом.",
+                    "Добить",
+                    "Оставить стадо в покое",
+                    65,
+                    new EventOutcome( 8,  0,  0, "Удар точный. Богатая добыча."),
+                    new EventOutcome( 2,  0,  0, "Стадо всполошилось. Взял только то что успел."),
+                    new EventOutcome( 0,  1, 12, "Мудрое решение. Охотник думает наперёд.")
+            ),
+            new InteractiveHuntEvent(
+                    "Свежий волчий след рядом с твоей тропой. Он охотился здесь недавно.",
+                    "Устроить засаду у норы",
+                    "Обойти стороной",
+                    40,
+                    new EventOutcome( 6,  2,  0, "Волк ушёл, но добычу оставил. Твоя."),
+                    new EventOutcome(-2,  0,  0, "Волк почуял тебя. Пришлось отступить."),
+                    new EventOutcome( 0,  0, 15, "Хороший охотник знает, когда отступить.")
+            ),
+            new InteractiveHuntEvent(
+                    "В старом дубе — глубокое дупло. Внутри что-то шевелится.",
+                    "Сунуть руку",
+                    "Оставить",
+                    55,
+                    new EventOutcome( 0,  3,  0, "Целый меховой трофей. Повезло!"),
+                    new EventOutcome( 0,  0,  8, "Пусто. Только заноза в пальце."),
+                    new EventOutcome( 0,  1, 10, "Лес всегда даёт своё. Не торопись.")
+            )
     );
 
-    private static final List<HuntEvent> EVENTS_WILD = List.of(
-            new HuntEvent("🐺 Следы волчьей стаи — добыча нетронута, но сам поспешил уйти.", -3, 0, 0),
-            new HuntEvent("🦅 Орёл показал путь к лёжке. Улов отменный.", 4, 1, 15),
-            new HuntEvent("🌀 Буря налетела внезапно — пришлось укрыться, но нашёл старую нору.", 0, 2, 10),
-            new HuntEvent("🌑 В урочище тихо. Словно лес сам подаёт добычу.", 5, 0, 20),
-            new HuntEvent("🐍 Встреча с гадюкой — отступил. Добыча поменьше.", -3, -1, 0)
+    private static final List<InteractiveHuntEvent> EVENTS_WILD = List.of(
+            new InteractiveHuntEvent(
+                    "На поляне — свежие следы медведя. Он ушёл совсем недавно.",
+                    "Выследить",
+                    "Обойти поляну",
+                    35,
+                    new EventOutcome(12,  4,  0, "Вышел на медведя у ручья. Богатейшая добыча."),
+                    new EventOutcome(-3,  0,  0, "Медведь учуял тебя. Пришлось бежать."),
+                    new EventOutcome( 0,  2, 20, "Осторожность — мудрость охотника.")
+            ),
+            new InteractiveHuntEvent(
+                    "Старый охотничий лагерь в глуши. Что-то блестит под брезентом.",
+                    "Обыскать лагерь",
+                    "Не трогать чужое",
+                    60,
+                    new EventOutcome( 0,  3, 25, "Нашёл старые запасы. Знание охотника бесценно."),
+                    new EventOutcome( 0,  0, 10, "Лагерь пуст. Зато опыт — твой."),
+                    new EventOutcome( 0,  0, 18, "Суеверия охотника. Иногда лучше не знать.")
+            ),
+            new InteractiveHuntEvent(
+                    "Смеркается раньше обычного. Ночью добыча богаче, но и риск выше.",
+                    "Остаться до рассвета",
+                    "Вернуться пока светло",
+                    50,
+                    new EventOutcome(10,  3,  0, "Ночь принесла богатый улов."),
+                    new EventOutcome( 4,  0,  0, "Ночь прошла спокойно, но холодно."),
+                    new EventOutcome( 4,  0,  0, "Безопасный выбор. Домой засветло.")
+            )
     );
 
     private static final int EDGE_EVENT_CHANCE = 20;
@@ -73,7 +160,7 @@ public class HuntingService {
             "Опушка привычна. Ловушки расставлены, добыча поймана.",
             "Близко к лагерю, но и здесь есть что взять.",
             "Тихая охота у края леса. Эффективно и безопасно.",
-            "Лёгкая прогулка с пустыми руками — и тяжёлый путь обратно."
+            "Лёгкая прогулка — и тяжёлый путь обратно с добычей."
     );
 
     private static final List<String> NARRATIVES_DEEP = List.of(
@@ -139,10 +226,52 @@ public class HuntingService {
     }
 
     /**
-     * Collect yield from a finished hunt.
-     * Clears finishAt and huntingSpot; applies meat + fur to island; levels up hunter.
+     * Roll a deterministic interactive event for this hunt.
+     * Uses {@code finishAt.toEpochSecond()} as seed — identical result on each call
+     * for the same hunt session (needed for BTN_COLLECT re-entry and callback resolution).
+     *
+     * @return rolled event with its list index, or {@code null} if no event fires
+     */
+    public static RolledEvent rollInteractiveEvent(HuntingSpot spot, long seed) {
+        Random rng = new Random(seed);
+        int chance = switch (spot) {
+            case EDGE -> EDGE_EVENT_CHANCE;
+            case DEEP -> DEEP_EVENT_CHANCE;
+            case WILD -> WILD_EVENT_CHANCE;
+        };
+        if (rng.nextInt(100) >= chance) return null;
+        List<InteractiveHuntEvent> pool = eventPool(spot);
+        int idx = rng.nextInt(pool.size());
+        return new RolledEvent(idx, pool.get(idx));
+    }
+
+    /** Returns the interactive event pool for a spot (for use in callback handlers). */
+    public static List<InteractiveHuntEvent> eventPool(HuntingSpot spot) {
+        return switch (spot) {
+            case EDGE -> EVENTS_EDGE;
+            case DEEP -> EVENTS_DEEP;
+            case WILD -> EVENTS_WILD;
+        };
+    }
+
+    /**
+     * Collect yield from a finished hunt, without external event modifiers.
+     * Call this when no interactive event fired.
      */
     public HuntResult collectYield(Player player, Island island) {
+        return collectYield(player, island, 0, 0, 0);
+    }
+
+    /**
+     * Collect yield with additional modifiers from an interactive event outcome.
+     * Does NOT roll internal events — caller is responsible for resolving the event.
+     *
+     * @param extraMeat additional meat from event (can be negative)
+     * @param extraFur  additional fur from event (can be negative)
+     * @param extraXp   additional XP from event
+     */
+    public HuntResult collectYield(Player player, Island island,
+                                   int extraMeat, int extraFur, int extraXp) {
         PlayerForest forest = player.getForest();
         HuntingSpot spot = forest.getHuntingSpot();
         if (spot == null) spot = HuntingSpot.EDGE;
@@ -168,13 +297,10 @@ public class HuntingService {
         int xpMultPct = level >= 9 ? 150 : (level >= 5 ? 125 : (level >= 3 ? 110 : 100));
         int xpEarned = (int) Math.round(spot.getXpReward() * xpMultPct / 100.0);
 
-        // Random event
-        HuntEvent event = rollEvent(spot);
-        if (event != null) {
-            meat     = Math.max(0, meat + event.meatDelta());
-            fur      = Math.max(0, fur  + event.furDelta());
-            xpEarned += event.xpDelta();
-        }
+        // Apply event modifiers
+        meat     = Math.max(0, meat     + extraMeat);
+        fur      = Math.max(0, fur      + extraFur);
+        xpEarned = Math.max(0, xpEarned + extraXp);
 
         // Level 7: 15% chance of double fur
         boolean doubleFur = false;
@@ -204,25 +330,10 @@ public class HuntingService {
         playerRepository.save(player);
 
         return new HuntResult(spot, meatActual, furActual, xpEarned, totalXp,
-                oldLevel, newLevel, pickNarrative(spot), event, doubleFur);
+                oldLevel, newLevel, pickNarrative(spot), doubleFur);
     }
 
-    // ── Event helpers ─────────────────────────────────────────────────────────
-
-    private HuntEvent rollEvent(HuntingSpot spot) {
-        int chance = switch (spot) {
-            case EDGE -> EDGE_EVENT_CHANCE;
-            case DEEP -> DEEP_EVENT_CHANCE;
-            case WILD -> WILD_EVENT_CHANCE;
-        };
-        if (random.nextInt(100) >= chance) return null;
-        List<HuntEvent> pool = switch (spot) {
-            case EDGE -> EVENTS_EDGE;
-            case DEEP -> EVENTS_DEEP;
-            case WILD -> EVENTS_WILD;
-        };
-        return pool.get(random.nextInt(pool.size()));
-    }
+    // ── Narrative helpers ─────────────────────────────────────────────────────
 
     private static String pickNarrative(HuntingSpot spot) {
         List<String> pool = switch (spot) {
@@ -245,7 +356,7 @@ public class HuntingService {
         return XP_THRESHOLDS[level];
     }
 
-    /** Cumulative XP threshold that started the given level (lower bound, exclusive). */
+    /** Cumulative XP threshold that started the given level (lower bound). */
     public int xpForLevel(int level) {
         if (level <= 1) return 0;
         return XP_THRESHOLDS[Math.min(level - 1, XP_THRESHOLDS.length - 1)];
@@ -292,10 +403,8 @@ public class HuntingService {
             int oldLevel,
             int newLevel,
             String narrative,
-            HuntEvent event,
             boolean doubleFur
     ) {
         public boolean leveledUp() { return newLevel > oldLevel; }
-        public boolean hasEvent()  { return event != null; }
     }
 }

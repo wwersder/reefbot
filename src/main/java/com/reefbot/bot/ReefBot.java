@@ -111,10 +111,12 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
                 "scope", Map.of("type", "all_group_chats")
         ));
 
-        // Admin command — visible only to chat admins, ephemeral
+        // Admin commands — visible only to chat admins, ephemeral
         boolean ok2 = sendRawApiRequest("setMyCommands", Map.of(
                 "commands", List.of(
-                        Map.of("command", "adm", "description", "⚙️ Панель администратора", "is_ephemeral", true)
+                        Map.of("command", "adm",  "description", "⚙️ Панель администратора",  "is_ephemeral", true),
+                        Map.of("command", "kick", "description", "🚫 Исключить пользователя", "is_ephemeral", true),
+                        Map.of("command", "mute", "description", "🔇 Заглушить пользователя", "is_ephemeral", true)
                 ),
                 "scope", Map.of("type", "all_chat_administrators")
         ));
@@ -182,6 +184,16 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
                 // Ephemeral admin command — message_id == 0 when sent as ephemeral command in a group
                 if (("/adm".equals(t) || t.startsWith("/adm@")) && ADMIN_TELEGRAM_ID.equals(telegramId)) {
                     handleAdminCommand(chatId, telegramId, isPrivate);
+                    return;
+                }
+                // Admin moderation commands — group-only, reply-based, ephemeral response
+                if (("/kick".equals(t) || t.startsWith("/kick@")) && ADMIN_TELEGRAM_ID.equals(telegramId) && !isPrivate) {
+                    handleKickCommand(chatId, telegramId, message);
+                    return;
+                }
+                if ((t.startsWith("/mute") && (t.length() == 5 || t.charAt(5) == '@' || t.charAt(5) == ' '))
+                        && ADMIN_TELEGRAM_ID.equals(telegramId) && !isPrivate) {
+                    handleMuteCommand(chatId, telegramId, t, message);
                     return;
                 }
             }
@@ -302,6 +314,123 @@ public class ReefBot implements LongPollingSingleThreadUpdateConsumer {
             boolean sent = sendRawApiRequest("sendMessage", body);
             if (!sent) sendResponse(chatId, BotResponse.html(text));
         }
+    }
+
+    // ── /kick command (admin-only, group-only, reply-based, ephemeral) ──────────
+
+    /**
+     * Bans (kicks) the user whose message the admin replied to.
+     * The command and bot's response are ephemeral — invisible to other members.
+     */
+    private void handleKickCommand(Long chatId, Long adminId, Message message) {
+        Message replied = message.getReplyToMessage();
+        if (replied == null || replied.getFrom() == null) {
+            sendEphemeral(chatId, adminId,
+                    "⚠️ Используй <code>/kick</code> как <b>ответ</b> на сообщение пользователя.");
+            return;
+        }
+        Long targetId   = replied.getFrom().getId();
+        String name     = replied.getFrom().getFirstName();
+
+        if (targetId.equals(adminId)) {
+            sendEphemeral(chatId, adminId, "🤦 Нельзя кикнуть самого себя.");
+            return;
+        }
+
+        boolean ok = sendRawApiRequest("banChatMember", Map.of(
+                "chat_id", chatId, "user_id", targetId));
+
+        if (ok) {
+            sendEphemeral(chatId, adminId, "✅ <b>" + name + "</b> исключён из чата.");
+        } else {
+            sendEphemeral(chatId, adminId,
+                    "❌ Не удалось исключить <b>" + name + "</b>. Проверь права бота.");
+        }
+    }
+
+    // ── /mute command (admin-only, group-only, reply-based, ephemeral) ──────────
+
+    /**
+     * Restricts (mutes) the user whose message the admin replied to.
+     * Duration: {@code /mute} = 1h, {@code /mute 30m} = 30 min, {@code /mute 2h} = 2h, {@code /mute 1d} = 1 day.
+     */
+    private void handleMuteCommand(Long chatId, Long adminId, String commandText, Message message) {
+        Message replied = message.getReplyToMessage();
+        if (replied == null || replied.getFrom() == null) {
+            sendEphemeral(chatId, adminId,
+                    "⚠️ Используй <code>/mute [длительность]</code> как <b>ответ</b> на сообщение пользователя.\n"
+                    + "Примеры: <code>/mute</code> (1ч), <code>/mute 30m</code>, <code>/mute 2h</code>, <code>/mute 1d</code>");
+            return;
+        }
+        Long targetId   = replied.getFrom().getId();
+        String name     = replied.getFrom().getFirstName();
+
+        if (targetId.equals(adminId)) {
+            sendEphemeral(chatId, adminId, "🤦 Нельзя заглушить самого себя.");
+            return;
+        }
+
+        int durationMinutes = parseMuteDuration(commandText);
+        long untilDate = System.currentTimeMillis() / 1000L + (long) durationMinutes * 60;
+
+        boolean ok = sendRawApiRequest("restrictChatMember", Map.of(
+                "chat_id", chatId,
+                "user_id", targetId,
+                "permissions", Map.of("can_send_messages", false,
+                        "can_send_media_messages", false,
+                        "can_send_other_messages", false),
+                "until_date", untilDate));
+
+        String durationStr = formatDuration(durationMinutes);
+        if (ok) {
+            sendEphemeral(chatId, adminId,
+                    "🔇 <b>" + name + "</b> заглушён на " + durationStr + ".");
+        } else {
+            sendEphemeral(chatId, adminId,
+                    "❌ Не удалось заглушить <b>" + name + "</b>. Проверь права бота.");
+        }
+    }
+
+    /** Parses duration from mute command text: "/mute 2h", "/mute 30m", "/mute 1d". Default 60 min. */
+    private static int parseMuteDuration(String commandText) {
+        String normalized = commandText.replaceFirst("@\\w+", "").trim();
+        String[] parts = normalized.split("\\s+", 2);
+        if (parts.length < 2) return 60;
+        return parseDuration(parts[1].toLowerCase().trim());
+    }
+
+    private static int parseDuration(String arg) {
+        try {
+            if (arg.endsWith("d")) return Integer.parseInt(arg.substring(0, arg.length() - 1)) * 1440;
+            if (arg.endsWith("h")) return Integer.parseInt(arg.substring(0, arg.length() - 1)) * 60;
+            if (arg.endsWith("m")) return Integer.parseInt(arg.substring(0, arg.length() - 1));
+            return Math.max(1, Integer.parseInt(arg)) * 60;
+        } catch (NumberFormatException e) {
+            return 60;
+        }
+    }
+
+    private static String formatDuration(int minutes) {
+        if (minutes >= 1440) {
+            int d = minutes / 1440;
+            return d + " д" + (d == 1 ? "ень" : d < 5 ? "ня" : "ней");
+        }
+        if (minutes >= 60) {
+            int h = minutes / 60, m = minutes % 60;
+            return h + " ч" + (m > 0 ? " " + m + " мин" : "");
+        }
+        return minutes + " мин";
+    }
+
+    /** Sends an ephemeral message visible only to {@code receiverId} in the group, or plain in DM. */
+    private void sendEphemeral(Long chatId, Long receiverId, String html) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("chat_id", chatId);
+        body.put("text", html);
+        body.put("parse_mode", "HTML");
+        body.put("receiver_user_id", receiverId);
+        boolean sent = sendRawApiRequest("sendMessage", body);
+        if (!sent) sendResponse(chatId, BotResponse.html(html));
     }
 
     // ── /ephem command (Bot API 10.2 test) ────────────────────────────────────

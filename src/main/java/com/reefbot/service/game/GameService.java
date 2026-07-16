@@ -1,5 +1,6 @@
 package com.reefbot.service.game;
 
+import com.reefbot.bot.handlers.HuntingLevelsCallbackHandler;
 import com.reefbot.bot.handlers.LevelsCallbackHandler;
 import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Island;
@@ -38,6 +39,9 @@ public class GameService {
         // Global commands available from any screen
         if ("/levels".equals(text)) {
             return LevelsCallbackHandler.buildInitialMessage(player);
+        }
+        if ("/hunt_levels".equals(text)) {
+            return HuntingLevelsCallbackHandler.buildInitialMessage(player);
         }
 
         Island island = player.getIsland();

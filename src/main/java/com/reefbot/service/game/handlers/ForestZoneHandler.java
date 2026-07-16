@@ -1,5 +1,6 @@
 package com.reefbot.service.game.handlers;
 
+import com.reefbot.bot.handlers.HuntingLevelsCallbackHandler;
 import com.reefbot.dto.BotResponse;
 import com.reefbot.entity.Island;
 import com.reefbot.entity.Player;
@@ -54,7 +55,7 @@ public class ForestZoneHandler implements GameHandler {
             case BTN_HUNT    -> goHunt(player);
             case BTN_REFRESH -> goActiveScreen(player);
             case BTN_COLLECT -> goResultScreen(player);
-            case BTN_LEVELS  -> buildLevelsScreen(player);
+            case BTN_LEVELS  -> HuntingLevelsCallbackHandler.buildInitialMessage(player);
             case BTN_BACK    -> goBack(player, island);
             default          -> buildZoneScreen(player, huntingService);
         };
@@ -89,60 +90,6 @@ public class ForestZoneHandler implements GameHandler {
         player.getState().setCurrentScreen(PlayerScreen.MAIN);
         playerRepository.save(player);
         return MainMenuHandler.showMainMenu(player, island);
-    }
-
-    // ── Levels screen ─────────────────────────────────────────────────────────
-
-    private BotResponse buildLevelsScreen(Player player) {
-        int currentLevel = player.getForest().getHunterLevel();
-        int currentXp    = player.getForest().getHunterXp();
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("📋 <b>Уровни охотника</b>\n\n");
-
-        int[] thresholds = {0, 100, 350, 850, 1750, 3250, 5750, 9750, 15950, 25450};
-        String[] names = {
-                "🗡 Новичок", "🏹 Следопыт", "🐾 Охотник", "🦌 Загонщик",
-                "🌿 Лесной страж", "🐺 Волк", "🪃 Ловчий", "🦅 Сокольничий",
-                "🌑 Тень леса", "🌟 Мастер охоты"
-        };
-        String[] bonuses = {
-                "Старт охотничьего пути. Опушка доступна.",
-                "+1 к добыче мяса на всех угодьях.",
-                "+10% XP. 🌲 Чаща разблокирована.",
-                "⚡ Время охоты −5%.",
-                "+25% XP за каждую охоту.",
-                "+2 к мясу на всех угодьях. 🐾 Урочище разблокировано.",
-                "🪶 15% шанс двойного меха.",
-                "⚡ Время охоты ещё −10% (итого −15%).",
-                "+50% XP за каждую охоту.",
-                "🌟 Легендарная добыча: +30% к максимальному улову."
-        };
-
-        for (int i = 0; i < 10; i++) {
-            int lv = i + 1;
-            boolean done    = currentLevel > lv;
-            boolean current = currentLevel == lv;
-            boolean locked  = currentLevel < lv;
-
-            String prefix = done ? "✅" : (current ? "▶️" : "🔒");
-            sb.append(prefix).append(" <b>Ур. ").append(lv).append(" — ").append(names[i]).append("</b>");
-            sb.append(" <i>(").append(thresholds[i]).append(" XP)</i>\n");
-            sb.append("   ").append(bonuses[i]).append("\n");
-
-            if (current) {
-                int xpNext = lv < 10 ? thresholds[lv] : 0;
-                if (xpNext > 0) {
-                    sb.append("   📊 ").append(currentXp).append("/").append(xpNext).append(" XP\n");
-                } else {
-                    sb.append("   📊 МАКС. УРОВЕНЬ\n");
-                }
-            }
-            sb.append("\n");
-        }
-
-        ReplyKeyboard kb = KeyboardBuilder.builder().row(BTN_BACK).build();
-        return BotResponse.html(sb.toString(), kb);
     }
 
     // ── Static helpers (called from MainMenuHandler + HuntingResultHandler) ──
