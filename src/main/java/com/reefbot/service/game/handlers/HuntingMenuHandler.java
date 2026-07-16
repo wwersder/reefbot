@@ -6,6 +6,7 @@ import com.reefbot.entity.Player;
 import com.reefbot.enums.HuntingSpot;
 import com.reefbot.enums.PlayerScreen;
 import com.reefbot.repository.PlayerRepository;
+import com.reefbot.service.game.ForestEventService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.service.game.HuntingService;
 import com.reefbot.util.KeyboardBuilder;
@@ -67,8 +68,9 @@ public class HuntingMenuHandler implements GameHandler {
             )
     );
 
-    private final HuntingService huntingService;
-    private final PlayerRepository playerRepository;
+    private final HuntingService     huntingService;
+    private final ForestEventService forestEventService;
+    private final PlayerRepository   playerRepository;
 
     @Override
     public PlayerScreen getScreen() {
@@ -81,7 +83,7 @@ public class HuntingMenuHandler implements GameHandler {
         if (huntingService.isActive(player)) {
             player.getState().setCurrentScreen(PlayerScreen.ZONE_FOREST_HUNT_ACTIVE);
             playerRepository.save(player);
-            return HuntingActiveHandler.buildStatusScreen(player, huntingService);
+            return HuntingActiveHandler.buildStatusScreen(player, huntingService, forestEventService);
         }
         if (huntingService.isReady(player)) {
             player.getState().setCurrentScreen(PlayerScreen.ZONE_FOREST_HUNT_RESULT);
@@ -130,20 +132,13 @@ public class HuntingMenuHandler implements GameHandler {
         if (spot == null) return buildHuntingMenu(player);
 
         huntingService.startHunt(player, spot);
+        forestEventService.scheduleSighting(player); // sets sighting window (40–80 min delay)
         player.getState().setCurrentScreen(PlayerScreen.ZONE_FOREST_HUNT_ACTIVE);
         playerRepository.save(player);
 
-        long mins = java.time.Duration.between(
-                java.time.LocalDateTime.now(),
-                player.getForest().getFinishAt()
-        ).toMinutes();
-        String timeStr = mins >= 60
-                ? (mins / 60) + " ч " + (mins % 60) + " мин"
-                : Math.max(1, mins) + " мин";
-
-        String text = "🏹 Охота началась на " + spot.getDisplayName().toLowerCase() + ".\n\n"
-                + "Возвращайся через " + timeStr + " — добыча будет ждать.";
-        return new BotResponse(text, null, HuntingActiveHandler.activeKeyboard());
+        String startMsg = "🏹 Охота началась — " + spot.getDisplayName().toLowerCase() + ".";
+        return new BotResponse(startMsg, null, null)
+                .withFollowUp(HuntingActiveHandler.buildStatusScreen(player, huntingService, forestEventService));
     }
 
     private BotResponse goBack(Player player) {

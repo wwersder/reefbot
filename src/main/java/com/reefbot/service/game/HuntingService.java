@@ -302,6 +302,22 @@ public class HuntingService {
         fur      = Math.max(0, fur      + extraFur);
         xpEarned = Math.max(0, xpEarned + extraXp);
 
+        // Roll trap (if player placed one during a beast sighting)
+        String trapNote = null;
+        Integer trapIdx = forest.getSightingTrapChoice();
+        if (trapIdx != null) {
+            ForestEventService.TrapOption trap = ForestEventService.trapPool(spot).get(trapIdx);
+            if (random.nextInt(100) < trap.chance()) {
+                meat    += trap.meatBonus();
+                fur     += trap.furBonus();
+                trapNote = "🪤 Ловушка сработала" + trap.emoji() + " " + trap.locationName() + "!"
+                        + (trap.meatBonus() > 0 ? " +" + trap.meatBonus() + " 🥩" : "")
+                        + (trap.furBonus()  > 0 ? " +" + trap.furBonus()  + " 🪶" : "");
+            } else {
+                trapNote = "🪤 " + trap.emoji() + " Ловушка пустая — зверь обошёл стороной.";
+            }
+        }
+
         // Level 7: 15% chance of double fur
         boolean doubleFur = false;
         if (level >= 7 && fur > 0 && random.nextInt(100) < 15) {
@@ -327,10 +343,16 @@ public class HuntingService {
         forest.setHunterLevel(newLevel);
         forest.setHuntingSpot(null);
         forest.setFinishAt(null);
+        // Clear sighting window — it belongs to this hunt session only
+        forest.setSightingAvailableAt(null);
+        forest.setSightingExpiresAt(null);
+        forest.setSightingClaimed(false);
+        forest.setSightingNotified(false);
+        forest.setSightingTrapChoice(null);
         playerRepository.save(player);
 
         return new HuntResult(spot, meatActual, furActual, xpEarned, totalXp,
-                oldLevel, newLevel, pickNarrative(spot), doubleFur);
+                oldLevel, newLevel, pickNarrative(spot), doubleFur, trapNote);
     }
 
     // ── Narrative helpers ─────────────────────────────────────────────────────
@@ -403,8 +425,11 @@ public class HuntingService {
             int oldLevel,
             int newLevel,
             String narrative,
-            boolean doubleFur
+            boolean doubleFur,
+            /** Null if no trap was set; otherwise e.g. "🪤 Ловушка сработала! +6 🥩" */
+            String trapNote
     ) {
         public boolean leveledUp() { return newLevel > oldLevel; }
+        public boolean hasTrap()   { return trapNote != null; }
     }
 }

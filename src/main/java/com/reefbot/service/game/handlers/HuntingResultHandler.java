@@ -103,6 +103,10 @@ public class HuntingResultHandler implements GameHandler {
         sb.append("⭐ Опыт: <b>+").append(result.xpEarned()).append("</b>");
         sb.append("  (").append(result.totalXp()).append(" накоплено)");
 
+        if (result.hasTrap()) {
+            sb.append("\n\n").append(result.trapNote());
+        }
+
         BotResponse collectMsg = BotResponse.html(sb.toString());
         BotResponse forestZone = ForestZoneHandler.buildZoneScreen(player, huntingService);
 

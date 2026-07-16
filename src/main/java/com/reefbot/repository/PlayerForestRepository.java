@@ -15,4 +15,12 @@ public interface PlayerForestRepository extends JpaRepository<PlayerForest, Long
     @Query("SELECT pf FROM PlayerForest pf WHERE pf.finishAt IS NOT NULL " +
            "AND pf.finishAt <= :now AND pf.notified = false")
     List<PlayerForest> findForestReady(@Param("now") LocalDateTime now);
+
+    @Query("SELECT pf FROM PlayerForest pf " +
+           "WHERE pf.sightingAvailableAt IS NOT NULL " +
+           "AND pf.sightingAvailableAt <= :now " +
+           "AND pf.sightingExpiresAt > :now " +
+           "AND pf.sightingClaimed = false " +
+           "AND pf.sightingNotified = false")
+    List<PlayerForest> findActiveSightingsNotNotified(@Param("now") LocalDateTime now);
 }

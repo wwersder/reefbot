@@ -64,6 +64,13 @@ public class NotificationScheduler {
             Шахта ждёт — заходи в Холмы и забирай камень.
             """;
 
+    private static final String SIGHTING_TEXT = """
+            🦌 Зверь рядом!
+
+            Поставь ловушку пока не ушёл — окно открыто 25 минут.
+            Зайди в Лес → «Зверь рядом!» и выбери место.
+            """;
+
     private final PlayerFishingRepository playerFishingRepository;
     private final PlayerForestRepository  playerForestRepository;
     private final PlayerMineRepository    playerMineRepository;
@@ -148,6 +155,27 @@ public class NotificationScheduler {
         if (toNotify == null || toNotify.isEmpty()) return;
         for (ForestNote note : toNotify) {
             sendMessage(note.telegramId(), FOREST_DONE_TEXT);
+        }
+    }
+
+    // ── Beast sighting active ─────────────────────────────────────────────
+
+    @Scheduled(fixedDelay = 60_000)
+    public void notifySightingActive() {
+        record SightingNote(Long telegramId) {}
+
+        List<SightingNote> toNotify = txTemplate.execute(status -> {
+            List<PlayerForest> active = playerForestRepository.findActiveSightingsNotNotified(LocalDateTime.now());
+            active.forEach(f -> f.setSightingNotified(true));
+            playerForestRepository.saveAll(active);
+            return active.stream()
+                    .map(f -> new SightingNote(f.getPlayer().getTelegramId()))
+                    .toList();
+        });
+
+        if (toNotify == null || toNotify.isEmpty()) return;
+        for (SightingNote note : toNotify) {
+            sendMessage(note.telegramId(), SIGHTING_TEXT);
         }
     }
 

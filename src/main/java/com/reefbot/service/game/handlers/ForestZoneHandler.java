@@ -8,6 +8,7 @@ import com.reefbot.enums.HuntingSpot;
 import com.reefbot.enums.PlayerScreen;
 import com.reefbot.enums.ZoneType;
 import com.reefbot.repository.PlayerRepository;
+import com.reefbot.service.game.ForestEventService;
 import com.reefbot.service.game.GameHandler;
 import com.reefbot.service.game.HuntingService;
 import com.reefbot.util.KeyboardBuilder;
@@ -41,8 +42,9 @@ public class ForestZoneHandler implements GameHandler {
             "Запах влажной хвои и земли.\nГде-то журчит маленький ручей."
     );
 
-    private final HuntingService huntingService;
-    private final PlayerRepository playerRepository;
+    private final HuntingService     huntingService;
+    private final ForestEventService forestEventService;
+    private final PlayerRepository   playerRepository;
 
     @Override
     public PlayerScreen getScreen() {
@@ -75,7 +77,7 @@ public class ForestZoneHandler implements GameHandler {
         if (!huntingService.isActive(player)) return buildZoneScreen(player, huntingService);
         player.getState().setCurrentScreen(PlayerScreen.ZONE_FOREST_HUNT_ACTIVE);
         playerRepository.save(player);
-        return HuntingActiveHandler.buildStatusScreen(player, huntingService);
+        return HuntingActiveHandler.buildStatusScreen(player, huntingService, forestEventService);
     }
 
     /** Collect yield — go to result screen. */
