@@ -1,0 +1,1 @@
+ALTER TABLE slot_war_logs MODIFY COLUMN expanded_count INT NOT NULL DEFAULT 0;
