@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Шторм vs Штиль</title>
+<style>
+  :root {
+    --bg1: #0a1628;
+    --bg2: #0d2040;
+    --accent: #4fc3f7;
+    --gold: #ffd700;
+    --wild: #00e5ff;
+    --win: #76ff03;
+    --fs-bg: rgba(0,180,255,0.15);
+    --cell-size: 56px;
+    --gap: 4px;
+  }
+
+  /* STORM theme overrides */
+  body.storm {
+    --bg1: #0d0010;
+    --bg2: #1a0028;
+    --accent: #ce93d8;
+    --gold: #ff6f00;
+    --wild: #ea80fc;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: linear-gradient(160deg, var(--bg1) 0%, var(--bg2) 100%);
+    color: #e0f7fa;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    padding-bottom: 24px;
+  }
+
+  /* ── Header ── */
+  .header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px 8px;
+  }
+
+  .title { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+  .balance-box {
+    background: rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gold);
+  }
+
+  /* ── Mode selector ── */
+  .mode-selector {
+    display: flex;
+    gap: 8px;
+    padding: 4px 16px 12px;
+    width: 100%;
+  }
+  .mode-btn {
+    flex: 1;
+    padding: 10px 0;
+    border-radius: 24px;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: #ccc;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    text-align: center;
+  }
+  .mode-btn.active {
+    border-color: var(--accent);
+    background: rgba(79,195,247,0.18);
+    color: #fff;
+    box-shadow: 0 0 16px rgba(79,195,247,0.3);
+  }
+  body.storm .mode-btn.active {
+    border-color: var(--accent);
+    background: rgba(206,147,216,0.18);
+    box-shadow: 0 0 16px rgba(206,147,216,0.3);
+  }
+
+  /* ── Free spins banner ── */
+  .fs-banner {
+    display: none;
+    width: calc(100% - 32px);
+    background: var(--fs-bg);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 8px 16px;
+    margin-bottom: 8px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    animation: pulse-border 1.5s infinite;
+  }
+  .fs-banner.visible { display: block; }
+  @keyframes pulse-border {
+    0%,100% { border-color: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    50%      { border-color: var(--wild);  box-shadow: 0 0 20px var(--wild); }
+  }
+
+  /* ── Grid ── */
+  .grid-wrap {
+    position: relative;
+    margin: 0 0 12px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, var(--cell-size));
+    grid-template-rows:    repeat(5, var(--cell-size));
+    gap: var(--gap);
+    padding: 8px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .cell {
+    width:  var(--cell-size);
+    height: var(--cell-size);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    position: relative;
+    transition: background .15s;
+    overflow: hidden;
+  }
+
+  /* Spinning state */
+  .cell.spinning {
+    animation: cell-spin 0.12s linear infinite;
+  }
+  @keyframes cell-spin {
+    0%   { opacity: 0.3; transform: translateY(-4px); }
+    50%  { opacity: 0.8; transform: translateY(0); }
+    100% { opacity: 0.3; transform: translateY(4px); }
+  }
+
+  /* Win highlight */
+  .cell.win-highlight {
+    background: rgba(118,255,3,0.18) !important;
+    border-color: var(--win) !important;
+    animation: win-glow 0.6s ease-in-out infinite alternate;
+  }
+  @keyframes win-glow {
+    from { box-shadow: 0 0 4px var(--win); }
+    to   { box-shadow: 0 0 18px var(--win), 0 0 30px rgba(118,255,3,0.4); }
+  }
+
+  /* Expanded wild column */
+  .cell.expanded {
+    background: rgba(0,229,255,0.25) !important;
+    border-color: var(--wild) !important;
+    animation: wild-glow 0.8s ease-in-out infinite alternate;
+  }
+  body.storm .cell.expanded {
+    background: rgba(234,128,252,0.25) !important;
+    border-color: var(--wild) !important;
+  }
+  @keyframes wild-glow {
+    from { box-shadow: 0 0 6px var(--wild); }
+    to   { box-shadow: 0 0 24px var(--wild), 0 0 40px rgba(0,229,255,0.3); }
+  }
+
+  /* Sticky wild column */
+  .cell.sticky { border-color: rgba(0,229,255,0.5) !important; }
+
+  /* Scatter blink */
+  .cell.scatter-hit {
+    animation: scatter-pulse 0.5s ease-in-out 3;
+    background: rgba(255,215,0,0.2) !important;
+    border-color: var(--gold) !important;
+  }
+  @keyframes scatter-pulse {
+    0%,100% { transform: scale(1); }
+    50%     { transform: scale(1.15); }
+  }
+
+  /* ── Column multiplier badge ── */
+  .col-mult-badge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    background: var(--wild);
+    color: #000;
+    font-weight: 900;
+    font-size: 13px;
+    border-radius: 8px;
+    padding: 2px 6px;
+    pointer-events: none;
+    z-index: 10;
+    animation: mult-pop 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  }
+  @keyframes mult-pop {
+    0%   { transform: translate(-50%,-50%) scale(0); opacity: 0; }
+    60%  { transform: translate(-50%,-50%) scale(1.2); opacity: 1; }
+    100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+  }
+
+  /* ── Result overlay ── */
+  #result-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    border-radius: 16px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 20;
+    backdrop-filter: blur(2px);
+  }
+  #result-overlay.visible { display: flex; }
+  .result-win-label { font-size: 13px; color: #aaa; }
+  .result-win-amount {
+    font-size: 42px;
+    font-weight: 900;
+    color: var(--gold);
+    text-shadow: 0 0 20px var(--gold);
+  }
+  .result-mult {
+    font-size: 16px;
+    color: var(--wild);
+    font-weight: 700;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    width: calc(100% - 32px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .bet-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .bet-label { font-size: 13px; color: #8899aa; min-width: 44px; }
+  .bet-btn {
+    flex: 1;
+    padding: 9px 0;
+    border-radius: 20px;
+    border: 1.5px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    color: #ccc;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .bet-btn.active {
+    background: rgba(79,195,247,0.2);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  body.storm .bet-btn.active {
+    background: rgba(206,147,216,0.2);
+    border-color: var(--accent);
+  }
+
+  .spin-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: 28px;
+    border: none;
+    background: linear-gradient(135deg, #0288d1, #00acc1);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 800;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all .15s;
+    box-shadow: 0 4px 20px rgba(2,136,209,0.4);
+  }
+  body.storm .spin-btn {
+    background: linear-gradient(135deg, #7b1fa2, #ad1457);
+    box-shadow: 0 4px 20px rgba(173,20,87,0.5);
+  }
+  .spin-btn:active:not(:disabled) { transform: scale(0.97); }
+  .spin-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ── Last wins strip ── */
+  .wins-strip {
+    display: flex;
+    gap: 6px;
+    padding: 4px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    width: 100%;
+  }
+  .wins-strip::-webkit-scrollbar { display: none; }
+  .win-dot {
+    min-width: 36px;
+    height: 24px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #889;
+    white-space: nowrap;
+    padding: 0 6px;
+    transition: all .2s;
+  }
+  .win-dot.big { background: rgba(118,255,3,0.15); border-color: var(--win); color: var(--win); }
+  .win-dot.mega { background: rgba(255,215,0,0.2); border-color: var(--gold); color: var(--gold); }
+
+  /* ── Screen flash for big win ── */
+  @keyframes flash-screen {
+    0%   { background: rgba(255,215,0,0); }
+    20%  { background: rgba(255,215,0,0.3); }
+    100% { background: rgba(255,215,0,0); }
+  }
+  body.flash::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    animation: flash-screen 0.6s ease-out forwards;
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ── Error toast ── */
+  #toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(244,67,54,0.92);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+    z-index: 100;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body class="calm" id="app">
+
+<!-- Header -->
+<div class="header">
+  <div class="title" id="title">☀️ Штиль</div>
+  <div class="balance-box">🐚 <span id="balance">—</span></div>
+</div>
+
+<!-- Mode selector -->
+<div class="mode-selector">
+  <button class="mode-btn active" id="btn-calm" onclick="setMode('CALM')">☀️ Штиль</button>
+  <button class="mode-btn"        id="btn-storm" onclick="setMode('STORM')">⚡ Шторм</button>
+</div>
+
+<!-- Free spins banner -->
+<div class="fs-banner" id="fs-banner">🎰 Бесплатные спины: <span id="fs-count">0</span></div>
+
+<!-- 5×5 Grid -->
+<div class="grid-wrap">
+  <div class="grid" id="grid">
+    <!-- 25 cells populated by JS -->
+  </div>
+  <div id="result-overlay">
+    <div class="result-win-label">ВЫИГРЫШ</div>
+    <div class="result-win-amount" id="overlay-amount">0</div>
+    <div class="result-mult" id="overlay-mult"></div>
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+
+  <div class="bet-row">
+    <span class="bet-label">Ставка:</span>
+    <button class="bet-btn" data-bet="10"  onclick="setBet(10)">10</button>
+    <button class="bet-btn" data-bet="25"  onclick="setBet(25)">25</button>
+    <button class="bet-btn active" data-bet="50"  onclick="setBet(50)">50</button>
+    <button class="bet-btn" data-bet="100" onclick="setBet(100)">100</button>
+    <button class="bet-btn" data-bet="250" onclick="setBet(250)">250</button>
+  </div>
+
+  <button class="spin-btn" id="spin-btn" onclick="spin()">🌊 КРУТИТЬ</button>
+
+</div>
+
+<!-- Last wins strip -->
+<div class="wins-strip" id="wins-strip"></div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────────
+const tg       = window.Telegram?.WebApp;
+const initData = tg?.initData || '';
+
+let balance        = 0;
+let bet            = 50;
+let mode           = 'CALM';
+let spinning       = false;
+let freeSpinsLeft  = 0;
+let stickyColumns  = []; // [[col, mult], ...]
+let fsPendingWin   = 0;
+let lastWins       = [];
+
+// Symbol → emoji map
+const EMOJI = {
+  JELLYFISH: '🪼', SHELL: '🐚', CRAB: '🦀',
+  FISH: '🐠',      TURTLE: '🐢', OCTOPUS: '🐙',
+  SHARK: '🦈',     DOLPHIN: '🐬', WILD: '🌊', SCATTER: '🗼'
+};
+
+// Spin pool for animation (all possible emojis)
+const SPIN_POOL = Object.values(EMOJI);
+
+// ─────────────────────────────────────────────
+//  DOM helpers
+// ─────────────────────────────────────────────
+function $id(id) { return document.getElementById(id); }
+
+// ─────────────────────────────────────────────
+//  Grid init
+// ─────────────────────────────────────────────
+const gridEl = $id('grid');
+
+function initGrid() {
+  gridEl.innerHTML = '';
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 5; col++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.id = `cell-${col}-${row}`;
+      cell.textContent = randomEmoji();
+      gridEl.appendChild(cell);
+    }
+  }
+}
+
+function randomEmoji() {
+  return SPIN_POOL[Math.floor(Math.random() * SPIN_POOL.length)];
+}
+
+function setCell(col, row, symbolName) {
+  const cell = $id(`cell-${col}-${row}`);
+  if (cell) cell.textContent = EMOJI[symbolName] || '?';
+}
+
+function getCellEl(col, row) { return $id(`cell-${col}-${row}`); }
+
+// ─────────────────────────────────────────────
+//  Mode
+// ─────────────────────────────────────────────
+function setMode(m) {
+  if (spinning || freeSpinsLeft > 0) return;
+  mode = m;
+  document.body.className = m === 'STORM' ? 'storm' : '';
+  $id('btn-calm').classList.toggle('active', m === 'CALM');
+  $id('btn-storm').classList.toggle('active', m === 'STORM');
+  $id('title').textContent = m === 'CALM' ? '☀️ Штиль' : '⚡ Шторм';
+  $id('spin-btn').textContent = m === 'CALM' ? '🌊 КРУТИТЬ' : '⚡ КРУТИТЬ';
+  tg?.HapticFeedback?.selectionChanged();
+}
+
+// ─────────────────────────────────────────────
+//  Bet
+// ─────────────────────────────────────────────
+function setBet(b) {
+  if (spinning) return;
+  bet = b;
+  document.querySelectorAll('.bet-btn').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.bet) === b);
+  });
+  tg?.HapticFeedback?.selectionChanged();
+}
+
+// ─────────────────────────────────────────────
+//  Balance
+// ─────────────────────────────────────────────
+function updateBalance(newVal) {
+  const el = $id('balance');
+  const from = balance;
+  balance = newVal;
+  if (from === newVal) { el.textContent = fmt(newVal); return; }
+  const steps = 20;
+  let i = 0;
+  const delta = (newVal - from) / steps;
+  const interval = setInterval(() => {
+    i++;
+    el.textContent = fmt(Math.round(from + delta * i));
+    if (i >= steps) {
+      clearInterval(interval);
+      el.textContent = fmt(newVal);
+    }
+  }, 20);
+}
+
+function fmt(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'K';
+  return n.toString();
+}
+
+// ─────────────────────────────────────────────
+//  Free spins UI
+// ─────────────────────────────────────────────
+function updateFsUI(left, pending) {
+  freeSpinsLeft = left;
+  fsPendingWin  = pending;
+  const banner = $id('fs-banner');
+  if (left > 0) {
+    banner.classList.add('visible');
+    $id('fs-count').textContent = left + (pending > 0 ? ' · накоплено ' + fmt(pending) : '');
+  } else {
+    banner.classList.remove('visible');
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Sticky columns UI
+// ─────────────────────────────────────────────
+function applyStickyUI(cols) {
+  // Clear old sticky
+  document.querySelectorAll('.cell.sticky').forEach(c => c.classList.remove('sticky'));
+  stickyColumns = parseStickyJson(cols);
+  stickyColumns.forEach(([col]) => {
+    for (let row = 0; row < 5; row++) {
+      const c = getCellEl(col, row);
+      if (c) c.classList.add('sticky');
+    }
+  });
+}
+
+function parseStickyJson(json) {
+  if (!json || json === '[]') return [];
+  try {
+    return JSON.parse(json);
+  } catch {
+    return [];
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Spin animation
+// ─────────────────────────────────────────────
+let spinIntervals = [];
+
+function startSpinAnim() {
+  spinIntervals.forEach(clearInterval);
+  spinIntervals = [];
+  for (let col = 0; col < 5; col++) {
+    for (let row = 0; row < 5; row++) {
+      const cell = getCellEl(col, row);
+      if (!cell) continue;
+      cell.classList.remove('win-highlight', 'expanded', 'scatter-hit');
+      cell.classList.add('spinning');
+    }
+    const iv = setInterval(() => {
+      for (let row = 0; row < 5; row++) {
+        const cell = getCellEl(col, row);
+        if (cell && cell.classList.contains('spinning')) {
+          cell.textContent = randomEmoji();
+        }
+      }
+    }, 80 + col * 20);
+    spinIntervals.push(iv);
+  }
+}
+
+function stopSpinCol(col, symbols, delay) {
+  return new Promise(resolve => setTimeout(() => {
+    spinIntervals[col] && clearInterval(spinIntervals[col]);
+    for (let row = 0; row < 5; row++) {
+      const cell = getCellEl(col, row);
+      if (cell) {
+        cell.classList.remove('spinning');
+        cell.textContent = EMOJI[symbols[col][row]] || '?';
+      }
+    }
+    tg?.HapticFeedback?.impactOccurred('light');
+    resolve();
+  }, delay));
+}
+
+// ─────────────────────────────────────────────
+//  Expand animation
+// ─────────────────────────────────────────────
+async function animateExpand(expandedWilds, grid) {
+  for (const ew of expandedWilds) {
+    const col = ew.col;
+    const mult = ew.mult;
+    // Flash column
+    for (let row = 0; row < 5; row++) {
+      const c = getCellEl(col, row);
+      if (c) {
+        c.textContent = EMOJI.WILD;
+        c.classList.add('expanded');
+      }
+    }
+    tg?.HapticFeedback?.impactOccurred('medium');
+    await sleep(180);
+
+    // Show mult badge on middle cell
+    const midCell = getCellEl(col, 2);
+    if (midCell) {
+      const badge = document.createElement('div');
+      badge.className = 'col-mult-badge';
+      badge.textContent = '×' + mult;
+      midCell.style.position = 'relative';
+      midCell.appendChild(badge);
+      await sleep(600);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Win highlight
+// ─────────────────────────────────────────────
+function highlightWins(winLines, grid) {
+  winLines.forEach(line => {
+    const rows = line.rows;
+    for (let col = 0; col < line.count; col++) {
+      const c = getCellEl(col, rows[col]);
+      if (c) c.classList.add('win-highlight');
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+//  Result overlay
+// ─────────────────────────────────────────────
+function showResultOverlay(finalWin, totalMult) {
+  const overlay = $id('result-overlay');
+  $id('overlay-amount').textContent = '🐚 ' + fmt(finalWin);
+  $id('overlay-mult').textContent = totalMult > 1 ? '×' + totalMult : '';
+  overlay.classList.add('visible');
+  setTimeout(() => overlay.classList.remove('visible'), 2200);
+}
+
+// ─────────────────────────────────────────────
+//  Big win flash
+// ─────────────────────────────────────────────
+function bigWinFlash(finalWin) {
+  if (finalWin >= bet * 50) {
+    document.body.classList.add('flash');
+    tg?.HapticFeedback?.notificationOccurred('success');
+    setTimeout(() => document.body.classList.remove('flash'), 700);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Last wins strip
+// ─────────────────────────────────────────────
+function addWinToStrip(amount) {
+  lastWins.unshift(amount);
+  if (lastWins.length > 10) lastWins.pop();
+  const strip = $id('wins-strip');
+  strip.innerHTML = '';
+  lastWins.forEach(w => {
+    const dot = document.createElement('div');
+    dot.className = 'win-dot' + (w >= bet * 100 ? ' mega' : w >= bet * 10 ? ' big' : '');
+    dot.textContent = w > 0 ? '+' + fmt(w) : '×';
+    strip.appendChild(dot);
+  });
+}
+
+// ─────────────────────────────────────────────
+//  Toast
+// ─────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = $id('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─────────────────────────────────────────────
+//  API
+// ─────────────────────────────────────────────
+async function apiSpin() {
+  const res = await fetch('/api/mini/slot-war/spin', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Telegram-Init-Data': initData
+    },
+    body: JSON.stringify({ bet, mode })
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+async function apiState() {
+  const res = await fetch('/api/mini/slot-war/state', {
+    headers: { 'X-Telegram-Init-Data': initData }
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+// ─────────────────────────────────────────────
+//  Spin flow
+// ─────────────────────────────────────────────
+async function spin() {
+  if (spinning) return;
+  if (!initData) { showToast('Открой через Telegram'); return; }
+
+  spinning = true;
+  $id('spin-btn').disabled = true;
+  $id('result-overlay').classList.remove('visible');
+
+  // Clear old badges and highlights
+  document.querySelectorAll('.col-mult-badge').forEach(b => b.remove());
+  document.querySelectorAll('.cell').forEach(c => {
+    c.classList.remove('win-highlight', 'scatter-hit');
+    if (!stickyColumns.some(([col]) => parseInt(c.id.split('-')[1]) === col)) {
+      c.classList.remove('expanded');
+    }
+  });
+
+  startSpinAnim();
+
+  let data;
+  try {
+    data = await apiSpin();
+  } catch (e) {
+    showToast('Ошибка сети. Попробуй снова.');
+    stopAllReels();
+    spinning = false;
+    $id('spin-btn').disabled = false;
+    return;
+  }
+
+  if (data.error) {
+    stopAllReels();
+    spinning = false;
+    $id('spin-btn').disabled = false;
+    const msgs = {
+      INSUFFICIENT_BALANCE: 'Недостаточно ракушек',
+      INVALID_BET:          'Минимальная ставка 10',
+      ONBOARDING_REQUIRED:  'Сначала зарегистрируйся в боте'
+    };
+    showToast(msgs[data.error] || data.error);
+    return;
+  }
+
+  const grid = data.grid; // grid[col][row]
+
+  // Stop reels with stagger
+  const stops = [];
+  for (let col = 0; col < 5; col++) {
+    stops.push(stopSpinCol(col, grid, 300 + col * 220));
+  }
+  await Promise.all(stops);
+
+  // Highlight scatters
+  if (data.scatterCount > 0) {
+    [0, 2, 4].forEach(col => {
+      for (let row = 0; row < 5; row++) {
+        if (grid[col][row] === 'SCATTER') {
+          const c = getCellEl(col, row);
+          if (c) c.classList.add('scatter-hit');
+        }
+      }
+    });
+    await sleep(400);
+  }
+
+  // Animate expanding wilds
+  if (data.expandedWilds && data.expandedWilds.length > 0) {
+    await animateExpand(data.expandedWilds, grid);
+  }
+
+  // Highlight wins
+  if (data.winLines && data.winLines.length > 0) {
+    highlightWins(data.winLines, grid);
+  }
+
+  // Show result
+  if (data.finalWin > 0 || data.bonusTriggered) {
+    await sleep(200);
+    showResultOverlay(data.finalWin, data.totalMult);
+    bigWinFlash(data.finalWin);
+    addWinToStrip(data.finalWin);
+  } else {
+    addWinToStrip(0);
+  }
+
+  // Bonus trigger announcement
+  if (data.bonusTriggered) {
+    await sleep(400);
+    showToast('🎰 Бесплатные спины! 10 раундов со Sticky Wild!');
+    tg?.HapticFeedback?.notificationOccurred('success');
+  }
+
+  // Update state
+  updateBalance(data.newBalance);
+  updateFsUI(data.freeSpinsRemaining, data.fsPendingWin);
+  applyStickyUI(data.stickyColumnsJson);
+
+  // Lock mode buttons during free spins
+  const inFs = data.freeSpinsRemaining > 0 || data.wasFreeSpins;
+  $id('btn-calm').disabled = inFs;
+  $id('btn-storm').disabled = inFs;
+
+  // Re-enable after small delay
+  await sleep(600);
+  spinning = false;
+  $id('spin-btn').disabled = false;
+}
+
+function stopAllReels() {
+  spinIntervals.forEach(clearInterval);
+  spinIntervals = [];
+  for (let col = 0; col < 5; col++)
+    for (let row = 0; row < 5; row++) {
+      const c = getCellEl(col, row);
+      if (c) { c.classList.remove('spinning'); c.textContent = randomEmoji(); }
+    }
+}
+
+// ─────────────────────────────────────────────
+//  Init
+// ─────────────────────────────────────────────
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function init() {
+  tg?.expand();
+  tg?.setHeaderColor('#0a1628');
+  initGrid();
+
+  if (!initData) {
+    updateBalance(0);
+    return;
+  }
+
+  try {
+    const state = await apiState();
+    if (state.onboardingRequired) {
+      showToast(state.message || 'Сначала зарегистрируйся в боте');
+      return;
+    }
+    updateBalance(state.balance);
+    if (state.mode) {
+      mode = state.mode;
+      setMode(mode);
+    }
+    updateFsUI(state.freeSpinsRemaining || 0, state.fsPendingWin || 0);
+    applyStickyUI(state.stickyColumnsJson);
+  } catch (e) {
+    console.error('Init failed', e);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

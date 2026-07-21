@@ -19,4 +19,9 @@ public class MiniAppController {
     public String slotIndex() {
         return "forward:/mini/slot/index.html";
     }
+
+    @GetMapping({"/mini/slot-war", "/mini/slot-war/"})
+    public String slotWarIndex() {
+        return "forward:/mini/slot-war/index.html";
+    }
 }

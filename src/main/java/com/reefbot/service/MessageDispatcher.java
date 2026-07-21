@@ -6,6 +6,7 @@ import com.reefbot.enums.PlayerStatus;
 import com.reefbot.service.game.GameService;
 import com.reefbot.service.plinko.PlinkoBotService;
 import com.reefbot.service.slot.SlotBotService;
+import com.reefbot.service.slotwar.SlotWarBotService;
 import com.reefbot.service.registration.OnboardingService;
 import com.reefbot.service.support.SupportService;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +37,8 @@ public class MessageDispatcher {
     private final GameService gameService;
     private final SupportService supportService;
     private final PlinkoBotService plinkoBotService;
-    private final SlotBotService   slotBotService;
+    private final SlotBotService      slotBotService;
+    private final SlotWarBotService   slotWarBotService;
 
     public BotResponse dispatch(Long telegramId, String username, String text, boolean isPrivate) {
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -84,6 +86,9 @@ public class MessageDispatcher {
             if (isSlotCommand(text) && status == PlayerStatus.ACTIVE) {
                 return slotBotService.handle(player);
             }
+            if (isSlotWarCommand(text) && status == PlayerStatus.ACTIVE) {
+                return slotWarBotService.handle(player);
+            }
 
             return switch (status) {
                 case ONBOARDING -> onboardingService.process(player, text);
@@ -119,5 +124,9 @@ public class MessageDispatcher {
 
     private boolean isSlotCommand(String text) {
         return text.startsWith("/slot") || text.startsWith("/reef");
+    }
+
+    private boolean isSlotWarCommand(String text) {
+        return text.startsWith("/slotwar") || text.startsWith("/war") || text.startsWith("/storm");
     }
 }

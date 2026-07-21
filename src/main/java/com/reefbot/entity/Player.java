@@ -124,4 +124,10 @@ public class Player {
     @OneToOne(mappedBy = "player", cascade = CascadeType.ALL,
               fetch = FetchType.EAGER, orphanRemoval = true)
     private PlayerSlotState slotState;
+
+    // ── Slot War state (Шторм vs Штиль) ──────────────────────────────────────
+
+    @OneToOne(mappedBy = "player", cascade = CascadeType.ALL,
+              fetch = FetchType.EAGER, orphanRemoval = true)
+    private PlayerSlotWarState slotWarState;
 }
