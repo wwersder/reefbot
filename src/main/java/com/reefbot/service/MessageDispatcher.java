@@ -83,11 +83,11 @@ public class MessageDispatcher {
             if (isPlinkoCommand(text) && status == PlayerStatus.ACTIVE) {
                 return plinkoBotService.handle(player, text);
             }
-            if (isSlotCommand(text) && status == PlayerStatus.ACTIVE) {
-                return slotBotService.handle(player);
-            }
             if (isSlotWarCommand(text) && status == PlayerStatus.ACTIVE) {
                 return slotWarBotService.handle(player);
+            }
+            if (isSlotCommand(text) && status == PlayerStatus.ACTIVE) {
+                return slotBotService.handle(player);
             }
 
             return switch (status) {
