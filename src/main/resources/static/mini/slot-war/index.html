@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Шторм vs Штиль</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root {
     --bg1: #0a1628;
@@ -182,6 +183,30 @@
 
   /* Sticky wild column */
   .cell.sticky { border-color: rgba(0,229,255,0.5) !important; }
+
+  /* Bounce on reel stop */
+  @keyframes cell-bounce {
+    0%   { transform: translateY(0) scale(1); }
+    35%  { transform: translateY(-7px) scale(1.08); }
+    65%  { transform: translateY(2px) scale(0.97); }
+    85%  { transform: translateY(-2px) scale(1.02); }
+    100% { transform: translateY(0) scale(1); }
+  }
+  .cell.bounce { animation: cell-bounce 0.32s ease-out; }
+
+  /* Expand flash — energy build-up before reveal */
+  .cell.expand-flash {
+    background: rgba(0,229,255,0.35) !important;
+    border-color: var(--wild) !important;
+    animation: expand-pulse 0.15s ease-in-out infinite alternate;
+  }
+  body.storm .cell.expand-flash {
+    background: rgba(234,128,252,0.35) !important;
+  }
+  @keyframes expand-pulse {
+    from { box-shadow: 0 0 8px var(--wild); }
+    to   { box-shadow: 0 0 28px var(--wild), inset 0 0 12px rgba(255,255,255,0.2); }
+  }
 
   /* Scatter blink */
   .cell.scatter-hit {
@@ -608,6 +633,9 @@ function stopSpinCol(col, symbols, delay) {
       if (cell) {
         cell.classList.remove('spinning');
         cell.textContent = EMOJI[symbols[col][row]] || '?';
+        // Bounce effect on landing
+        cell.classList.add('bounce');
+        setTimeout(() => cell.classList.remove('bounce'), 350);
       }
     }
     tg?.HapticFeedback?.impactOccurred('light');
@@ -616,32 +644,42 @@ function stopSpinCol(col, symbols, delay) {
 }
 
 // ─────────────────────────────────────────────
-//  Expand animation
+//  Expand animation — cell by cell (Zeus vs Hades style)
 // ─────────────────────────────────────────────
 async function animateExpand(expandedWilds, grid) {
   for (const ew of expandedWilds) {
     const col = ew.col;
     const mult = ew.mult;
-    // Flash column
+
+    // Phase 1: brief flash on all cells (energy build-up)
+    for (let row = 0; row < 5; row++) {
+      const c = getCellEl(col, row);
+      if (c) c.classList.add('expand-flash');
+    }
+    tg?.HapticFeedback?.impactOccurred('medium');
+    await sleep(200);
+
+    // Phase 2: reveal wild top → bottom one by one
     for (let row = 0; row < 5; row++) {
       const c = getCellEl(col, row);
       if (c) {
+        c.classList.remove('expand-flash');
         c.textContent = EMOJI.WILD;
         c.classList.add('expanded');
+        tg?.HapticFeedback?.impactOccurred('light');
+        await sleep(90);
       }
     }
-    tg?.HapticFeedback?.impactOccurred('medium');
-    await sleep(180);
 
-    // Show mult badge on middle cell
+    // Phase 3: multiplier badge pops on middle cell
     const midCell = getCellEl(col, 2);
     if (midCell) {
       const badge = document.createElement('div');
       badge.className = 'col-mult-badge';
       badge.textContent = '×' + mult;
-      midCell.style.position = 'relative';
       midCell.appendChild(badge);
-      await sleep(600);
+      tg?.HapticFeedback?.impactOccurred('heavy');
+      await sleep(500);
     }
   }
 }
@@ -862,10 +900,11 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 async function init() {
   tg?.expand();
   tg?.setHeaderColor('#0a1628');
+  tg?.ready();
   initGrid();
 
   if (!initData) {
-    updateBalance(0);
+    showToast('Открой через Telegram');
     return;
   }
 
@@ -884,6 +923,7 @@ async function init() {
     applyStickyUI(state.stickyColumnsJson);
   } catch (e) {
     console.error('Init failed', e);
+    showToast('Ошибка загрузки. Попробуй перезапустить.');
   }
 }
 
